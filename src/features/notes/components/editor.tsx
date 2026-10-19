@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import type { ParseIssue } from "@/features/cards/parser";
+
 import { saveNote } from "../actions";
 import {
   idleStatus,
@@ -45,6 +47,12 @@ export function Editor({
   // autosave não insiste sozinho — ver `shouldAutosave`.
   const [falhou, setFalhou] = useState<Texto | null>(null);
   const [status, setStatus] = useState<SaveStatus>(idleStatus);
+  // O que a última gravação disse sobre os cards do texto. `null` enquanto
+  // nada foi gravado nesta sessão.
+  const [cards, setCards] = useState<{
+    total: number;
+    issues: ParseIssue[];
+  } | null>(null);
 
   const sujo =
     texto.title !== gravado.title || texto.content !== gravado.content;
@@ -69,6 +77,7 @@ export function Editor({
     // a ida ao servidor continua sujo e dispara a gravação seguinte.
     setFalhou(null);
     setGravado(enviado);
+    setCards({ total: result.cardCount, issues: result.issues });
     setStatus({ kind: "saved", at: new Date(result.savedAt) });
   }, [noteId]);
 
@@ -170,6 +179,23 @@ export function Editor({
             }
             className="min-h-[24rem] w-full resize-y rounded-md border border-rule bg-paper px-3 py-2 font-mono text-sm leading-relaxed text-ink placeholder:text-ink-soft focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none editor:min-h-[60vh]"
           />
+          {cards === null ? null : (
+            <div className="space-y-1 px-1 pt-1">
+              <p className="font-mono text-xs text-ink-soft">
+                {cards.total === 1 ? "1 card" : `${cards.total} cards`}
+              </p>
+              {/* Sintaxe torta é erro de validação, não silêncio — SPEC §3.3. */}
+              {cards.issues.map((issue) => (
+                <p
+                  key={`${issue.line}-${issue.message}`}
+                  role="alert"
+                  className="text-xs text-destructive"
+                >
+                  Linha {issue.line}: {issue.message}
+                </p>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="space-y-1">

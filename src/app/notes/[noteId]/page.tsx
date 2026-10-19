@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { CardMargin } from "@/features/cards/components/margin";
 import { CourseRail } from "@/features/courses/components/course-rail";
 import { moveNote } from "@/features/notes/actions";
 import { NoteMarkdown } from "@/features/notes/components/markdown";
@@ -112,6 +113,14 @@ async function NoteDetail({ params }: { params: Promise<{ noteId: string }> }) {
   );
 }
 
+async function NoteCards({ params }: { params: Promise<{ noteId: string }> }) {
+  const { noteId } = await params;
+
+  if (!z.uuid().safeParse(noteId).success) return null;
+
+  return <CardMargin noteId={noteId} />;
+}
+
 export default function NotePage({
   params,
 }: {
@@ -119,10 +128,18 @@ export default function NotePage({
 }) {
   return (
     <Shell rail={<CourseRail />}>
-      <div className="measure">
-        <Suspense fallback={<Carregando>Carregando a nota.</Carregando>}>
-          <NoteDetail params={params} />
-        </Suspense>
+      <div className="flex flex-col gap-8 cards:flex-row cards:items-start">
+        <div className="measure min-w-0 flex-1">
+          <Suspense fallback={<Carregando>Carregando a nota.</Carregando>}>
+            <NoteDetail params={params} />
+          </Suspense>
+        </div>
+        {/* A margem some abaixo de 1100px — SPEC §6. */}
+        <div className="hidden w-64 shrink-0 cards:block">
+          <Suspense fallback={null}>
+            <NoteCards params={params} />
+          </Suspense>
+        </div>
       </div>
     </Shell>
   );

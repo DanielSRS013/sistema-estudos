@@ -225,6 +225,30 @@ describe("reconciliação", () => {
     expect(plano.update).toEqual([]);
   });
 
+  it("o plano não carrega estado de FSRS — não há por onde zerar contador", () => {
+    const { cards } = parse("A capital é {{Brasília}}.");
+    const antigo = existente({
+      prompt: cards[0]!.prompt,
+      answer: cards[0]!.answer,
+    });
+
+    const plano = reconcile([antigo], cards);
+
+    // Se algum dia `reps`, `due` ou `stability` entrar aqui, uma edição de
+    // nota passa a poder sobrescrever semanas de revisão. Este teste quebra
+    // antes disso chegar no banco.
+    expect(Object.keys(plano.update[0] ?? {}).sort()).toEqual([
+      "anchorKey",
+      "answer",
+      "hint",
+      "id",
+      "kind",
+      "ordinal",
+      "prompt",
+      "unarchive",
+    ]);
+  });
+
   it("não deixa dois cards idênticos colidirem na mesma nota", () => {
     const { cards } = parse("Repetido {{igual}}.\n\nRepetido {{igual}}.");
     const plano = reconcile([], cards);

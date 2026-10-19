@@ -59,3 +59,9 @@ describe("corpo da nota de SPEC.md §6", () => {
     expect(css).toContain("--breakpoint-editor: 56.25rem;");
   });
 });
+
+describe("margem de cards de SPEC.md §6", () => {
+  it("some abaixo de 1100px", () => {
+    expect(css).toContain("--breakpoint-cards: 68.75rem;");
+  });
+});
