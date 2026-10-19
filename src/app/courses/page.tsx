@@ -7,14 +7,15 @@ import {
   renameCourse,
   setCourseArchived,
 } from "@/features/courses/actions";
+import { CourseRail } from "@/features/courses/components/course-rail";
 import {
   ArchiveButton,
   CreateForm,
   MoveButtons,
   RenameForm,
 } from "@/features/courses/components/forms";
-import { Carregando, Shell } from "@/features/courses/components/shell";
 import { listCourses } from "@/features/courses/queries";
+import { Carregando, Shell } from "@/shared/shell";
 
 export const metadata = { title: "Cursos" };
 
@@ -91,7 +92,7 @@ async function CourseList() {
 
 export default function CoursesPage() {
   return (
-    <Shell>
+    <Shell rail={<CourseRail />}>
       <div className="measure space-y-8">
         <header className="space-y-2">
           <p className="font-mono text-xs tracking-wide text-ink-soft">

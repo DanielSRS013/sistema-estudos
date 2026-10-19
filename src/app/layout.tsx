@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans, IBM_Plex_Serif } from "next/font/google";
 
 import "./globals.css";
+// CSS do KaTeX: uma vez, no layout raiz — nunca por componente.
+import "katex/dist/katex.min.css";
 
 // Superfamília IBM Plex — as três variantes compartilham métrica e convivem
 // com notação matemática. Sans na interface, Serif no corpo das notas e na

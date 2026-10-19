@@ -1,23 +1,22 @@
 import { Suspense } from "react";
 
-import { fetchRail } from "../queries";
-
-import { Rail } from "./rail";
-
-async function RailData() {
-  const courses = await fetchRail();
-
-  return <Rail courses={courses} />;
-}
-
 /**
- * Casca das rotas de hierarquia: rail à esquerda (acima, no telefone) e a
+ * Casca das rotas de conteúdo: navegação à esquerda (acima, no telefone) e a
  * coluna de leitura ao lado. A margem direita com os cards chega na fatia 3.
+ *
+ * O rail entra por prop: quem monta a árvore é a feature de cursos, e esta
+ * casca não precisa saber disso para servir também às notas.
  *
  * `cacheComponents` está ligado, então toda leitura de banco vive sob uma
  * fronteira de Suspense — sem ela o Next recusa o prerender da rota.
  */
-export function Shell({ children }: { children: React.ReactNode }) {
+export function Shell({
+  rail,
+  children,
+}: {
+  rail: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex min-h-full flex-1 flex-col md:flex-row">
       <Suspense
@@ -30,14 +29,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         }
       >
-        <RailData />
+        {rail}
       </Suspense>
       <main className="min-w-0 flex-1 px-4 py-6 sm:px-8">{children}</main>
     </div>
   );
 }
 
-/** Espera padrão do conteúdo das páginas desta fatia. */
+/** Espera padrão do conteúdo das páginas. */
 export function Carregando({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-ink-soft">{children}</p>;
 }

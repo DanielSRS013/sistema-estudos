@@ -15,7 +15,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/shared/cn";
 
-import { idleState, type ActionState } from "../state";
+import { idleState, type ActionState } from "@/shared/action-state";
 
 export type Action = (
   state: ActionState,

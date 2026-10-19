@@ -17,7 +17,7 @@ import {
   setArchivedSchema,
 } from "./schemas";
 import { uniqueSlug } from "./slug";
-import type { ActionState } from "./state";
+import type { ActionState } from "@/shared/action-state";
 
 /* ───────────────────────────── infraestrutura ────────────────────────── */
 

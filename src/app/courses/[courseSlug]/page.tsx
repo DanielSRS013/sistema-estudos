@@ -14,14 +14,15 @@ import {
   setLessonArchived,
   setModuleArchived,
 } from "@/features/courses/actions";
+import { CourseRail } from "@/features/courses/components/course-rail";
 import {
   ArchiveButton,
   CreateForm,
   MoveButtons,
   RenameForm,
 } from "@/features/courses/components/forms";
-import { Carregando, Shell } from "@/features/courses/components/shell";
 import { getCourseBySlug } from "@/features/courses/queries";
+import { Carregando, Shell } from "@/shared/shell";
 
 async function CourseDetail({ params }: { params: Promise<{ courseSlug: string }> }) {
   const { courseSlug } = await params;
@@ -199,7 +200,7 @@ export default function CoursePage({
   params: Promise<{ courseSlug: string }>;
 }) {
   return (
-    <Shell>
+    <Shell rail={<CourseRail />}>
       <div className="measure">
         <Suspense fallback={<Carregando>Carregando o curso.</Carregando>}>
           <CourseDetail params={params} />

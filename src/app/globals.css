@@ -107,6 +107,9 @@
   --font-serif: var(--font-plex-serif);
   --font-mono: var(--font-plex-mono);
 
+  /* o editor empilha em coluna única abaixo de 900px (SPEC §6) */
+  --breakpoint-editor: 56.25rem;
+
   /* escala de SPEC.md §6: 13 / 15 / 17 / 21 / 28 / 38 */
   --text-xs: 0.8125rem;
   --text-sm: 0.9375rem;
@@ -179,4 +182,159 @@
       scroll-behavior: auto !important;
     }
   }
+}
+
+/* ───────────────────────── corpo da nota (SPEC §6) ─────────────────────
+   Serif a 17px com entrelinha 1,65 e medida de 68 caracteres. Interface e
+   código continuam nas outras duas variantes do Plex. KaTeX herda o tamanho
+   do corpo — o CSS dele é importado uma vez no layout raiz.               */
+
+.note-prose {
+  font-family: var(--font-plex-serif), ui-serif, Georgia, serif;
+  font-size: var(--text-base);
+  line-height: 1.65;
+  max-width: var(--measure);
+  color: var(--ink);
+  /* alinhado à esquerda, nunca justificado: fórmula inline abre rios */
+  text-align: left;
+}
+
+.note-prose > * + * {
+  margin-top: 1rem;
+}
+
+.note-prose h1,
+.note-prose h2,
+.note-prose h3,
+.note-prose h4 {
+  font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.note-prose h1 {
+  font-size: var(--text-2xl);
+}
+
+.note-prose h2 {
+  font-size: var(--text-lg);
+}
+
+.note-prose h3,
+.note-prose h4 {
+  font-size: var(--text-base);
+}
+
+.note-prose :is(h2, h3, h4):not(:first-child) {
+  margin-top: 1.75rem;
+}
+
+.note-prose a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.note-prose strong {
+  font-weight: 600;
+}
+
+.note-prose :is(ul, ol) {
+  padding-left: 1.5rem;
+}
+
+.note-prose ul {
+  list-style: disc;
+}
+
+.note-prose ol {
+  list-style: decimal;
+}
+
+.note-prose li + li {
+  margin-top: 0.25rem;
+}
+
+.note-prose li > :is(ul, ol) {
+  margin-top: 0.25rem;
+}
+
+/* lista de tarefas do GFM */
+.note-prose li:has(> input[type="checkbox"]) {
+  list-style: none;
+  margin-left: -1.25rem;
+}
+
+.note-prose input[type="checkbox"] {
+  margin-right: 0.5rem;
+  accent-color: var(--accent);
+}
+
+.note-prose :is(code, pre) {
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+.note-prose code {
+  font-size: 0.9em;
+  background-color: var(--muted);
+  border-radius: var(--radius-sm);
+  padding: 0.1em 0.3em;
+}
+
+.note-prose pre {
+  overflow-x: auto;
+  background-color: var(--muted);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  font-size: var(--text-xs);
+  line-height: 1.55;
+}
+
+.note-prose pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+.note-prose blockquote {
+  border-left: 2px solid var(--rule);
+  padding-left: 1rem;
+  color: var(--ink-soft);
+}
+
+.note-prose hr {
+  border-color: var(--rule);
+}
+
+.note-prose table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.note-prose :is(th, td) {
+  border: 1px solid var(--rule);
+  padding: 0.375rem 0.625rem;
+  text-align: left;
+}
+
+.note-prose th {
+  font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+}
+
+/* Fórmula em display pode ser mais larga que a coluna: rola sozinha em vez de
+   empurrar a página. */
+.note-prose .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25rem 0;
+}
+
+.note-prose img {
+  max-width: 100%;
+  height: auto;
 }

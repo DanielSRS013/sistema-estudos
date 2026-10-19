@@ -38,3 +38,24 @@ describe("tokens de SPEC.md §6", () => {
     }
   });
 });
+
+describe("corpo da nota de SPEC.md §6", () => {
+  const prose = css.slice(css.indexOf(".note-prose {"));
+
+  it("usa a serif da superfamília Plex", () => {
+    expect(prose).toContain("font-family: var(--font-plex-serif)");
+  });
+
+  it("fixa o corpo em 17px com entrelinha de 1,65", () => {
+    expect(prose).toContain("font-size: var(--text-base);");
+    expect(prose).toContain("line-height: 1.65;");
+  });
+
+  it("limita a medida da coluna de leitura", () => {
+    expect(prose).toContain("max-width: var(--measure);");
+  });
+
+  it("empilha o editor em coluna única abaixo de 900px", () => {
+    expect(css).toContain("--breakpoint-editor: 56.25rem;");
+  });
+});

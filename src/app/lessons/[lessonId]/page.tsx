@@ -8,13 +8,17 @@ import {
   renameLesson,
   setLessonArchived,
 } from "@/features/courses/actions";
+import { CourseRail } from "@/features/courses/components/course-rail";
 import {
   ArchiveButton,
   MoveButtons,
   RenameForm,
 } from "@/features/courses/components/forms";
-import { Carregando, Shell } from "@/features/courses/components/shell";
 import { getLessonById } from "@/features/courses/queries";
+import { createNote } from "@/features/notes/actions";
+import { CreateNoteForm } from "@/features/notes/components/note-forms";
+import { listNotesForLesson } from "@/features/notes/queries";
+import { Carregando, Shell } from "@/shared/shell";
 
 async function LessonDetail({
   params,
@@ -27,7 +31,10 @@ async function LessonDetail({
   // isso apareceria como erro, não como 404.
   if (!z.uuid().safeParse(lessonId).success) notFound();
 
-  const lesson = await getLessonById(lessonId);
+  const [lesson, notas] = await Promise.all([
+    getLessonById(lessonId),
+    listNotesForLesson(lessonId),
+  ]);
 
   if (!lesson) notFound();
 
@@ -82,12 +89,29 @@ async function LessonDetail({
         </div>
       </header>
 
-      <section className="space-y-2 border-t border-rule pt-4">
+      <section className="space-y-3 border-t border-rule pt-4">
         <h2 className="text-sm font-medium text-ink-soft">Notas</h2>
-        <p className="font-serif text-base leading-[1.65] text-ink-soft">
-          Esta aula ainda não tem notas. O editor de Markdown com LaTeX chega na
-          fatia 2.
-        </p>
+
+        {notas.length === 0 ? (
+          <p className="font-serif text-base leading-[1.65] text-ink-soft">
+            Esta aula ainda não tem notas. Crie a primeira abaixo.
+          </p>
+        ) : (
+          <ul className="space-y-0.5 text-sm">
+            {notas.map((nota) => (
+              <li key={nota.id}>
+                <Link
+                  href={`/notes/${nota.id}`}
+                  className="block truncate rounded-sm px-1 py-0.5 hover:bg-muted focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
+                >
+                  {nota.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <CreateNoteForm action={createNote} lessonId={lesson.id} />
       </section>
     </div>
   );
@@ -99,7 +123,7 @@ export default function LessonPage({
   params: Promise<{ lessonId: string }>;
 }) {
   return (
-    <Shell>
+    <Shell rail={<CourseRail />}>
       <div className="measure">
         <Suspense fallback={<Carregando>Carregando a aula.</Carregando>}>
           <LessonDetail params={params} />
