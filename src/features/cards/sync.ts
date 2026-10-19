@@ -68,6 +68,10 @@ export function cardWrites(
 ): BatchItem<"pg">[] {
   const writes: BatchItem<"pg">[] = [];
 
+  // O índice único é (noteId, anchorKey), então uma âncora nova nunca pode
+  // ser a de outro card da nota. `reconcile` garante isso casando todas as
+  // âncoras exatas antes de casar por posição — e reconcile.test.ts trava a
+  // invariante, porque violá-la derrubaria a gravação inteira.
   for (const card of plan.update) {
     writes.push(
       db

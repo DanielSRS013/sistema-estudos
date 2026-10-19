@@ -26,9 +26,16 @@ export type CardFields = {
   hint: string | null;
 };
 
+export type CardUpdate = CardFields & {
+  id: string;
+  unarchive: boolean;
+  /** Âncora que o card tinha antes desta edição. */
+  previousAnchorKey: string;
+};
+
 export type ReconcilePlan = {
   /** Cards que continuam valendo: texto e posição atualizados, estado intacto. */
-  update: (CardFields & { id: string; unarchive: boolean })[];
+  update: CardUpdate[];
   create: CardFields[];
   /** Ids a arquivar. Não existe "delete" neste plano, e isso é proposital. */
   archive: string[];
@@ -167,6 +174,7 @@ export function reconcile(
         ...camposDe(card, chave),
         id: encontrado.id,
         unarchive: encontrado.archivedAt !== null,
+        previousAnchorKey: encontrado.anchorKey,
       });
       continue;
     }
@@ -191,6 +199,7 @@ export function reconcile(
         ...camposDe(card, chave),
         id: candidato.id,
         unarchive: candidato.archivedAt !== null,
+        previousAnchorKey: candidato.anchorKey,
       });
       continue;
     }
@@ -206,3 +215,4 @@ export function reconcile(
 
   return { update, create, archive, duplicates };
 }
+

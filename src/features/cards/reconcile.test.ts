@@ -244,9 +244,28 @@ describe("reconciliação", () => {
       "id",
       "kind",
       "ordinal",
+      "previousAnchorKey",
       "prompt",
       "unarchive",
     ]);
+  });
+
+  it("diz de qual âncora o card veio, para o banco saber o que mudou", () => {
+    const { cards: antes } = parse(
+      "A projeção escalar de s sobre r é {{s · r / |r|}}.",
+    );
+    const antigo = existente({
+      prompt: antes[0]!.prompt,
+      answer: antes[0]!.answer,
+    });
+    const { cards: depois } = parse(
+      "A projeção escalar de s sobre r vale {{s · r / |r|}}.",
+    );
+
+    const plano = reconcile([antigo], depois);
+
+    expect(plano.update[0]?.previousAnchorKey).toBe(antigo.anchorKey);
+    expect(plano.update[0]?.anchorKey).not.toBe(antigo.anchorKey);
   });
 
   it("não deixa dois cards idênticos colidirem na mesma nota", () => {
@@ -256,5 +275,65 @@ describe("reconciliação", () => {
     expect(plano.create).toHaveLength(1);
     expect(plano.duplicates).toHaveLength(1);
     expect(plano.duplicates[0]?.ordinal).toBe(1);
+  });
+});
+
+/**
+ * O índice do banco é único em (noteId, anchorKey). Se um plano mandasse um
+ * card assumir a âncora que ainda é de outro, o batch inteiro seria recusado e
+ * a nota pararia de salvar. A invariante vale porque o passo das âncoras
+ * exatas roda sobre todos os cards parseados antes do casamento por posição.
+ */
+function anchorKeyColide(plano: ReturnType<typeof reconcile>): boolean {
+  const donos = new Map(
+    plano.update.map((card) => [card.previousAnchorKey, card.id]),
+  );
+
+  return plano.update.some((card) => {
+    const dono = donos.get(card.anchorKey);
+
+    return dono !== undefined && dono !== card.id;
+  });
+}
+
+describe("âncora nunca colide com a de outro card da nota", () => {
+  it("quando dois cards trocam o texto inteiro entre si", () => {
+    const { cards: antes } = parse(
+      "Primeiro vetor: {{alfa}}.\n\nSegundo vetor: {{beta}}.",
+    );
+    const existentes = antes.map((card, indice) =>
+      existente({
+        id: `card-${indice}`,
+        ordinal: card.ordinal,
+        prompt: card.prompt,
+        answer: card.answer,
+      }),
+    );
+
+    const { cards: depois } = parse(
+      "Primeiro vetor: {{beta}}.\n\nSegundo vetor: {{alfa}}.",
+    );
+
+    expect(anchorKeyColide(reconcile(existentes, depois))).toBe(false);
+  });
+
+  it("quando um card assume o texto do outro e o outro é reescrito", () => {
+    const { cards: antes } = parse(
+      "A projeção escalar de s sobre r é {{s · r / |r|}}.\n\nO módulo de r é {{|r|}}.",
+    );
+    const existentes = antes.map((card, indice) =>
+      existente({
+        id: `card-${indice}`,
+        ordinal: card.ordinal,
+        prompt: card.prompt,
+        answer: card.answer,
+      }),
+    );
+
+    const { cards: depois } = parse(
+      "O módulo de r é {{|r|}}.\n\nA projeção escalar de s sobre r vale {{s · r / |r|}}.",
+    );
+
+    expect(anchorKeyColide(reconcile(existentes, depois))).toBe(false);
   });
 });
