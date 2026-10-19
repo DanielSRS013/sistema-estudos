@@ -68,6 +68,7 @@ export const modules = pgTable(
       .references(() => courses.id, { onDelete: "restrict" }),
     title: text("title").notNull(),
     position: integer("position").notNull().default(0),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -84,6 +85,7 @@ export const lessons = pgTable(
       .references(() => modules.id, { onDelete: "restrict" }),
     title: text("title").notNull(),
     position: integer("position").notNull().default(0),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     // dia em que a aula foi efetivamente estudada
     studiedOn: timestamp("studied_on", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <main className="mx-auto flex w-full flex-1 flex-col justify-center gap-10 px-6 py-16 sm:px-10">
@@ -8,8 +10,12 @@ export default function Home() {
         <h1 className="text-3xl font-semibold tracking-tight">Olá.</h1>
         <p className="font-serif text-base leading-[1.65] text-ink">
           O terreno está pronto: Next com App Router, Drizzle contra o Neon,
-          tokens de cor e a superfamília IBM Plex. A casca navegável vem na
-          fatia seguinte.
+          tokens de cor e a superfamília IBM Plex. A casca navegável já está de
+          pé em{" "}
+          <Link href="/courses" className="text-accent underline">
+            cursos
+          </Link>
+          . O painel desta tela chega na fatia 4.
         </p>
       </header>
 
