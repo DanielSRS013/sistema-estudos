@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { saveStatusLabel, type SaveStatus } from "./status";
+import {
+  saveStatusLabel,
+  shouldAutosave,
+  type SaveStatus,
+} from "./status";
 
 describe("saveStatusLabel", () => {
   it("não mostra nada quando nada aconteceu ainda", () => {
@@ -38,5 +42,67 @@ describe("saveStatusLabel", () => {
     expect(saveStatusLabel(status)).toBe(
       "Não foi possível salvar agora. Confira a conexão.",
     );
+  });
+});
+
+describe("shouldAutosave", () => {
+  const gravado = { title: "Limites", content: "# Limites" };
+  const editado = { title: "Limites", content: "# Limites\n\nnovo" };
+
+  it("grava quando o texto mudou e nada está em voo", () => {
+    expect(
+      shouldAutosave({
+        draft: editado,
+        saved: gravado,
+        saving: false,
+        failed: null,
+      }),
+    ).toBe(true);
+  });
+
+  it("não grava quando o texto é o que o servidor já tem", () => {
+    expect(
+      shouldAutosave({
+        draft: gravado,
+        saved: gravado,
+        saving: false,
+        failed: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("não grava por cima de uma gravação em voo", () => {
+    expect(
+      shouldAutosave({
+        draft: editado,
+        saved: gravado,
+        saving: true,
+        failed: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("não repete sozinho a gravação que acabou de falhar", () => {
+    expect(
+      shouldAutosave({
+        draft: editado,
+        saved: gravado,
+        saving: false,
+        failed: editado,
+      }),
+    ).toBe(false);
+  });
+
+  it("volta a tentar quando o usuário muda o texto que falhou", () => {
+    const corrigido = { title: "Limites", content: "# Limites\n\ncorrigido" };
+
+    expect(
+      shouldAutosave({
+        draft: corrigido,
+        saved: gravado,
+        saving: false,
+        failed: editado,
+      }),
+    ).toBe(true);
   });
 });

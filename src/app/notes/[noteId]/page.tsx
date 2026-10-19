@@ -16,18 +16,27 @@ import { buttonVariants } from "@/shared/ui/button";
 async function MoveNote({
   noteId,
   lessonId,
+  lessonPath,
 }: {
   noteId: string;
   lessonId: string;
+  lessonPath: string;
 }) {
   const options = await listLessonOptions();
+
+  // A lista só traz aulas ativas. Se a aula desta nota estiver arquivada, ela
+  // não apareceria e o select abriria já apontando para outra — um clique em
+  // "Mover nota" tiraria a nota do lugar sem o usuário ter pedido.
+  const completo = options.some((option) => option.id === lessonId)
+    ? options
+    : [{ id: lessonId, path: `${lessonPath} (arquivada)` }, ...options];
 
   return (
     <MoveNoteForm
       action={moveNote}
       noteId={noteId}
       currentLessonId={lessonId}
-      options={options}
+      options={completo}
     />
   );
 }
@@ -92,7 +101,11 @@ async function NoteDetail({ params }: { params: Promise<{ noteId: string }> }) {
         <Suspense
           fallback={<Carregando>Carregando as aulas.</Carregando>}
         >
-          <MoveNote noteId={note.id} lessonId={note.lessonId} />
+          <MoveNote
+            noteId={note.id}
+            lessonId={note.lessonId}
+            lessonPath={`${modulo.course.title} · ${modulo.title} · ${lesson.title}`}
+          />
         </Suspense>
       </section>
     </div>

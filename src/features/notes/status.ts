@@ -35,3 +35,37 @@ export function saveStatusLabel(status: SaveStatus): string | null {
       return status.message;
   }
 }
+
+/* ───────────────────────── decisão do autosave ───────────────────────── */
+
+export type NoteDraft = { title: string; content: string };
+
+function igual(a: NoteDraft, b: NoteDraft): boolean {
+  return a.title === b.title && a.content === b.content;
+}
+
+/**
+ * Se o debounce que acabou de estourar deve virar gravação.
+ *
+ * `failed` é o texto exato da última tentativa que o servidor recusou — um
+ * título vazio, por exemplo. Sem ele o editor reenviaria o mesmo texto a cada
+ * 1,5s enquanto o erro durasse; com ele, a próxima tentativa só sai quando o
+ * usuário mudar alguma coisa (ou pedir na mão, por `Ctrl+S`).
+ */
+export function shouldAutosave({
+  draft,
+  saved,
+  saving,
+  failed,
+}: {
+  draft: NoteDraft;
+  saved: NoteDraft;
+  saving: boolean;
+  failed: NoteDraft | null;
+}): boolean {
+  if (saving) return false;
+  if (igual(draft, saved)) return false;
+  if (failed !== null && igual(draft, failed)) return false;
+
+  return true;
+}

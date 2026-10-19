@@ -3,14 +3,20 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { saveNote } from "../actions";
-import { idleStatus, saveStatusLabel, type SaveStatus } from "../status";
+import {
+  idleStatus,
+  saveStatusLabel,
+  shouldAutosave,
+  type NoteDraft,
+  type SaveStatus,
+} from "../status";
 
 import { NoteMarkdown } from "./markdown";
 
 /** Janela de silêncio antes de gravar. SPEC: 1,5s. */
 const DEBOUNCE_MS = 1500;
 
-type Texto = { title: string; content: string };
+type Texto = NoteDraft;
 
 /**
  * Editor da nota: Markdown à esquerda, render à direita, coluna única abaixo
@@ -35,6 +41,9 @@ export function Editor({
   // ainda falta gravar.
   const [gravado, setGravado] = useState<Texto>(texto);
   const [gravando, setGravando] = useState(false);
+  // Texto da última tentativa recusada pelo servidor. Enquanto nada mudar, o
+  // autosave não insiste sozinho — ver `shouldAutosave`.
+  const [falhou, setFalhou] = useState<Texto | null>(null);
   const [status, setStatus] = useState<SaveStatus>(idleStatus);
 
   const sujo =
@@ -51,23 +60,34 @@ export function Editor({
     setGravando(false);
 
     if (!result.ok) {
+      setFalhou(enviado);
       setStatus({ kind: "error", message: result.message });
       return;
     }
 
     // Só o que foi enviado conta como gravado: o que o usuário digitou durante
     // a ida ao servidor continua sujo e dispara a gravação seguinte.
+    setFalhou(null);
     setGravado(enviado);
     setStatus({ kind: "saved", at: new Date(result.savedAt) });
   }, [noteId]);
 
   useEffect(() => {
-    if (!sujo || gravando) return;
+    if (
+      !shouldAutosave({
+        draft: texto,
+        saved: gravado,
+        saving: gravando,
+        failed: falhou,
+      })
+    ) {
+      return;
+    }
 
     const timer = setTimeout(() => void gravar(texto), DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [sujo, gravando, texto, gravar]);
+  }, [texto, gravado, gravando, falhou, gravar]);
 
   // Fechar a aba com texto não gravado pede confirmação. Notas e histórico de
   // revisão são insubstituíveis; 1,5s de texto também conta.
@@ -94,7 +114,11 @@ export function Editor({
     [agora],
   );
 
-  const rotulo = saveStatusLabel(status);
+  // Texto de volta ao que o servidor já tem: o erro anterior deixou de valer,
+  // e não há nada pendente para anunciar.
+  const visivel: SaveStatus =
+    status.kind === "error" && !sujo ? idleStatus : status;
+  const rotulo = saveStatusLabel(visivel);
 
   return (
     <div className="space-y-4" onKeyDown={atalho}>
@@ -112,7 +136,7 @@ export function Editor({
           aria-live="polite"
           className="shrink-0 px-1 font-mono text-xs text-ink-soft"
         >
-          {status.kind === "error" ? (
+          {visivel.kind === "error" ? (
             <span className="text-destructive">{rotulo}</span>
           ) : (
             (rotulo ?? (sujo ? "Não salvo" : ""))
