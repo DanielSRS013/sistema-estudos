@@ -1,111 +1,14 @@
-import Link from "next/link";
+import { listCardsForNote, type NoteCards } from "../queries";
+import { CardList } from "./card-list";
 
-import { setCardSuspended } from "../actions";
-import { listCardsForNote, type NoteCard } from "../queries";
-import { SuspendButton } from "./suspend-button";
+const VAZIO =
+  "Nenhum card ainda. Escreva uma lacuna entre chaves duplas, ou um par Q:: e A::.";
 
-/**
- * Estado do FSRS em português. Cor fica de fora de propósito: SPEC §6 reserva
- * o viridis para os botões de avaliação, o único lugar onde a cor informa.
- */
-const ESTADO: Record<NoteCard["state"], string> = {
-  new: "novo",
-  learning: "aprendendo",
-  review: "revisão",
-  relearning: "reaprendendo",
-};
-
-function Badge({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-xs text-ink-soft">
-      {children}
-    </span>
-  );
-}
-
-/**
- * Um card com seu estado. Serve à margem da nota e à página do conceito —
- * lá o card vem de outra nota, então `nota` leva de volta à origem, e o
- * controle de suspender fica de fora: quem age é a margem.
- */
-export function CardItem({
-  card,
-  nota,
-  controle,
-}: {
-  card: NoteCard;
-  nota?: { id: string; title: string };
-  controle?: React.ReactNode;
-}) {
-  return (
-    <li className="space-y-1 border-t border-rule pt-2 first:border-t-0 first:pt-0">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Badge>{card.kind === "cloze" ? "lacuna" : "pergunta"}</Badge>
-        <Badge>{ESTADO[card.state]}</Badge>
-        {card.suspended ? <Badge>suspenso</Badge> : null}
-        {card.reps > 0 ? (
-          <span className="font-mono text-xs text-ink-soft">
-            {card.reps} {card.reps === 1 ? "revisão" : "revisões"}
-          </span>
-        ) : null}
-        {controle ? <span className="ml-auto">{controle}</span> : null}
-      </div>
-      <p className="font-serif text-sm leading-snug text-ink">{card.prompt}</p>
-      <p className="font-serif text-sm leading-snug text-ink-soft">
-        {card.answer}
-      </p>
-      {nota ? (
-        <Link
-          href={`/notes/${nota.id}`}
-          className="block truncate font-mono text-xs text-ink-soft hover:text-accent"
-        >
-          {nota.title}
-        </Link>
-      ) : null}
-    </li>
-  );
-}
-
-/**
- * Margem direita da nota: os cards que o texto gera, com o estado de cada um.
- * Some abaixo de 1100px — quem decide é a página, pelo breakpoint `cards`.
- */
-export async function CardMargin({ noteId }: { noteId: string }) {
-  const { active, archived } = await listCardsForNote(noteId);
+function Rodape({ active, archived }: NoteCards) {
   const suspensos = active.filter((card) => card.suspended).length;
 
   return (
-    <aside
-      aria-label="Cards desta nota"
-      className="space-y-3 border-l border-rule pl-4 text-sm"
-    >
-      <h2 className="font-mono text-xs tracking-wide text-ink-soft">
-        cards ({active.length})
-      </h2>
-
-      {active.length === 0 ? (
-        <p className="text-xs text-ink-soft">
-          Nenhum card ainda. Escreva uma lacuna entre chaves duplas, ou um par
-          Q:: e A::.
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {active.map((card) => (
-            <CardItem
-              key={card.id}
-              card={card}
-              controle={
-                <SuspendButton
-                  action={setCardSuspended}
-                  id={card.id}
-                  suspended={card.suspended}
-                />
-              }
-            />
-          ))}
-        </ul>
-      )}
-
+    <>
       {suspensos > 0 ? (
         <p className="border-t border-rule pt-2 text-xs text-ink-soft">
           {suspensos === 1
@@ -120,6 +23,63 @@ export async function CardMargin({ noteId }: { noteId: string }) {
           com o histórico preservado. Voltam sozinhos se o trecho reaparecer.
         </p>
       ) : null}
+    </>
+  );
+}
+
+/**
+ * Margem direita da nota: os cards que o texto gera, com o estado de cada um
+ * e o trecho visível em evidência. Some abaixo de 1100px — quem decide é a
+ * página, pelo breakpoint `cards`, e lá embaixo quem mostra os mesmos cards é
+ * `NoteCardsSection`.
+ */
+export async function CardMargin({ noteId }: { noteId: string }) {
+  const cards = await listCardsForNote(noteId);
+
+  return (
+    <aside
+      aria-label="Cards desta nota"
+      className="space-y-3 border-l border-rule pl-4 text-sm"
+    >
+      <h2 className="font-mono text-xs tracking-wide text-ink-soft">
+        cards ({cards.active.length})
+      </h2>
+
+      {cards.active.length === 0 ? (
+        <p className="text-xs text-ink-soft">{VAZIO}</p>
+      ) : (
+        <CardList cards={cards.active} />
+      )}
+
+      <Rodape {...cards} />
     </aside>
+  );
+}
+
+/**
+ * Os mesmos cards abaixo de 1100px, onde não há margem: seção recolhida ao fim
+ * da nota. A margem some, os cards não — SPEC §6 tira a coluna, não o acesso.
+ *
+ * Sem destaque por trecho: sem margem ao lado do texto, não há o que seguir.
+ */
+export async function NoteCardsSection({ noteId }: { noteId: string }) {
+  const cards = await listCardsForNote(noteId);
+
+  return (
+    <details className="border-t border-rule pt-4 cards:hidden">
+      <summary className="cursor-pointer text-sm font-medium text-ink-soft">
+        Cards desta nota ({cards.active.length})
+      </summary>
+
+      <div className="space-y-3 pt-3 text-sm">
+        {cards.active.length === 0 ? (
+          <p className="text-xs text-ink-soft">{VAZIO}</p>
+        ) : (
+          <CardList cards={cards.active} seguirTrecho={false} />
+        )}
+
+        <Rodape {...cards} />
+      </div>
+    </details>
   );
 }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { CardItem } from "@/features/cards/components/margin";
+import { CardItem } from "@/features/cards/components/card-item";
 import { CourseRail } from "@/features/courses/components/course-rail";
 import { getTagBySlug } from "@/features/tags/queries";
 import { slugify } from "@/shared/slug";

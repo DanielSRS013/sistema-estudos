@@ -4,7 +4,10 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import { CardMargin } from "@/features/cards/components/margin";
+import {
+  CardMargin,
+  NoteCardsSection,
+} from "@/features/cards/components/margin";
 import { CourseRail } from "@/features/courses/components/course-rail";
 import { moveNote } from "@/features/notes/actions";
 import { linkifyTags } from "@/features/tags/linkify";
@@ -95,8 +98,13 @@ async function NoteDetail({ params }: { params: Promise<{ noteId: string }> }) {
           .
         </p>
       ) : (
-        <MathMarkdown content={linkifyTags(note.content)} />
+        <MathMarkdown content={linkifyTags(note.content)} marcarLinhas />
       )}
+
+      {/* Abaixo de 1100px a margem some, os cards não — SPEC §6. */}
+      <Suspense fallback={null}>
+        <NoteCardsSection noteId={note.id} />
+      </Suspense>
 
       <section className="space-y-2 border-t border-rule pt-4">
         <h2 className="text-sm font-medium text-ink-soft">Mover</h2>
