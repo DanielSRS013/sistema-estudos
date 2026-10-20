@@ -51,7 +51,14 @@ function ler<T>(chave: string, fallback: T): T {
   }
 }
 
-export function Rail({ courses }: { courses: RailCourse[] }) {
+export function Rail({
+  courses,
+  rodape,
+}: {
+  courses: RailCourse[];
+  /** Pé do rail, montado no servidor — hoje, o botão de sair. */
+  rodape: React.ReactNode;
+}) {
   const pathname = usePathname();
   const montado = useRef(false);
   const [hidratado, setHidratado] = useState(false);
@@ -276,6 +283,8 @@ export function Rail({ courses }: { courses: RailCourse[] }) {
           })}
         </ul>
       )}
+
+      <div className="mt-3 border-t border-rule pt-2">{rodape}</div>
     </nav>
   );
 }

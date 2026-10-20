@@ -1,3 +1,5 @@
+import { SignOut } from "@/features/auth/components/sign-out";
+
 import { fetchRail } from "../queries";
 
 import { Rail } from "./rail";
@@ -6,5 +8,5 @@ import { Rail } from "./rail";
 export async function CourseRail() {
   const courses = await fetchRail();
 
-  return <Rail courses={courses} />;
+  return <Rail courses={courses} rodape={<SignOut />} />;
 }
