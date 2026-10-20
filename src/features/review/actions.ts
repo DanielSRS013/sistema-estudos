@@ -5,9 +5,11 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { db } from "@/db";
-import { cards, reviews } from "@/db/schema";
+import { SETTINGS_ID, cards, reviews, settings } from "@/db/schema";
+import type { ActionState } from "@/shared/action-state";
 
 import { fetchUndoTarget, type QueueCard } from "./queries";
+import { saveLimitsSchema } from "./schemas";
 import { schedule, type CardState } from "./scheduler";
 import { revert } from "./undo";
 
@@ -191,4 +193,49 @@ export async function undoLast(): Promise<UndoResult> {
       message: "Não foi possível desfazer agora. Tente de novo.",
     };
   }
+}
+
+/* ───────────────────────────── limites ───────────────────────────────── */
+
+/**
+ * Grava os limites diários. `settings` tem uma linha só: o `insert` com
+ * `onConflictDoUpdate` na chave fixa cria na primeira vez e atualiza nas
+ * seguintes, sem precisar saber qual dos dois casos é.
+ */
+export async function saveLimits(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = saveLimitsSchema.safeParse(Object.fromEntries(formData));
+
+  if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message ?? "Entrada inválida.";
+    return { ok: false, message };
+  }
+
+  const valores = {
+    newPerDay: parsed.data.newPerDay,
+    reviewsPerDay: parsed.data.reviewsPerDay,
+    updatedAt: new Date(),
+  };
+
+  try {
+    await db
+      .insert(settings)
+      .values({ id: SETTINGS_ID, ...valores })
+      .onConflictDoUpdate({ target: settings.id, set: valores });
+  } catch (error) {
+    console.error(error);
+    return {
+      ok: false,
+      message:
+        "Não foi possível gravar os limites. Confira a conexão e tente de novo.",
+    };
+  }
+
+  // O corte mudou: o painel e a fila precisam ser recontados.
+  revalidatePath("/");
+  revalidatePath("/review");
+
+  return { ok: true };
 }

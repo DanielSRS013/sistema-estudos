@@ -14,6 +14,7 @@ import {
   index,
   uniqueIndex,
   primaryKey,
+  check,
   customType,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
@@ -263,6 +264,32 @@ export const noteTags = pgTable(
   ],
 );
 
+/* ────────────────────────── configuração ─────────────────────────── */
+
+/** Chave fixa da única linha de `settings`. */
+export const SETTINGS_ID = "default";
+
+/**
+ * Limites diários configuráveis — SPEC §4. Tabela de uma linha só: a chave é
+ * fixa e o CHECK recusa qualquer outra, porque com duas linhas "o limite"
+ * viraria ambíguo e a leitura passaria a depender de ordenação.
+ *
+ * Os padrões moram nas colunas (20 / 200) e também em `DEFAULT_LIMITS`: num
+ * banco recém-migrado a linha não existe, e o app precisa funcionar assim.
+ */
+export const settings = pgTable(
+  "settings",
+  {
+    id: text("id").primaryKey().default(SETTINGS_ID),
+    newPerDay: integer("new_per_day").notNull().default(20),
+    reviewsPerDay: integer("reviews_per_day").notNull().default(200),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [check("settings_single_row", sql`${t.id} = 'default'`)],
+);
+
 /* ──────────────────────────── relations ──────────────────────────── */
 
 export const coursesRelations = relations(courses, ({ many }) => ({
@@ -321,6 +348,7 @@ export type Note = typeof notes.$inferSelect;
 export type Card = typeof cards.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
 export type Tag = typeof tags.$inferSelect;
+export type Settings = typeof settings.$inferSelect;
 
 export type NewNote = typeof notes.$inferInsert;
 export type NewCard = typeof cards.$inferInsert;

@@ -4,7 +4,9 @@ import { Suspense } from "react";
 import { createNote } from "@/features/notes/actions";
 import { CaptureNoteForm } from "@/features/notes/components/note-forms";
 import { listLessonOptions, listRecentNotes } from "@/features/notes/queries";
-import { fetchPanel } from "@/features/review/queries";
+import { saveLimits } from "@/features/review/actions";
+import { LimitsForm } from "@/features/review/components/limits-form";
+import { fetchLimits, fetchPanel } from "@/features/review/queries";
 import { Carregando } from "@/shared/shell";
 
 /** Quantas notas recentes o painel lista — SPEC §5. */
@@ -35,7 +37,7 @@ function dias(n: number): string {
 }
 
 async function Painel() {
-  const painel = await fetchPanel();
+  const painel = await fetchPanel(await fetchLimits());
 
   const temFila = painel.queueSize > 0;
 
@@ -84,6 +86,13 @@ async function Captura() {
   const options = await listLessonOptions();
 
   return <CaptureNoteForm action={createNote} options={options} />;
+}
+
+/** Os dois números do SPEC §4, no lugar onde o corte da fila é lido. */
+async function Limites() {
+  const limits = await fetchLimits();
+
+  return <LimitsForm action={saveLimits} limits={limits} />;
 }
 
 async function Recentes() {
@@ -144,6 +153,12 @@ export default function Home() {
         <h2 className="text-sm font-medium text-ink-soft">Últimas notas</h2>
         <Suspense fallback={<Carregando>Carregando as notas.</Carregando>}>
           <Recentes />
+        </Suspense>
+      </section>
+
+      <section className="measure border-t border-rule pt-6">
+        <Suspense fallback={<Carregando>Carregando os limites.</Carregando>}>
+          <Limites />
         </Suspense>
       </section>
     </main>

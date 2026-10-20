@@ -8,9 +8,10 @@ import { alias } from "drizzle-orm/pg-core";
 import { connection } from "next/server";
 
 import { db } from "@/db";
-import { cards, notes, reviews } from "@/db/schema";
+import { SETTINGS_ID, cards, notes, reviews, settings } from "@/db/schema";
 
 import { CORTE_HORAS, FUSO, dayEnd, dayStart, daysUntil, logicalDay, streak } from "./day";
+import { resolveLimits } from "./limits";
 import {
   DEFAULT_LIMITS,
   queueFor,
@@ -41,6 +42,28 @@ const efetiva = and(
 
 /** Dia lógico de `reviewed_at` calculado no banco, com o mesmo corte do app. */
 const diaLogico = sql<string>`to_char((${reviews.reviewedAt} - interval '${sql.raw(String(CORTE_HORAS))} hours') at time zone ${FUSO}, 'YYYY-MM-DD')`;
+
+/* ───────────────────────────── limites ───────────────────────────────── */
+
+/**
+ * Os limites do dia, como estão gravados. A linha de `settings` é única (o
+ * CHECK do banco garante), então não há ordenação a decidir aqui.
+ *
+ * Sem linha, `resolveLimits` devolve os padrões do SPEC §4 — é o estado de um
+ * banco recém-migrado, e o app tem que funcionar nele.
+ */
+export async function fetchLimits(): Promise<Limits> {
+  const linhas = await db
+    .select({
+      newPerDay: settings.newPerDay,
+      reviewsPerDay: settings.reviewsPerDay,
+    })
+    .from(settings)
+    .where(eq(settings.id, SETTINGS_ID))
+    .limit(1);
+
+  return resolveLimits(linhas[0]);
+}
 
 /* ──────────────────────────────── fila ───────────────────────────────── */
 
