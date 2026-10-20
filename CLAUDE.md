@@ -8,7 +8,7 @@ código e `PLAN.md` para saber em que fatia estamos.
 
 ```bash
 pnpm dev              # servidor de desenvolvimento
-pnpm check            # tsc --noEmit && eslint && vitest run  — PORTÃO
+pnpm check            # tsc && eslint && vitest run && next build  — PORTÃO
 pnpm test             # vitest em watch
 pnpm db:generate      # gera migration a partir do schema
 pnpm db:migrate       # aplica migrations

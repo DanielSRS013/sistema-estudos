@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest",
-    "check": "next typegen && tsc --noEmit && eslint . && vitest run --passWithNoTests",
+    "check": "next typegen && tsc --noEmit && eslint . && vitest run --passWithNoTests && next build",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"
