@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { createNote } from "@/features/notes/actions";
+import { CaptureNoteForm } from "@/features/notes/components/note-forms";
+import { listLessonOptions, listRecentNotes } from "@/features/notes/queries";
 import { fetchPanel } from "@/features/review/queries";
+import { Carregando } from "@/shared/shell";
+
+/** Quantas notas recentes o painel lista — SPEC §5. */
+const RECENTES = 8;
 
 function Numero({
   valor,
@@ -72,6 +79,46 @@ async function Painel() {
   );
 }
 
+/** Atalho de captura: a nota nasce aqui e a action abre o editor nela. */
+async function Captura() {
+  const options = await listLessonOptions();
+
+  return <CaptureNoteForm action={createNote} options={options} />;
+}
+
+async function Recentes() {
+  const notas = await listRecentNotes(RECENTES);
+
+  if (notas.length === 0) {
+    return (
+      <p className="font-serif text-[17px] leading-[1.65] text-ink-soft">
+        Nenhuma nota ainda. Comece pelo campo acima.
+      </p>
+    );
+  }
+
+  return (
+    <ul className="space-y-2">
+      {notas.map((nota) => (
+        <li key={nota.id} className="flex flex-wrap items-baseline gap-x-3">
+          <Link
+            href={`/notes/${nota.id}`}
+            className="min-w-0 rounded-sm text-sm font-medium hover:text-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
+          >
+            {nota.title}
+          </Link>
+          <span className="min-w-0 truncate font-mono text-xs text-ink-soft">
+            {nota.path}
+          </span>
+          <span className="font-mono text-xs text-ink-soft">
+            {nota.lastEdit}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function Home() {
   return (
     <main className="mx-auto flex w-full flex-1 flex-col justify-center gap-10 px-6 py-16 sm:px-10">
@@ -85,6 +132,20 @@ export default function Home() {
       >
         <Painel />
       </Suspense>
+
+      <section className="measure space-y-3 border-t border-rule pt-6">
+        <h2 className="text-sm font-medium text-ink-soft">Nota nova</h2>
+        <Suspense fallback={<Carregando>Carregando as aulas.</Carregando>}>
+          <Captura />
+        </Suspense>
+      </section>
+
+      <section className="measure space-y-3 border-t border-rule pt-6">
+        <h2 className="text-sm font-medium text-ink-soft">Últimas notas</h2>
+        <Suspense fallback={<Carregando>Carregando as notas.</Carregando>}>
+          <Recentes />
+        </Suspense>
+      </section>
     </main>
   );
 }

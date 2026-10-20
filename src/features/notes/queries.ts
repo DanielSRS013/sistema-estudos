@@ -1,4 +1,10 @@
+import { desc, eq } from "drizzle-orm";
+import { connection } from "next/server";
+
 import { db } from "@/db";
+import { courses, lessons, modules, notes } from "@/db/schema";
+
+import { lastEditLabel } from "./recent";
 
 /* ───────────────────────── notas de uma aula ─────────────────────────── */
 
@@ -13,6 +19,53 @@ export async function listNotesForLesson(
     orderBy: (note, { asc }) => [asc(note.createdAt)],
     columns: { id: true, title: true },
   });
+}
+
+/* ───────────────────────── últimas notas editadas ────────────────────── */
+
+export type RecentNote = {
+  id: string;
+  title: string;
+  /** "Curso · Aula" — o módulo fica de fora, a linha do painel é estreita. */
+  path: string;
+  /** Última edição já escrita para a tela: "hoje 18:42", "14/10". */
+  lastEdit: string;
+};
+
+/**
+ * As notas editadas mais recentemente, para o painel — SPEC §5. Ordena por
+ * `notes.updatedAt`, que o autosave grava a cada gravação.
+ *
+ * `connection()` marca a leitura como de tempo de requisição: o rótulo de
+ * última edição compara com o agora, e com `cacheComponents` ligado um
+ * `new Date()` solto durante o prerender abortaria o build.
+ */
+export async function listRecentNotes(limite: number): Promise<RecentNote[]> {
+  await connection();
+
+  const now = new Date();
+
+  const rows = await db
+    .select({
+      id: notes.id,
+      title: notes.title,
+      updatedAt: notes.updatedAt,
+      courseTitle: courses.title,
+      lessonTitle: lessons.title,
+    })
+    .from(notes)
+    .innerJoin(lessons, eq(lessons.id, notes.lessonId))
+    .innerJoin(modules, eq(modules.id, lessons.moduleId))
+    .innerJoin(courses, eq(courses.id, modules.courseId))
+    .orderBy(desc(notes.updatedAt))
+    .limit(limite);
+
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    path: `${row.courseTitle} · ${row.lessonTitle}`,
+    lastEdit: lastEditLabel(row.updatedAt, now),
+  }));
 }
 
 /* ──────────────────────────── /notes/[noteId] ────────────────────────── */

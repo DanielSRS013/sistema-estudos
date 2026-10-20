@@ -15,6 +15,20 @@ import { cn } from "@/shared/cn";
 
 import type { RailCourse } from "../queries";
 
+/**
+ * Destinos de topo do rail. O painel e a revisão moram aqui porque de dentro
+ * de uma nota não havia caminho de volta — SPEC §5 põe as duas na raiz do app.
+ */
+const ATALHOS = [
+  { href: "/", rotulo: "painel" },
+  { href: "/review", rotulo: "revisão" },
+  { href: "/courses", rotulo: "cursos" },
+  { href: "/search", rotulo: "buscar" },
+] as const;
+
+const CLASSE_ATALHO =
+  "rounded-sm px-1 font-mono text-xs tracking-wide text-ink-soft hover:text-ink focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none";
+
 const CHAVE_COLAPSADO = "rail.collapsed";
 const CHAVE_EXPANDIDO = "rail.expanded";
 
@@ -123,27 +137,25 @@ export function Rail({
 
   return (
     <nav
-      aria-label="Cursos, módulos e aulas"
+      aria-label="Navegação"
       className="border-b border-rule px-3 py-3 text-sm md:w-64 md:shrink-0 md:border-r md:border-b-0"
     >
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <Link
-            href="/courses"
-            className="rounded-sm px-1 font-mono text-xs tracking-wide text-ink-soft hover:text-ink focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
-          >
-            cursos
-          </Link>
-          <Link
-            href="/search"
-            aria-current={pathname === "/search" ? "page" : undefined}
-            className={cn(
-              "rounded-sm px-1 font-mono text-xs tracking-wide text-ink-soft hover:text-ink focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none",
-              pathname === "/search" && "text-accent",
-            )}
-          >
-            buscar
-          </Link>
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          {ATALHOS.map((atalho) => {
+            const ativo = pathname === atalho.href;
+
+            return (
+              <Link
+                key={atalho.href}
+                href={atalho.href}
+                aria-current={ativo ? "page" : undefined}
+                className={cn(CLASSE_ATALHO, ativo && "text-accent")}
+              >
+                {atalho.rotulo}
+              </Link>
+            );
+          })}
         </div>
         <button
           type="button"
