@@ -7,14 +7,17 @@ import {
   moveLesson,
   renameLesson,
   setLessonArchived,
+  setLessonStudied,
 } from "@/features/courses/actions";
 import { CourseRail } from "@/features/courses/components/course-rail";
 import {
   ArchiveButton,
   MoveButtons,
   RenameForm,
+  StudiedButton,
 } from "@/features/courses/components/forms";
 import { getLessonById } from "@/features/courses/queries";
+import { studiedLabel } from "@/features/courses/studied";
 import { createNote } from "@/features/notes/actions";
 import { CreateNoteForm } from "@/features/notes/components/note-forms";
 import { listNotesForLesson } from "@/features/notes/queries";
@@ -42,6 +45,7 @@ async function LessonDetail({
   const irmas = modulo.lessons;
   const indice = irmas.findIndex((irma) => irma.id === lesson.id);
   const arquivada = lesson.archivedAt !== null;
+  const estudada = lesson.studiedOn;
 
   return (
     <div className="space-y-8">
@@ -86,6 +90,19 @@ async function LessonDetail({
               label="aula"
             />
           </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <StudiedButton
+            action={setLessonStudied}
+            id={lesson.id}
+            studied={estudada !== null}
+          />
+          <p className="font-mono text-xs text-ink-soft">
+            {estudada === null
+              ? "Ainda não marcada como estudada."
+              : `Estudada em ${studiedLabel(estudada)}.`}
+          </p>
         </div>
       </header>
 

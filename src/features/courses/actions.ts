@@ -15,6 +15,7 @@ import {
   moveSchema,
   renameSchema,
   setArchivedSchema,
+  setStudiedSchema,
 } from "./schemas";
 import { uniqueSlug } from "./slug";
 import type { ActionState } from "@/shared/action-state";
@@ -66,7 +67,7 @@ export async function createCourse(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  return run(createCourseSchema, formData, async ({ title, track }) => {
+  return run(createCourseSchema, formData, async ({ title, track, provider }) => {
     const existing = await db
       .select({ slug: courses.slug, position: courses.position })
       .from(courses);
@@ -74,6 +75,7 @@ export async function createCourse(
     await db.insert(courses).values({
       title,
       track,
+      provider,
       slug: uniqueSlug(
         title,
         existing.map((row) => row.slug),
@@ -236,6 +238,22 @@ export async function setLessonArchived(
     await db
       .update(lessons)
       .set({ archivedAt: archived ? new Date() : null })
+      .where(sql`${lessons.id} = ${id}`);
+  });
+}
+
+/**
+ * Marca a aula como estudada, ou desmarca. Grava o instante: a data vira texto
+ * na leitura, no fuso do usuário, e não na hora em que o servidor escreve.
+ */
+export async function setLessonStudied(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return run(setStudiedSchema, formData, async ({ id, studied }) => {
+    await db
+      .update(lessons)
+      .set({ studiedOn: studied ? new Date() : null })
       .where(sql`${lessons.id} = ${id}`);
   });
 }

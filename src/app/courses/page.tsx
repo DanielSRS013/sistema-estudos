@@ -15,6 +15,7 @@ import {
   RenameForm,
 } from "@/features/courses/components/forms";
 import { listCourses } from "@/features/courses/queries";
+import { groupByTrack } from "@/features/courses/track";
 import { Carregando, Shell } from "@/shared/shell";
 
 export const metadata = { title: "Cursos" };
@@ -31,62 +32,76 @@ async function CourseList() {
     );
   }
 
+  // A posição na lista inteira, guardada antes de agrupar: mover um curso
+  // troca de lugar com o vizinho global, não com o da seção.
+  const grupos = groupByTrack(
+    courses.map((course, index) => ({ ...course, index })),
+  );
+
   return (
-    <ul className="divide-y divide-rule border-y border-rule">
-      {courses.map((course, index) => {
-        const arquivado = course.archivedAt !== null;
+    <div className="space-y-8">
+      {grupos.map((grupo) => (
+        <section key={grupo.track ?? ""} className="space-y-2">
+          <h2 className="font-mono text-xs tracking-wide text-ink-soft">
+            {grupo.track ?? "Sem especialização"}
+          </h2>
+          <ul className="divide-y divide-rule border-y border-rule">
+            {grupo.courses.map((course) => {
+              const arquivado = course.archivedAt !== null;
 
-        return (
-          <li
-            key={course.id}
-            className={`flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 ${
-              arquivado ? "opacity-60" : ""
-            }`}
-          >
-            <div className="flex min-w-0 flex-1 items-center gap-2">
-              <RenameForm
-                action={renameCourse}
-                id={course.id}
-                current={course.title}
-              >
-                <Link
-                  href={`/courses/${course.slug}`}
-                  className="truncate rounded-sm text-base hover:text-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
+              return (
+                <li
+                  key={course.id}
+                  className={`flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 ${
+                    arquivado ? "opacity-60" : ""
+                  }`}
                 >
-                  {course.title}
-                </Link>
-              </RenameForm>
-              {arquivado ? (
-                <span className="shrink-0 rounded-sm bg-muted px-1.5 py-0.5 font-mono text-xs text-ink-soft">
-                  arquivado
-                </span>
-              ) : null}
-            </div>
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <RenameForm
+                      action={renameCourse}
+                      id={course.id}
+                      current={course.title}
+                    >
+                      <Link
+                        href={`/courses/${course.slug}`}
+                        className="truncate rounded-sm text-base hover:text-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
+                      >
+                        {course.title}
+                      </Link>
+                    </RenameForm>
+                    {arquivado ? (
+                      <span className="shrink-0 rounded-sm bg-muted px-1.5 py-0.5 font-mono text-xs text-ink-soft">
+                        arquivado
+                      </span>
+                    ) : null}
+                  </div>
 
-            <p className="w-full font-mono text-xs text-ink-soft sm:w-auto">
-              {course.track ? `${course.track} · ` : ""}
-              {course.moduleCount} módulos · {course.lessonCount} aulas
-            </p>
+                  <p className="w-full font-mono text-xs text-ink-soft sm:w-auto">
+                    {course.moduleCount} módulos · {course.lessonCount} aulas
+                  </p>
 
-            <div className="flex items-center gap-1">
-              <MoveButtons
-                action={moveCourse}
-                id={course.id}
-                canUp={index > 0}
-                canDown={index < courses.length - 1}
-                label="curso"
-              />
-              <ArchiveButton
-                action={setCourseArchived}
-                id={course.id}
-                archived={arquivado}
-                label="curso"
-              />
-            </div>
-          </li>
-        );
-      })}
-    </ul>
+                  <div className="flex items-center gap-1">
+                    <MoveButtons
+                      action={moveCourse}
+                      id={course.id}
+                      canUp={course.index > 0}
+                      canDown={course.index < courses.length - 1}
+                      label="curso"
+                    />
+                    <ArchiveButton
+                      action={setCourseArchived}
+                      id={course.id}
+                      archived={arquivado}
+                      label="curso"
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+    </div>
   );
 }
 
@@ -109,7 +124,7 @@ export default function CoursesPage() {
           action={createCourse}
           placeholder="Nome do curso"
           submitLabel="Criar curso"
-          withTrack
+          withCourseMeta
         />
 
         <Suspense fallback={<Carregando>Carregando os cursos.</Carregando>}>

@@ -6,6 +6,7 @@ import { CaptureNoteForm } from "@/features/notes/components/note-forms";
 import { listLessonOptions, listRecentNotes } from "@/features/notes/queries";
 import { saveLimits } from "@/features/review/actions";
 import { LimitsForm } from "@/features/review/components/limits-form";
+import { durationLabel } from "@/features/review/duration";
 import { fetchLimits, fetchPanel } from "@/features/review/queries";
 import { Carregando } from "@/shared/shell";
 
@@ -43,11 +44,15 @@ async function Painel() {
 
   return (
     <section className="space-y-8">
-      <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:grid-cols-5">
         <Numero valor={painel.dueToday} rotulo="vencem hoje" />
         <Numero valor={painel.newAvailable} rotulo="cards novos" />
         <Numero valor={painel.streakDays} rotulo={dias(painel.streakDays)} />
         <Numero valor={painel.doneToday} rotulo="avaliados hoje" />
+        <Numero
+          valor={durationLabel(painel.medianMs)}
+          rotulo="mediana por card"
+        />
       </div>
 
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-3">

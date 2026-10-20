@@ -39,7 +39,6 @@ async function CourseDetail({ params }: { params: Promise<{ courseSlug: string }
           <Link href="/courses" className="hover:text-ink">
             cursos
           </Link>
-          {course.track ? ` · ${course.track}` : ""}
         </nav>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -64,6 +63,14 @@ async function CourseDetail({ params }: { params: Promise<{ courseSlug: string }
             </span>
           ) : null}
         </div>
+
+        {/* Especialização e instituição — SPEC §2. Moram no cabeçalho porque
+            é onde a pergunta "de onde vem este curso?" aparece. */}
+        {course.track === null && course.provider === null ? null : (
+          <p className="font-mono text-xs text-ink-soft">
+            {[course.track, course.provider].filter(Boolean).join(" · ")}
+          </p>
+        )}
       </header>
 
       <section className="space-y-3">

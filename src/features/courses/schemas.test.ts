@@ -6,6 +6,7 @@ import {
   moveSchema,
   renameSchema,
   setArchivedSchema,
+  setStudiedSchema,
 } from "./schemas";
 
 const uuid = "11111111-1111-4111-8111-111111111111";
@@ -16,7 +17,36 @@ describe("createCourseSchema", () => {
       title: "  Linear Algebra  ",
       track: "   ",
     });
-    expect(parsed).toEqual({ title: "Linear Algebra", track: null });
+    expect(parsed).toEqual({
+      title: "Linear Algebra",
+      track: null,
+      provider: null,
+    });
+  });
+
+  it("apara a instituição e aceita ausência dela", () => {
+    expect(
+      createCourseSchema.parse({
+        title: "Linear Algebra",
+        track: "Mathematics for ML",
+        provider: "  Imperial College  ",
+      }),
+    ).toEqual({
+      title: "Linear Algebra",
+      track: "Mathematics for ML",
+      provider: "Imperial College",
+    });
+
+    expect(createCourseSchema.parse({ title: "Avulso" }).provider).toBe(null);
+  });
+
+  it("recusa instituição acima de 200 caracteres", () => {
+    const result = createCourseSchema.safeParse({
+      title: "Linear Algebra",
+      provider: "a".repeat(201),
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toContain("200 caracteres");
   });
 
   it("recusa título vazio com mensagem legível", () => {
@@ -96,6 +126,25 @@ describe("setArchivedSchema", () => {
   it("recusa valores fora do par", () => {
     expect(
       setArchivedSchema.safeParse({ id: uuid, archived: "talvez" }).success,
+    ).toBe(false);
+  });
+});
+
+describe("setStudiedSchema", () => {
+  it("converte a string do formulário em booleano", () => {
+    expect(setStudiedSchema.parse({ id: uuid, studied: "true" })).toEqual({
+      id: uuid,
+      studied: true,
+    });
+    expect(setStudiedSchema.parse({ id: uuid, studied: "false" })).toEqual({
+      id: uuid,
+      studied: false,
+    });
+  });
+
+  it("recusa valores fora do par", () => {
+    expect(
+      setStudiedSchema.safeParse({ id: uuid, studied: "quase" }).success,
     ).toBe(false);
   });
 });

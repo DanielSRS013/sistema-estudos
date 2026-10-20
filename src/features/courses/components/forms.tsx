@@ -6,8 +6,10 @@ import {
   ArrowDown,
   ArrowUp,
   Check,
+  CircleCheck,
   Pencil,
   Plus,
+  RotateCcw,
   X,
 } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
@@ -50,13 +52,14 @@ export function CreateForm({
   hidden = {},
   placeholder,
   submitLabel,
-  withTrack = false,
+  withCourseMeta = false,
 }: {
   action: Action;
   hidden?: Record<string, string>;
   placeholder: string;
   submitLabel: string;
-  withTrack?: boolean;
+  /** Especialização e instituição — só o curso as tem (SPEC §2). */
+  withCourseMeta?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, idleState);
   const form = useRef<HTMLFormElement>(null);
@@ -76,14 +79,23 @@ export function CreateForm({
           autoComplete="off"
           className="min-w-0 flex-1 rounded-md border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
         />
-        {withTrack ? (
-          <input
-            name="track"
-            placeholder="Especialização (opcional)"
-            aria-label="Especialização (opcional)"
-            autoComplete="off"
-            className="min-w-0 flex-1 rounded-md border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
-          />
+        {withCourseMeta ? (
+          <>
+            <input
+              name="track"
+              placeholder="Especialização (opcional)"
+              aria-label="Especialização (opcional)"
+              autoComplete="off"
+              className="min-w-0 flex-1 rounded-md border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
+            />
+            <input
+              name="provider"
+              placeholder="Instituição (opcional)"
+              aria-label="Instituição (opcional)"
+              autoComplete="off"
+              className="min-w-0 flex-1 rounded-md border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
+            />
+          </>
         ) : null}
         <button
           type="submit"
@@ -257,6 +269,43 @@ export function ArchiveButton({
         )}
       >
         {archived ? <ArchiveRestore aria-hidden /> : <ArchiveX aria-hidden />}
+      </button>
+      <Erro state={state} />
+    </form>
+  );
+}
+
+/* ───────────────────────────── aula estudada ─────────────────────────── */
+
+/**
+ * Marca a aula como estudada, ou desfaz. Botão com texto, não ícone: é a
+ * única ação do cabeçalho que muda um fato sobre o estudo, e não um arranjo
+ * da árvore — vale dizer por extenso o que acontece.
+ */
+export function StudiedButton({
+  action,
+  id,
+  studied,
+}: {
+  action: Action;
+  id: string;
+  studied: boolean;
+}) {
+  const [state, formAction, pending] = useActionState(action, idleState);
+
+  return (
+    <form action={formAction} className="flex items-center gap-1.5">
+      <Hidden values={{ id, studied: studied ? "false" : "true" }} />
+      <button
+        type="submit"
+        disabled={pending}
+        className={cn(
+          buttonVariants({ variant: studied ? "ghost" : "outline", size: "sm" }),
+          studied ? "text-ink-soft" : "",
+        )}
+      >
+        {studied ? <RotateCcw aria-hidden /> : <CircleCheck aria-hidden />}
+        {studied ? "Desmarcar" : "Marcar como estudada"}
       </button>
       <Erro state={state} />
     </form>

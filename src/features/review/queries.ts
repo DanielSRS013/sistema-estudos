@@ -3,7 +3,17 @@
 // A ponte entre o banco e os módulos puros. Nenhuma regra de agendamento mora
 // aqui: a consulta traz os candidatos, `queueFor` decide a ordem e o corte.
 
-import { and, eq, gte, isNull, lte, notExists, or, sql } from "drizzle-orm";
+import {
+  and,
+  eq,
+  gte,
+  isNotNull,
+  isNull,
+  lte,
+  notExists,
+  or,
+  sql,
+} from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { connection } from "next/server";
 
@@ -230,8 +240,37 @@ export type Panel = {
   streakDays: number;
   /** Quantas avaliações válidas aconteceram hoje. */
   doneToday: number;
+  /** Mediana de `reviews.duration_ms`, em ms. `null` sem histórico medido. */
+  medianMs: number | null;
   nextDueInDays: number | null;
 };
+
+/**
+ * Quanto tempo um card custa, pela mediana de todo o histórico — não só o de
+ * hoje: num dia de cinco revisões a mediana de hoje diria mais sobre o acaso
+ * do que sobre o hábito.
+ *
+ * Só entram avaliações efetivas: o que foi desfeito não conta como tempo de
+ * estudo, pela mesma razão que não conta como revisão do dia. Linhas sem
+ * duração ficam de fora em vez de virar zero — `duration_ms` é nulo em tudo
+ * que foi gravado antes de a sessão medir o intervalo.
+ */
+async function medianDuration(): Promise<number | null> {
+  const linhas = await db
+    .select({
+      mediana: sql<
+        string | number | null
+      >`percentile_cont(0.5) within group (order by ${reviews.durationMs})`,
+    })
+    .from(reviews)
+    .where(and(isNotNull(reviews.durationMs), efetiva));
+
+  const valor = linhas[0]?.mediana;
+
+  if (valor === undefined || valor === null) return null;
+
+  return Number(valor);
+}
 
 async function countToday(
   now: Date,
@@ -256,7 +295,7 @@ export async function fetchPanel(
 ): Promise<Panel> {
   const now = await agora();
 
-  const [contagens, feitos, dias, fila] = await Promise.all([
+  const [contagens, feitos, dias, fila, mediana] = await Promise.all([
     db
       .select({
         vencem: sql<number>`count(*) filter (where ${cards.state} <> 'new' and ${cards.due} <= ${dayEnd(now)})`.mapWith(
@@ -271,6 +310,7 @@ export async function fetchPanel(
     countToday(now),
     db.selectDistinct({ dia: diaLogico }).from(reviews).where(efetiva),
     fetchQueue(limits),
+    medianDuration(),
   ]);
 
   return {
@@ -282,6 +322,7 @@ export async function fetchPanel(
       logicalDay(now),
     ),
     doneToday: feitos.novos + feitos.revisoes,
+    medianMs: mediana,
     nextDueInDays: fila.nextDueInDays,
   };
 }

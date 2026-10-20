@@ -19,6 +19,13 @@ const track = z
   .optional()
   .transform((value) => (value ? value : null));
 
+const provider = z
+  .string()
+  .trim()
+  .max(200, "A instituição precisa ter no máximo 200 caracteres.")
+  .optional()
+  .transform((value) => (value ? value : null));
+
 const id = z.uuid({ error: "Registro não encontrado." });
 
 const direction = z.enum(["up", "down"], { error: "Direção inválida." });
@@ -28,13 +35,17 @@ const archived = z
   .enum(["true", "false"], { error: "Valor inválido." })
   .transform((value) => value === "true");
 
+const studied = z
+  .enum(["true", "false"], { error: "Valor inválido." })
+  .transform((value) => value === "true");
+
 const courseInsert = createInsertSchema(courses);
 const moduleInsert = createInsertSchema(modules);
 const lessonInsert = createInsertSchema(lessons);
 
 export const createCourseSchema = courseInsert
-  .pick({ title: true, track: true })
-  .extend({ title, track });
+  .pick({ title: true, track: true, provider: true })
+  .extend({ title, track, provider });
 
 export const createModuleSchema = moduleInsert
   .pick({ courseId: true, title: true })
@@ -50,9 +61,12 @@ export const moveSchema = z.object({ id, direction });
 
 export const setArchivedSchema = z.object({ id, archived });
 
+export const setStudiedSchema = z.object({ id, studied });
+
 export type CreateCourseInput = z.output<typeof createCourseSchema>;
 export type CreateModuleInput = z.output<typeof createModuleSchema>;
 export type CreateLessonInput = z.output<typeof createLessonSchema>;
 export type RenameInput = z.output<typeof renameSchema>;
 export type MoveInput = z.output<typeof moveSchema>;
 export type SetArchivedInput = z.output<typeof setArchivedSchema>;
+export type SetStudiedInput = z.output<typeof setStudiedSchema>;
