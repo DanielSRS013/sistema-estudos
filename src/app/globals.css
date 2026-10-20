@@ -16,6 +16,12 @@
   --rule: #dde3e8;
   --accent: #31688e;
 
+  /* Texto sobre as paradas do viridis. Elas não mudam no escuro, então o
+     texto por cima delas também não muda: --ink e --paper invertem e
+     deixariam "Fácil" com texto claro sobre amarelo. */
+  --viridis-ink: #16202b;
+  --viridis-paper: #fcfcfa;
+
   /* paradas do viridis — botões de avaliação */
   --again: #440154;
   --hard: #31688e;
@@ -97,6 +103,9 @@
   --color-ink-soft: var(--ink-soft);
   --color-rule: var(--rule);
   --color-accent: var(--accent);
+
+  --color-viridis-ink: var(--viridis-ink);
+  --color-viridis-paper: var(--viridis-paper);
 
   --color-again: var(--again);
   --color-hard: var(--hard);

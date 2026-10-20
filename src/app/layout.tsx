@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans, IBM_Plex_Serif } from "next/font/google";
 
+import { SCRIPT_TEMA } from "@/features/theme/theme";
+
 import "./globals.css";
 // CSS do KaTeX: uma vez, no layout raiz — nunca por componente.
 import "katex/dist/katex.min.css";
@@ -40,6 +42,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="pt-BR"
       className={`${plexSans.variable} ${plexSerif.variable} ${plexMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* Antes da pintura: sem isto a página nasce no tema do sistema e
+            pisca no tema certo só ao hidratar. */}
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
+      </head>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );

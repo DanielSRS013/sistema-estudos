@@ -21,10 +21,20 @@ const BOTOES: {
   tecla: string;
   cor: string;
 }[] = [
-  { rating: "again", label: "Errei", tecla: "1", cor: "bg-again text-paper" },
-  { rating: "hard", label: "Difícil", tecla: "2", cor: "bg-hard text-paper" },
-  { rating: "good", label: "Bom", tecla: "3", cor: "bg-good text-ink" },
-  { rating: "easy", label: "Fácil", tecla: "4", cor: "bg-easy text-ink" },
+  {
+    rating: "again",
+    label: "Errei",
+    tecla: "1",
+    cor: "bg-again text-viridis-paper",
+  },
+  {
+    rating: "hard",
+    label: "Difícil",
+    tecla: "2",
+    cor: "bg-hard text-viridis-paper",
+  },
+  { rating: "good", label: "Bom", tecla: "3", cor: "bg-good text-viridis-ink" },
+  { rating: "easy", label: "Fácil", tecla: "4", cor: "bg-easy text-viridis-ink" },
 ];
 
 const TECLAS: Record<string, Rating> = {
@@ -264,7 +274,7 @@ export function ReviewSession({
 
       <footer className="space-y-3">
         {erro === null ? null : (
-          <p role="alert" className="font-sans text-sm text-again">
+          <p role="alert" className="font-sans text-sm text-destructive">
             {erro}
           </p>
         )}

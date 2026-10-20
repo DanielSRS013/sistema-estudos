@@ -28,6 +28,22 @@ describe("tokens de SPEC.md §6", () => {
     expect(css).toContain(`${token}: ${hex};`);
   });
 
+  it.each([
+    ["--viridis-ink", "#16202b"],
+    ["--viridis-paper", "#fcfcfa"],
+  ])("fixa %s para o texto sobre as paradas", (token, hex) => {
+    expect(css).toContain(`${token}: ${hex};`);
+  });
+
+  it("não deixa o texto sobre o viridis inverter com o tema", () => {
+    // As quatro paradas não mudam no escuro; o texto por cima delas também
+    // não pode mudar, ou "Fácil" vira texto claro sobre amarelo.
+    const dark = css.slice(css.indexOf(".dark {"));
+    for (const token of ["--viridis-ink", "--viridis-paper"]) {
+      expect(dark).not.toContain(`${token}:`);
+    }
+  });
+
   it("inverte paper e ink no modo escuro mantendo o viridis", () => {
     expect(css).toContain("--paper: #11171d;");
     expect(css).toContain("--ink: #e8edf1;");
@@ -36,6 +52,18 @@ describe("tokens de SPEC.md §6", () => {
     for (const token of ["--again", "--hard", "--good", "--easy"]) {
       expect(dark).not.toContain(`${token}:`);
     }
+  });
+});
+
+describe("alternância de tema", () => {
+  it("mantém a guarda que deixa a escolha do usuário vencer o sistema", () => {
+    // O controle do rail escreve `.light` ou `.dark` no <html>. Sem esta
+    // guarda, escolher o claro num sistema escuro não teria efeito.
+    expect(css).toContain(":root:not(.light)");
+  });
+
+  it("casa a variante `dark:` do Tailwind com a classe que o script aplica", () => {
+    expect(css).toContain("@custom-variant dark (&:where(.dark, .dark *));");
   });
 });
 
