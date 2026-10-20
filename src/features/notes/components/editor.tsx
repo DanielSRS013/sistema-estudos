@@ -13,7 +13,7 @@ import {
   type SaveStatus,
 } from "../status";
 
-import { NoteMarkdown } from "./markdown";
+import { MathMarkdown } from "@/shared/markdown";
 
 /** Janela de silêncio antes de gravar. SPEC: 1,5s. */
 const DEBOUNCE_MS = 1500;
@@ -208,7 +208,7 @@ export function Editor({
                 O que você escrever à esquerda aparece aqui.
               </p>
             ) : (
-              <NoteMarkdown content={texto.content} />
+              <MathMarkdown content={texto.content} />
             )}
           </div>
         </div>

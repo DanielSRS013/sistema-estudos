@@ -7,7 +7,7 @@ import { z } from "zod";
 import { CardMargin } from "@/features/cards/components/margin";
 import { CourseRail } from "@/features/courses/components/course-rail";
 import { moveNote } from "@/features/notes/actions";
-import { NoteMarkdown } from "@/features/notes/components/markdown";
+import { MathMarkdown } from "@/shared/markdown";
 import { MoveNoteForm } from "@/features/notes/components/note-forms";
 import { getNoteById, listLessonOptions } from "@/features/notes/queries";
 import { cn } from "@/shared/cn";
@@ -94,7 +94,7 @@ async function NoteDetail({ params }: { params: Promise<{ noteId: string }> }) {
           .
         </p>
       ) : (
-        <NoteMarkdown content={note.content} />
+        <MathMarkdown content={note.content} />
       )}
 
       <section className="space-y-2 border-t border-rule pt-4">

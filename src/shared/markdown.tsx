@@ -9,14 +9,21 @@ const remarkPlugins = [remarkGfm, remarkMath];
 const rehypePlugins = [rehypeKatex];
 
 /**
- * Corpo da nota renderizado. Serve tanto à leitura (no servidor) quanto à
- * pré-visualização do editor (no cliente) — por isso não leva "use client".
+ * Markdown com matemática. Serve ao corpo da nota (leitura e pré-visualização
+ * do editor) e à face do card na revisão — por isso vive em `shared` e não
+ * leva "use client".
  *
  * O CSS do KaTeX é importado uma vez no layout raiz, nunca aqui.
  */
-export function NoteMarkdown({ content }: { content: string }) {
+export function MathMarkdown({
+  content,
+  className = "note-prose",
+}: {
+  content: string;
+  className?: string;
+}) {
   return (
-    <div className="note-prose">
+    <div className={className}>
       <Markdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins}>
         {content}
       </Markdown>
