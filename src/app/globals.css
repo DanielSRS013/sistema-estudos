@@ -341,3 +341,35 @@
   max-width: 100%;
   height: auto;
 }
+
+/* ─────────────────── face do card na revisão (SPEC §6) ─────────────────
+   O modo foco é a exceção deliberada: a pergunta vem em 28px e o KaTeX herda
+   esse tamanho, em vez do corpo de 17px da nota. Sem as margens e sem a
+   medida de 68ch — o card é curto e fica centrado no campo de papel.      */
+
+.card-face {
+  font-family: var(--font-plex-serif), ui-serif, Georgia, serif;
+  color: var(--ink);
+  text-align: left;
+  text-wrap: pretty;
+}
+
+.card-face > * + * {
+  margin-top: 0.75rem;
+}
+
+.card-face code {
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-size: 0.9em;
+}
+
+.card-face :is(ul, ol) {
+  padding-left: 1.5rem;
+  list-style: disc;
+}
+
+.card-face .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25rem 0;
+}
