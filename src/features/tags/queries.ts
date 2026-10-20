@@ -22,6 +22,7 @@ export type TagCard = {
   hint: string | null;
   state: "new" | "learning" | "review" | "relearning";
   reps: number;
+  suspended: boolean;
   note: { id: string; title: string };
 };
 
@@ -93,6 +94,7 @@ export async function getTagBySlug(slug: string): Promise<TagDetail | null> {
         hint: true,
         state: true,
         reps: true,
+        suspended: true,
       },
       with: { note: { columns: { id: true, title: true } } },
     }),

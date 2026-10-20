@@ -11,6 +11,8 @@ export type NoteCard = {
   hint: string | null;
   state: "new" | "learning" | "review" | "relearning";
   reps: number;
+  /** Fora da fila por decisão do usuário, com o histórico intacto. */
+  suspended: boolean;
 };
 
 export type NoteCards = {
@@ -33,6 +35,7 @@ export async function listCardsForNote(noteId: string): Promise<NoteCards> {
       hint: true,
       state: true,
       reps: true,
+      suspended: true,
       archivedAt: true,
     },
   });
@@ -49,6 +52,7 @@ export async function listCardsForNote(noteId: string): Promise<NoteCards> {
         hint: row.hint,
         state: row.state,
         reps: row.reps,
+        suspended: row.suspended,
       })),
     archived: rows.filter((row) => row.archivedAt !== null).length,
   };

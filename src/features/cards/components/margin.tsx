@@ -1,6 +1,8 @@
 import Link from "next/link";
 
+import { setCardSuspended } from "../actions";
 import { listCardsForNote, type NoteCard } from "../queries";
+import { SuspendButton } from "./suspend-button";
 
 /**
  * Estado do FSRS em português. Cor fica de fora de propósito: SPEC §6 reserva
@@ -23,25 +25,30 @@ function Badge({ children }: { children: React.ReactNode }) {
 
 /**
  * Um card com seu estado. Serve à margem da nota e à página do conceito —
- * lá o card vem de outra nota, então `nota` leva de volta à origem.
+ * lá o card vem de outra nota, então `nota` leva de volta à origem, e o
+ * controle de suspender fica de fora: quem age é a margem.
  */
 export function CardItem({
   card,
   nota,
+  controle,
 }: {
   card: NoteCard;
   nota?: { id: string; title: string };
+  controle?: React.ReactNode;
 }) {
   return (
     <li className="space-y-1 border-t border-rule pt-2 first:border-t-0 first:pt-0">
       <div className="flex flex-wrap items-center gap-1.5">
         <Badge>{card.kind === "cloze" ? "lacuna" : "pergunta"}</Badge>
         <Badge>{ESTADO[card.state]}</Badge>
+        {card.suspended ? <Badge>suspenso</Badge> : null}
         {card.reps > 0 ? (
           <span className="font-mono text-xs text-ink-soft">
             {card.reps} {card.reps === 1 ? "revisão" : "revisões"}
           </span>
         ) : null}
+        {controle ? <span className="ml-auto">{controle}</span> : null}
       </div>
       <p className="font-serif text-sm leading-snug text-ink">{card.prompt}</p>
       <p className="font-serif text-sm leading-snug text-ink-soft">
@@ -65,6 +72,7 @@ export function CardItem({
  */
 export async function CardMargin({ noteId }: { noteId: string }) {
   const { active, archived } = await listCardsForNote(noteId);
+  const suspensos = active.filter((card) => card.suspended).length;
 
   return (
     <aside
@@ -83,10 +91,28 @@ export async function CardMargin({ noteId }: { noteId: string }) {
       ) : (
         <ul className="space-y-3">
           {active.map((card) => (
-            <CardItem key={card.id} card={card} />
+            <CardItem
+              key={card.id}
+              card={card}
+              controle={
+                <SuspendButton
+                  action={setCardSuspended}
+                  id={card.id}
+                  suspended={card.suspended}
+                />
+              }
+            />
           ))}
         </ul>
       )}
+
+      {suspensos > 0 ? (
+        <p className="border-t border-rule pt-2 text-xs text-ink-soft">
+          {suspensos === 1
+            ? "1 card suspenso: fora da fila, com reps e vencimento onde estavam."
+            : `${suspensos} cards suspensos: fora da fila, com reps e vencimento onde estavam.`}
+        </p>
+      ) : null}
 
       {archived > 0 ? (
         <p className="border-t border-rule pt-2 text-xs text-ink-soft">
