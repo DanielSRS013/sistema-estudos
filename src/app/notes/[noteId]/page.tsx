@@ -76,7 +76,7 @@ async function NoteDetail({ params }: { params: Promise<{ noteId: string }> }) {
         </nav>
 
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="min-w-0 truncate text-2xl font-semibold tracking-tight">
+          <h1 className="min-w-0 truncate text-xl font-semibold tracking-tight">
             {note.title}
           </h1>
           <Link

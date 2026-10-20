@@ -138,7 +138,7 @@ export default function SearchPage({
       <div className="measure space-y-6">
         <header className="space-y-1">
           <p className="font-mono text-xs tracking-wide text-ink-soft">busca</p>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="text-xl font-semibold tracking-tight">
             Buscar nas notas
           </h1>
         </header>

@@ -113,7 +113,7 @@ export default function CoursesPage() {
           <p className="font-mono text-xs tracking-wide text-ink-soft">
             fatia 1 — casca navegável
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight">Cursos</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Cursos</h1>
           <p className="text-sm text-ink-soft">
             Um curso por linha, na ordem em que você estuda. Arquivar some da
             navegação sem apagar nada.

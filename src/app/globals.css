@@ -30,7 +30,10 @@
 
   /* medida máxima da coluna de leitura */
   --measure: 68ch;
-  --radius: 0.375rem;
+
+  /* Um raio só, de 2px, em botão, input, card e badge. O handoff de design
+     não tem segundo degrau: raio não é hierarquia aqui. */
+  --radius: 0.125rem;
 
   /* ponte para os tokens que o shadcn/ui consome */
   --background: var(--paper);
@@ -46,15 +49,9 @@
   --muted: #f1f4f6;
   --muted-foreground: var(--ink-soft);
   --accent-foreground: var(--ink);
-  --destructive: #a42a28;
   --border: var(--rule);
   --input: var(--rule);
   --ring: var(--accent);
-  --chart-1: var(--again);
-  --chart-2: var(--hard);
-  --chart-3: #1f9e89;
-  --chart-4: var(--good);
-  --chart-5: var(--easy);
   --sidebar: var(--paper);
   --sidebar-foreground: var(--ink);
   --sidebar-primary: var(--accent);
@@ -70,28 +67,26 @@
 .dark {
   --paper: #11171d;
   --ink: #e8edf1;
-  --ink-soft: #93a3b1;
-  --rule: #263038;
-  --accent: #6fa8ce;
+  --ink-soft: #93a3b2;
+  --rule: #2a353f;
+  --accent: #6fa4cc;
 
   --primary-foreground: #11171d;
   --secondary: #1b232b;
   --muted: #1b232b;
-  --destructive: #e8706d;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
     --paper: #11171d;
     --ink: #e8edf1;
-    --ink-soft: #93a3b1;
-    --rule: #263038;
-    --accent: #6fa8ce;
+    --ink-soft: #93a3b2;
+    --rule: #2a353f;
+    --accent: #6fa4cc;
 
     --primary-foreground: #11171d;
     --secondary: #1b232b;
     --muted: #1b232b;
-    --destructive: #e8706d;
   }
 }
 
@@ -122,13 +117,19 @@
   /* a margem de cards some abaixo de 1100px (SPEC §6) */
   --breakpoint-cards: 68.75rem;
 
-  /* escala de SPEC.md §6: 13 / 15 / 17 / 21 / 28 / 38 */
+  /* Escala fechada de SPEC.md §6: 13 / 15 / 17 / 21 / 28 / 38.
+     O `initial` apaga os degraus que o Tailwind traz de fábrica. Sem ele
+     `text-xl` resolve 20px e `text-3xl` 30px — dois tamanhos fora da escala,
+     disponíveis por acidente — e cada degrau ainda arrasta a entrelinha
+     padrão do framework. A entrelinha aqui é decisão de contexto: corpo de
+     nota 1,65, face de card 1,45, código 1,6. */
+  --text-*: initial;
   --text-xs: 0.8125rem;
   --text-sm: 0.9375rem;
   --text-base: 1.0625rem;
   --text-lg: 1.3125rem;
-  --text-2xl: 1.75rem;
-  --text-3xl: 2.375rem;
+  --text-xl: 1.75rem;
+  --text-2xl: 2.375rem;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -143,15 +144,9 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -161,11 +156,14 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  /* Um raio em tudo: os cinco nomes do registry apontam para o mesmo valor,
+     para que `rounded-sm` e `rounded-xl` não abram uma hierarquia que o
+     desenho não tem. */
+  --radius-sm: var(--radius);
+  --radius-md: var(--radius);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-xl: var(--radius);
+  --radius-2xl: var(--radius);
 }
 
 /* Coluna de leitura: alinhada à esquerda, nunca justificada — texto
@@ -177,6 +175,13 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+
+  /* Palavra longa, caminho de arquivo ou fórmula inline não empurram a
+     página: quebram onde estão. A 375px isso é a diferença entre ler e
+     rolar na horizontal. */
+  html {
+    overflow-wrap: anywhere;
   }
 
   body {
@@ -215,11 +220,13 @@
   margin-top: 1rem;
 }
 
+/* Cabeçalho dentro da nota é corpo de texto, não interface: fica na serif,
+   junto do parágrafo que ele abre. A sans manda no rail e nos botões. */
 .note-prose h1,
 .note-prose h2,
 .note-prose h3,
 .note-prose h4 {
-  font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-plex-serif), ui-serif, Georgia, serif;
   font-weight: 600;
   line-height: 1.25;
   letter-spacing: -0.01em;
@@ -227,6 +234,7 @@
 
 .note-prose h1 {
   font-size: var(--text-2xl);
+  font-weight: 500;
 }
 
 .note-prose h2 {
@@ -294,14 +302,16 @@
   padding: 0.1em 0.3em;
 }
 
+/* Bloco de código é papel, não caixa cinza: filete em volta e nada de
+   preenchimento. Mono a 15px com entrelinha 1,6. */
 .note-prose pre {
   overflow-x: auto;
-  background-color: var(--muted);
+  background-color: transparent;
   border: 1px solid var(--rule);
-  border-radius: var(--radius-md);
-  padding: 0.75rem 1rem;
-  font-size: var(--text-xs);
-  line-height: 1.55;
+  border-radius: var(--radius);
+  padding: 1rem;
+  font-size: var(--text-sm);
+  line-height: 1.6;
 }
 
 .note-prose pre code {

@@ -140,14 +140,14 @@ export function Editor({
           }
           onBlur={agora}
           aria-label="Título da nota"
-          className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-2xl font-semibold tracking-tight text-ink hover:border-rule focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
+          className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-xl font-semibold tracking-tight text-ink hover:border-rule focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
         />
         <p
           aria-live="polite"
           className="shrink-0 px-1 font-mono text-xs text-ink-soft"
         >
           {visivel.kind === "error" ? (
-            <span className="text-destructive">{rotulo}</span>
+            <span className="text-ink">{rotulo}</span>
           ) : (
             (rotulo ?? (sujo ? "Não salvo" : ""))
           )}
@@ -190,7 +190,7 @@ export function Editor({
                 <p
                   key={`${issue.line}-${issue.message}`}
                   role="alert"
-                  className="text-xs text-destructive"
+                  className="text-xs"
                 >
                   Linha {issue.line}: {issue.message}
                 </p>

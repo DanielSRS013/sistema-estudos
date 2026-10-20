@@ -45,7 +45,7 @@ export function SuspendButton({
         {suspended ? <PlayCircle aria-hidden /> : <PauseCircle aria-hidden />}
       </button>
       {state.ok ? null : (
-        <span role="alert" className="text-xs text-destructive">
+        <span role="alert" className="text-xs">
           {state.message}
         </span>
       )}

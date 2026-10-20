@@ -274,7 +274,7 @@ export function ReviewSession({
 
       <footer className="space-y-3">
         {erro === null ? null : (
-          <p role="alert" className="font-sans text-sm text-destructive">
+          <p role="alert" className="font-sans text-sm">
             {erro}
           </p>
         )}

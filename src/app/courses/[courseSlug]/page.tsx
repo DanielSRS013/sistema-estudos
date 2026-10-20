@@ -47,7 +47,7 @@ async function CourseDetail({ params }: { params: Promise<{ courseSlug: string }
             id={course.id}
             current={course.title}
           >
-            <h1 className="truncate text-2xl font-semibold tracking-tight">
+            <h1 className="truncate text-xl font-semibold tracking-tight">
               {course.title}
             </h1>
           </RenameForm>

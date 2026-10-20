@@ -23,7 +23,7 @@ async function TagDetail({ params }: { params: Promise<{ tagSlug: string }> }) {
     <div className="space-y-8">
       <header className="space-y-1">
         <p className="font-mono text-xs tracking-wide text-ink-soft">conceito</p>
-        <h1 className="text-2xl font-semibold tracking-tight">#{tag.name}</h1>
+        <h1 className="text-xl font-semibold tracking-tight">#{tag.name}</h1>
         <p className="text-sm text-ink-soft">
           {tag.notes.length === 0
             ? "Nenhuma nota cita este conceito agora."

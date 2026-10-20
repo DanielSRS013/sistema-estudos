@@ -92,7 +92,7 @@ export function LimitsForm({
         </div>
 
         {state.ok ? null : (
-          <p role="alert" className="text-xs text-destructive">
+          <p role="alert" className="text-xs">
             {state.message}
           </p>
         )}

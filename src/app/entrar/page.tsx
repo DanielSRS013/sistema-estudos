@@ -68,7 +68,7 @@ export default function EntrarPage({
           <p className="font-mono text-xs tracking-wide text-ink-soft">
             estudos
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="text-xl font-semibold tracking-tight">
             Entrar para continuar
           </h1>
           <p className="font-serif text-base leading-[1.65] text-ink-soft">

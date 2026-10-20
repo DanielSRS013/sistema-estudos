@@ -156,7 +156,13 @@ como preenchimento com texto `--ink` por cima, nunca como cor de fonte.
 
 Modo escuro: inverta para `--paper #11171D` e `--ink #E8EDF1`, mantendo as
 quatro paradas do viridis inalteradas — elas foram desenhadas para funcionar nos
-dois extremos.
+dois extremos. Os outros três tons são ajustados por contraste:
+`--ink-soft #93A3B2`, `--rule #2A353F` e `--accent #6FA4CC`. O accent clareia
+porque `#31688E` sobre `#11171D` dá 3,0:1, abaixo do piso para texto.
+
+Não existe token de cor de erro. Erro se diz por marcação e texto — borda,
+`role="alert"` e a frase que explica o que fazer. Fora das quatro paradas do
+viridis, nenhuma cor carrega informação.
 
 ### Tipografia
 
@@ -167,8 +173,20 @@ conviverem com notação matemática sem brigar:
 - **IBM Plex Serif** — corpo das notas e face dos cards. Convive com KaTeX.
 - **IBM Plex Mono** — código, sintaxe de card, nada além disso.
 
-Escala: 13 / 15 / 17 / 21 / 28 / 38 px. Corpo de nota a 17px com `line-height`
-1,65 e medida máxima de 68 caracteres. KaTeX herda o tamanho do corpo.
+Escala: 13 / 15 / 17 / 21 / 28 / 38 px, e **nada fora disso** — a escala é
+fechada, não uma sugestão. No Tailwind os seis degraus são `xs 13`, `sm 15`,
+`base 17`, `lg 21`, `xl 28`, `2xl 38`; os degraus de fábrica do framework são
+apagados, para que `text-3xl` não exista. Corpo de nota a 17px com `line-height`
+1,65 e medida máxima de 68 caracteres. KaTeX herda o tamanho do corpo. A
+entrelinha é decisão de contexto, não do degrau: 1,65 no corpo da nota, 1,45 na
+face do card, 1,6 no código.
+
+### Forma
+
+Raio de **2px** em tudo — botão, input, card, badge. Um raio só: aqui o raio não
+diz hierarquia. Nenhuma sombra, nenhum gradiente, nenhum ícone decorativo; os
+glifos ▸ ▾ ↑ ↓ » entram como texto. `overflow-wrap: anywhere` na raiz, e fórmula
+em display rola dentro do próprio bloco — a página nunca rola na horizontal.
 
 ### Layout
 

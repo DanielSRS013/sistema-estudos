@@ -66,7 +66,7 @@ async function LessonDetail({
             id={lesson.id}
             current={lesson.title}
           >
-            <h1 className="truncate text-2xl font-semibold tracking-tight">
+            <h1 className="truncate text-xl font-semibold tracking-tight">
               {lesson.title}
             </h1>
           </RenameForm>

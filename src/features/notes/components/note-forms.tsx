@@ -22,7 +22,7 @@ function Erro({ state }: { state: ActionState }) {
   if (state.ok) return null;
 
   return (
-    <p role="alert" className="text-xs text-destructive">
+    <p role="alert" className="text-xs">
       {state.message}
     </p>
   );

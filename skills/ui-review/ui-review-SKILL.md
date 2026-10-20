@@ -21,7 +21,11 @@ literal num componente.
 --accent     #31688E   links, foco, estado ativo
 ```
 
-Escuro: `--paper #11171D`, `--ink #E8EDF1`, demais ajustados por contraste.
+Escuro: `--paper #11171D`, `--ink #E8EDF1`, `--ink-soft #93A3B2`,
+`--rule #2A353F`, `--accent #6FA4CC` — o accent clareia porque `#31688E` sobre
+`#11171D` dá 3,0:1.
+
+Não existe token de cor de erro. Erro se diz por borda, `role="alert"` e texto.
 
 ### As quatro cores de avaliação
 
@@ -40,8 +44,15 @@ nos dois temas — foram desenhadas para isso.
 ## Tipografia
 
 IBM Plex Sans na interface, Serif no corpo das notas e na face dos cards, Mono
-só em código e sintaxe de card. Escala 13 / 15 / 17 / 21 / 28 / 38px. Corpo de
-nota a 17px, `line-height` 1,65, medida máxima 68 caracteres.
+só em código, sintaxe de card e editor — metadado e caminho são Sans 13px em
+`--ink-soft`, nunca Mono. Escala fechada 13 / 15 / 17 / 21 / 28 / 38px, no
+Tailwind `xs sm base lg xl 2xl`, sem degrau nenhum fora dela. Corpo de nota a
+17px, `line-height` 1,65, medida máxima 68 caracteres.
+
+## Forma
+
+Raio de 2px em tudo. Nenhuma sombra, nenhum gradiente, nenhum ícone decorativo:
+▸ ▾ ↑ ↓ » entram como texto.
 
 ## Layout
 
@@ -80,7 +91,8 @@ Intenção:
 - [ ] nenhum `→` colado no texto de link ou botão
 - [ ] nenhuma numeração 01/02/03 em conteúdo que não é sequência
 - [ ] nenhum card com sombra cinza padrão só para parecer elevado
-- [ ] mesmo `border-radius` em tudo? então a hierarquia não está sendo dita
+- [ ] raio de 2px em tudo, sem segundo degrau inventado no componente
+- [ ] hierarquia dita por tamanho, peso e filete — nunca por raio ou sombra
 - [ ] estado vazio escrito com direção, não com lamento
 - [ ] uma coisa memorável na tela, e o resto quieto em volta dela
 
