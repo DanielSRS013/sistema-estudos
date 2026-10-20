@@ -94,7 +94,12 @@ async function Resultados({ termo }: { termo: string }) {
   );
 }
 
-export default async function SearchPage({
+/**
+ * O campo e os resultados dependem do termo, então ambos vivem aqui dentro:
+ * com `cacheComponents` ligado, ler `searchParams` no corpo da página aborta
+ * o prerender da rota.
+ */
+async function Painel({
   searchParams,
 }: {
   searchParams: Promise<{ q?: string }>;
@@ -102,6 +107,32 @@ export default async function SearchPage({
   const { q } = await searchParams;
   const termo = (q ?? "").trim();
 
+  return (
+    <>
+      <Busca termo={termo} />
+
+      {termo === "" ? (
+        <p className="font-serif text-base leading-[1.65] text-ink-soft">
+          Digite uma palavra do conceito. A busca varre título e corpo de todas
+          as notas, com radical em português: “projeções” encontra “projeção”.
+        </p>
+      ) : (
+        <Suspense
+          key={termo}
+          fallback={<Carregando>Buscando nas notas.</Carregando>}
+        >
+          <Resultados termo={termo} />
+        </Suspense>
+      )}
+    </>
+  );
+}
+
+export default function SearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   return (
     <Shell rail={<CourseRail />}>
       <div className="measure space-y-6">
@@ -112,22 +143,9 @@ export default async function SearchPage({
           </h1>
         </header>
 
-        <Busca termo={termo} />
-
-        {termo === "" ? (
-          <p className="font-serif text-base leading-[1.65] text-ink-soft">
-            Digite uma palavra do conceito. A busca varre título e corpo de
-            todas as notas, com radical em português: “projeções” encontra
-            “projeção”.
-          </p>
-        ) : (
-          <Suspense
-            key={termo}
-            fallback={<Carregando>Buscando nas notas.</Carregando>}
-          >
-            <Resultados termo={termo} />
-          </Suspense>
-        )}
+        <Suspense fallback={<Carregando>Abrindo a busca.</Carregando>}>
+          <Painel searchParams={searchParams} />
+        </Suspense>
       </div>
     </Shell>
   );

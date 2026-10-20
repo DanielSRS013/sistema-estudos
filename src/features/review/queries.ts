@@ -5,6 +5,7 @@
 
 import { and, eq, gte, isNull, lte, notExists, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { connection } from "next/server";
 
 import { db } from "@/db";
 import { cards, notes, reviews } from "@/db/schema";
@@ -96,11 +97,22 @@ async function candidatos(now: Date): Promise<QueueCard[]> {
 }
 
 /**
+ * O relógio desta requisição. `connection()` marca a leitura como de tempo de
+ * requisição: com `cacheComponents` ligado, um `new Date()` solto durante o
+ * prerender aborta o build, porque o valor mudaria entre renders.
+ */
+async function agora(): Promise<Date> {
+  await connection();
+
+  return new Date();
+}
+
+/**
  * A fila de agora. Os limites do dia descontam o que já foi estudado hoje:
  * reabrir o `/review` depois de 20 cards novos não oferece outros 20.
  */
 export async function fetchQueue(limits: Limits = DEFAULT_LIMITS): Promise<Queue> {
-  const now = new Date();
+  const now = await agora();
 
   const [todos, feitos] = await Promise.all([candidatos(now), countToday(now)]);
 
@@ -140,7 +152,7 @@ const ADIANTADO_MAX = 20;
  * limites do dia — é um pedido explícito do usuário, não a fila de hoje.
  */
 export async function fetchAheadQueue(): Promise<Queue> {
-  const now = new Date();
+  const now = await agora();
 
   const rows = await db
     .select({
@@ -219,7 +231,7 @@ async function countToday(
 export async function fetchPanel(
   limits: Limits = DEFAULT_LIMITS,
 ): Promise<Panel> {
-  const now = new Date();
+  const now = await agora();
 
   const [contagens, feitos, dias, fila] = await Promise.all([
     db

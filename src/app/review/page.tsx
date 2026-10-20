@@ -9,7 +9,13 @@ export const metadata = { title: "Revisão" };
  * Modo foco: esta rota não usa a `Shell`. Sem rail e sem margem, como manda o
  * SPEC §6 — um card centrado no campo de papel e nada mais na tela.
  */
-async function Fila({ ahead }: { ahead: boolean }) {
+async function Fila({
+  searchParams,
+}: {
+  searchParams: PageProps<"/review">["searchParams"];
+}) {
+  const { adiantado } = await searchParams;
+  const ahead = adiantado === "1";
   const fila = ahead ? await fetchAheadQueue() : await fetchQueue();
 
   return (
@@ -21,11 +27,11 @@ async function Fila({ ahead }: { ahead: boolean }) {
   );
 }
 
-export default async function ReviewPage({
-  searchParams,
-}: PageProps<"/review">) {
-  const { adiantado } = await searchParams;
-
+/**
+ * `searchParams` é lido dentro do Suspense, não aqui: com `cacheComponents`
+ * ligado, a leitura solta no corpo da página aborta o prerender da rota.
+ */
+export default function ReviewPage({ searchParams }: PageProps<"/review">) {
   return (
     <Suspense
       fallback={
@@ -34,7 +40,7 @@ export default async function ReviewPage({
         </p>
       }
     >
-      <Fila ahead={adiantado === "1"} />
+      <Fila searchParams={searchParams} />
     </Suspense>
   );
 }
