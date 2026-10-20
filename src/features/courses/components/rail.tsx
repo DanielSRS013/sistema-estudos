@@ -120,12 +120,24 @@ export function Rail({ courses }: { courses: RailCourse[] }) {
       className="border-b border-rule px-3 py-3 text-sm md:w-64 md:shrink-0 md:border-r md:border-b-0"
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <Link
-          href="/courses"
-          className="rounded-sm px-1 font-mono text-xs tracking-wide text-ink-soft hover:text-ink focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
-        >
-          cursos
-        </Link>
+        <div className="flex min-w-0 items-center gap-2">
+          <Link
+            href="/courses"
+            className="rounded-sm px-1 font-mono text-xs tracking-wide text-ink-soft hover:text-ink focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
+          >
+            cursos
+          </Link>
+          <Link
+            href="/search"
+            aria-current={pathname === "/search" ? "page" : undefined}
+            className={cn(
+              "rounded-sm px-1 font-mono text-xs tracking-wide text-ink-soft hover:text-ink focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none",
+              pathname === "/search" && "text-accent",
+            )}
+          >
+            buscar
+          </Link>
+        </div>
         <button
           type="button"
           onClick={() => setColapsado(true)}
