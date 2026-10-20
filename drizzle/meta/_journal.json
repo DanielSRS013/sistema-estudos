@@ -15,6 +15,13 @@
       "when": 1792446924799,
       "tag": "0001_typical_tana_nile",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792455432805,
+      "tag": "0002_gifted_venom",
+      "breakpoints": true
     }
   ]
 }

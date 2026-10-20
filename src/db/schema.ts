@@ -15,6 +15,7 @@ import {
   uniqueIndex,
   primaryKey,
   customType,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -148,6 +149,9 @@ export const cards = pgTable(
     difficulty: doublePrecision("difficulty").notNull().default(0),
     elapsedDays: integer("elapsed_days").notNull().default(0),
     scheduledDays: integer("scheduled_days").notNull().default(0),
+    // índice do passo de aprendizado em que o card está, dentro de `ts-fsrs`.
+    // Sem ele o card volta ao primeiro passo a cada avaliação.
+    learningSteps: integer("learning_steps").notNull().default(0),
     reps: integer("reps").notNull().default(0),
     lapses: integer("lapses").notNull().default(0),
     state: cardStateEnum("state").notNull().default("new"),
@@ -184,16 +188,37 @@ export const reviews = pgTable(
       .references(() => cards.id, { onDelete: "restrict" }),
 
     rating: ratingEnum("rating").notNull(),
-    // estado do card ANTES desta revisão
+
+    /* estado do card ANTES desta revisão — completo, porque é daqui que o
+       desfazer reconstrói o card. Nada disso é recalculável depois: a linha
+       seguinte de `reviews` já descreve outro estado. */
     stateBefore: cardStateEnum("state_before").notNull(),
     stabilityBefore: doublePrecision("stability_before").notNull(),
     difficultyBefore: doublePrecision("difficulty_before").notNull(),
+    dueBefore: timestamp("due_before", { withTimezone: true }).notNull(),
+    lastReviewBefore: timestamp("last_review_before", { withTimezone: true }),
+    repsBefore: integer("reps_before").notNull(),
+    lapsesBefore: integer("lapses_before").notNull(),
+    learningStepsBefore: integer("learning_steps_before").notNull().default(0),
+    elapsedDaysBefore: integer("elapsed_days_before").notNull().default(0),
+    scheduledDaysBefore: integer("scheduled_days_before").notNull().default(0),
+
     // resultado desta revisão
     scheduledDays: integer("scheduled_days").notNull(),
     elapsedDays: integer("elapsed_days").notNull(),
     dueAfter: timestamp("due_after", { withTimezone: true }).notNull(),
     // milissegundos entre revelar e avaliar
     durationMs: integer("duration_ms"),
+
+    /**
+     * Preenchido só nas linhas de reversão: aponta para a avaliação que esta
+     * linha desfez. `null` = avaliação de verdade. Desfazer insere, nunca
+     * apaga — e as contagens do painel ignoram os dois lados do par.
+     */
+    undoesReviewId: uuid("undoes_review_id").references(
+      (): AnyPgColumn => reviews.id,
+      { onDelete: "restrict" },
+    ),
 
     reviewedAt: timestamp("reviewed_at", { withTimezone: true })
       .notNull()
@@ -202,6 +227,8 @@ export const reviews = pgTable(
   (t) => [
     index("reviews_card_idx").on(t.cardId, t.reviewedAt),
     index("reviews_date_idx").on(t.reviewedAt),
+    // uma avaliação só pode ser desfeita uma vez
+    uniqueIndex("reviews_undoes_idx").on(t.undoesReviewId),
   ],
 );
 
