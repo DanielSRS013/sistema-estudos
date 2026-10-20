@@ -1,14 +1,7 @@
-// Slug de curso: estável, legível na URL e único por construção.
-// Função pura — o chamador é quem sabe quais slugs já existem.
+// Slug de curso: único por construção. A normalização em si vive em
+// `@/shared/slug`, porque as tags usam a mesma.
 
-export function slugify(input: string): string {
-  return input
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
+import { slugify } from "@/shared/slug";
 
 /**
  * Devolve `base` se estiver livre; senão sufixa com o menor inteiro ≥ 2 que
