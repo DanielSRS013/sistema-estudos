@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { listCardsForNote, type NoteCard } from "../queries";
 
 /**
@@ -19,7 +21,17 @@ function Badge({ children }: { children: React.ReactNode }) {
   );
 }
 
-function CardItem({ card }: { card: NoteCard }) {
+/**
+ * Um card com seu estado. Serve à margem da nota e à página do conceito —
+ * lá o card vem de outra nota, então `nota` leva de volta à origem.
+ */
+export function CardItem({
+  card,
+  nota,
+}: {
+  card: NoteCard;
+  nota?: { id: string; title: string };
+}) {
   return (
     <li className="space-y-1 border-t border-rule pt-2 first:border-t-0 first:pt-0">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -35,6 +47,14 @@ function CardItem({ card }: { card: NoteCard }) {
       <p className="font-serif text-sm leading-snug text-ink-soft">
         {card.answer}
       </p>
+      {nota ? (
+        <Link
+          href={`/notes/${nota.id}`}
+          className="block truncate font-mono text-xs text-ink-soft hover:text-accent"
+        >
+          {nota.title}
+        </Link>
+      ) : null}
     </li>
   );
 }

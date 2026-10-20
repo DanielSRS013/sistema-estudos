@@ -13,6 +13,7 @@ import {
   type SaveStatus,
 } from "../status";
 
+import { linkifyTags } from "@/features/tags/linkify";
 import { MathMarkdown } from "@/shared/markdown";
 
 /** Janela de silêncio antes de gravar. SPEC: 1,5s. */
@@ -208,7 +209,7 @@ export function Editor({
                 O que você escrever à esquerda aparece aqui.
               </p>
             ) : (
-              <MathMarkdown content={texto.content} />
+              <MathMarkdown content={linkifyTags(texto.content)} />
             )}
           </div>
         </div>

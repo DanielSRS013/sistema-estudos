@@ -8,6 +8,7 @@ import { db } from "@/db";
 import { notes } from "@/db/schema";
 import type { ParseIssue } from "@/features/cards/parser";
 import { cardWrites, planCards } from "@/features/cards/sync";
+import { planTags, tagWrites } from "@/features/tags/sync";
 import type { ActionState } from "@/shared/action-state";
 
 import { createNoteSchema, moveNoteSchema, saveNoteSchema } from "./schemas";
@@ -100,6 +101,8 @@ export type SaveResult =
       issues: ParseIssue[];
       /** Cards ativos que a nota tem depois desta gravação. */
       cardCount: number;
+      /** Conceitos que a nota cita, na ordem do texto. */
+      tags: string[];
     }
   | { ok: false; message: string };
 
@@ -108,9 +111,9 @@ export type SaveResult =
  * quando o debounce estoura, e recebe de volta o `updatedAt` que o servidor
  * gravou — a hora do indicador é a do servidor, não a do navegador.
  *
- * O texto e os cards dele vão no mesmo `db.batch`, que o driver HTTP do Neon
- * executa como uma transação só: ou a nota e os cards mudam juntos, ou nada
- * muda. Nenhum caminho daqui apaga card — ver SPEC §3.4.
+ * O texto, os cards e as tags dele vão no mesmo `db.batch`, que o driver HTTP
+ * do Neon executa como uma transação só: ou tudo muda junto, ou nada muda.
+ * Nenhum caminho daqui apaga card — ver SPEC §3.4.
  */
 export async function saveNote(input: unknown): Promise<SaveResult> {
   const parsed = saveNoteSchema.safeParse(input);
@@ -124,19 +127,23 @@ export async function saveNote(input: unknown): Promise<SaveResult> {
   const updatedAt = new Date();
 
   try {
-    const [nota, planejado] = await Promise.all([
+    const [nota, planejado, tagsPlan] = await Promise.all([
       db.query.notes.findFirst({
         where: (n, { eq: igual }) => igual(n.id, id),
         columns: { id: true },
       }),
       planCards(id, content),
+      planTags(id, content),
     ]);
 
     if (!nota) return { ok: false, message: "Nota não encontrada." };
 
+    const escritasDeTag = tagWrites(id, tagsPlan);
+
     const escritas = [
       db.update(notes).set({ title, content, updatedAt }).where(eq(notes.id, id)),
       ...cardWrites(id, planejado.plan, updatedAt),
+      ...escritasDeTag,
     ];
     const [primeira, ...resto] = escritas;
 
@@ -145,11 +152,16 @@ export async function saveNote(input: unknown): Promise<SaveResult> {
     // A leitura mostra título e margem de cards; o editor não recarrega.
     revalidatePath(`/notes/${id}`);
 
+    // Mudou o conjunto de tags: as páginas de conceito listam esta nota, e a
+    // que perdeu o vínculo também precisa deixar de listá-la.
+    if (escritasDeTag.length > 0) revalidatePath("/tags/[tagSlug]", "page");
+
     return {
       ok: true,
       savedAt: updatedAt.toISOString(),
       issues: planejado.issues,
       cardCount: planejado.total,
+      tags: tagsPlan.slugs,
     };
   } catch (error) {
     console.error(error);

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { CardMargin } from "@/features/cards/components/margin";
 import { CourseRail } from "@/features/courses/components/course-rail";
 import { moveNote } from "@/features/notes/actions";
+import { linkifyTags } from "@/features/tags/linkify";
 import { MathMarkdown } from "@/shared/markdown";
 import { MoveNoteForm } from "@/features/notes/components/note-forms";
 import { getNoteById, listLessonOptions } from "@/features/notes/queries";
@@ -94,7 +95,7 @@ async function NoteDetail({ params }: { params: Promise<{ noteId: string }> }) {
           .
         </p>
       ) : (
-        <MathMarkdown content={note.content} />
+        <MathMarkdown content={linkifyTags(note.content)} />
       )}
 
       <section className="space-y-2 border-t border-rule pt-4">
