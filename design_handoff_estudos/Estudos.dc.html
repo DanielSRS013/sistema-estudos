@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="./tex.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#E6E9EC;font-family:'IBM Plex Sans',system-ui,sans-serif;color:#16202B}
+a{color:var(--accent,#31688E);text-underline-offset:3px;text-decoration:none}
+a:hover{text-decoration:underline}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent,#31688E);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</helmet>
+
+<div style="position:sticky;top:0;z-index:5;background:#E6E9EC;border-bottom:1px solid #C9D0D6;padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;font-size:13px;color:#16202B">
+  <div role="group" aria-label="Tela" style="display:flex;flex-wrap:wrap;gap:2px">
+    <sc-for list="{{ vScreens }}" as="b" hint-placeholder-count="10"><button onClick="{{ b.on }}" aria-pressed="{{ b.act }}" style="border:1px solid #C9D0D6;background:{{ b.bg }};color:{{ b.fg }};padding:4px 10px;cursor:pointer;border-radius:2px;font-size:13px">{{ b.l }}</button></sc-for>
+  </div>
+  <sc-if value="{{ hasVStates }}" hint-placeholder-val="{{ true }}">
+    <div role="group" aria-label="Estado" style="display:flex;flex-wrap:wrap;gap:2px">
+      <sc-for list="{{ vStates }}" as="b" hint-placeholder-count="3"><button onClick="{{ b.on }}" aria-pressed="{{ b.act }}" style="border:1px solid #C9D0D6;background:{{ b.bg }};color:{{ b.fg }};padding:4px 10px;cursor:pointer;border-radius:2px;font-size:13px">{{ b.l }}</button></sc-for>
+    </div>
+  </sc-if>
+  <div role="group" aria-label="Tema" style="display:flex;gap:2px">
+    <sc-for list="{{ vThemes }}" as="b" hint-placeholder-count="2"><button onClick="{{ b.on }}" aria-pressed="{{ b.act }}" style="border:1px solid #C9D0D6;background:{{ b.bg }};color:{{ b.fg }};padding:4px 10px;cursor:pointer;border-radius:2px;font-size:13px">{{ b.l }}</button></sc-for>
+  </div>
+  <div role="group" aria-label="Largura" style="display:flex;gap:2px">
+    <sc-for list="{{ vWidths }}" as="b" hint-placeholder-count="3"><button onClick="{{ b.on }}" aria-pressed="{{ b.act }}" style="border:1px solid #C9D0D6;background:{{ b.bg }};color:{{ b.fg }};padding:4px 10px;cursor:pointer;border-radius:2px;font-size:13px">{{ b.l }}</button></sc-for>
+  </div>
+  <span style="color:#4A5866">{{ zoomLabel }}</span>
+</div>
+
+<div ref="{{ stageRef }}" style="padding:24px 16px 64px">
+<sc-if value="{{ sDecisions }}">
+  <div style="max-width:760px;margin:0 auto;background:#FCFCFA;border:1px solid #DDE3E8;padding:40px clamp(20px,5vw,56px);font-size:15px;line-height:1.6;color:#16202B">
+    <h1 style="margin:0 0 8px;font-size:28px;font-weight:500;line-height:1.25">Decisões onde a direção deixou espaço</h1>
+    <p style="margin:0 0 24px;color:#5A6B7B">Tudo abaixo é escolha minha; o resto segue o briefing ao pé da letra.</p>
+    <ol style="margin:0;padding-left:20px;display:grid;gap:14px">
+      <li><strong style="font-weight:600">Accent no escuro.</strong> #31688E sobre #11171D dá 3,0:1 — reprova texto e link. Clareei no mesmo matiz para #6FA4CC (6,7:1). Completei o tema escuro com --ink-soft #93A3B2 (6,9:1) e --rule #2A353F. As quatro paradas do viridis seguem intactas.</li>
+      <li><strong style="font-weight:600">Botões de avaliação em português:</strong> De novo · Difícil · Bom · Fácil. Texto branco sobre De novo e Difícil, #16202B sobre Bom e Fácil (todos ≥ 6:1, atalho incluído). Esse texto é fixo e não segue o tema. Não mostro intervalo previsto em cada botão: o briefing não o cita.</li>
+      <li><strong style="font-weight:600">Ação primária com fundo --ink, não --accent.</strong> O accent fica para link, foco e estado ativo, como pedido; o botão principal é tinta cheia e o secundário é contorno em --ink.</li>
+      <li><strong style="font-weight:600">Erro sem cor nova.</strong> Não há token de erro, e vermelho seria cor fora da paleta. O erro aparece como filete de 2px em --ink, título em peso 600 com a linha, e a mesma marca no trecho da pré-visualização. A nota continua salva; só o card não é criado.</li>
+      <li><strong style="font-weight:600">Estado do card sem cor.</strong> Badge em texto com contorno; suspenso usa contorno tracejado e face em --ink-soft. Cards arquivados saem da margem.</li>
+      <li><strong style="font-weight:600">Cards na margem alinhados ao trecho que os gera.</strong> Cada bloco da nota ocupa uma linha da grade, com seus cards ao lado. Abaixo de 1100px viram a seção recolhida “Cards desta nota”.</li>
+      <li><strong style="font-weight:600">Destaque da busca:</strong> fundo --rule com peso 600, sem amarelo de marca-texto. A resposta revelada do cloze usa o mesmo fundo.</li>
+      <li><strong style="font-weight:600">Rail recolhido</strong> vira uma faixa de 48px com o botão de expandir. A 900px o editor abre com o rail recolhido para cada painel ter cerca de 400px; o estado escolhido por você prevalece.</li>
+      <li><strong style="font-weight:600">Matemática com KaTeX.</strong> As fontes Computer Modern do KaTeX são a única família fora do Plex — o Plex não tem cobertura matemática. A fórmula em destaque rola dentro do próprio bloco; a inline quebra após operadores; palavras longas quebram com overflow-wrap: anywhere. Nenhuma página rola na horizontal.</li>
+      <li><strong style="font-weight:600">Realce de Python monocromático:</strong> só comentários em --ink-soft. Mais cores de sintaxe seriam cor sem informação.</li>
+      <li><strong style="font-weight:600">Nova nota</strong> vai para a última aula aberta; o painel diz qual, para não haver surpresa.</li>
+      <li><strong style="font-weight:600">Movimento:</strong> nenhuma transição nesta maquete. Revelar a resposta e expandir módulos são trocas imediatas; uma animação curta de virada pode entrar depois, com prefers-reduced-motion.</li>
+    </ol>
+    <h2 style="margin:32px 0 8px;font-size:17px;font-weight:600">Tokens para Tailwind</h2>
+    <pre style="margin:0;padding:16px;border:1px solid #DDE3E8;overflow-x:auto;font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.6">{{ twTokens }}</pre>
+  </div>
+</sc-if>
+
+<sc-if value="{{ showFrame }}" hint-placeholder-val="{{ true }}">
+<div style="width:{{ fw }}px;zoom:{{ zoom }};margin:0 auto;box-shadow:0 1px 2px rgba(22,32,43,.12);--paper:{{ t.paper }};--ink:{{ t.ink }};--soft:{{ t.soft }};--rule:{{ t.rule }};--accent:{{ t.accent }};background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:15px;line-height:1.5;overflow-wrap:anywhere;min-height:{{ fh }}px;overflow:hidden">
+
+<sc-if value="{{ isReview }}" hint-placeholder-val="{{ true }}">
+  <main aria-label="Revisão" style="min-height:{{ fh }}px;display:flex;flex-direction:column;padding:{{ revPad }}">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px;font-size:13px;color:var(--soft)">
+      <span>{{ rc.path }}</span>
+      <span>{{ remainingLabel }}</span>
+    </div>
+    <sc-if value="{{ revEmpty }}">
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;max-width:720px;width:100%;margin:0 auto;gap:12px">
+        <h1 style="margin:0;font-family:'IBM Plex Serif',Georgia,serif;font-size:28px;font-weight:500;line-height:1.3">Nada vence hoje.</h1>
+        <p style="margin:0;font-size:17px;color:var(--soft)">Próxima revisão em 2 dias.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px 24px;font-size:15px;margin-top:12px">
+          <a href="#" onClick="{{ studyAhead }}">Estudar adiantado</a>
+          <a href="#" onClick="{{ go.dash }}">Voltar ao painel</a>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:13px;color:var(--soft)">esc volta ao painel</div>
+    </sc-if>
+    <sc-if value="{{ revCard }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;max-width:720px;width:100%;margin:0 auto;gap:28px;padding:40px 0">
+        <div aria-live="polite" style="font-family:'IBM Plex Serif',Georgia,serif;font-size:28px;line-height:1.45">
+          <sc-for list="{{ face }}" as="p"><sc-if value="{{ p.isT }}"><span>{{ p.t }}</span></sc-if><sc-if value="{{ p.isM }}"><k-tex tex="{{ p.m }}"></k-tex></sc-if><sc-if value="{{ p.isC }}"><code style="font-family:'IBM Plex Mono',monospace">{{ p.c }}</code></sc-if><sc-if value="{{ p.isB }}"><span style="border-bottom:2px solid var(--ink);padding:0 8px;color:var(--soft)">[…]</span></sc-if><sc-if value="{{ p.isA }}"><span style="background:var(--rule);padding:2px 6px;border-radius:2px"><k-tex tex="{{ p.m }}"></k-tex></span></sc-if></sc-for>
+        </div>
+        <sc-if value="{{ hasAnswer }}">
+          <div style="border-top:1px solid var(--rule);padding-top:24px;font-family:'IBM Plex Serif',Georgia,serif;font-size:28px;line-height:1.45">
+            <sc-for list="{{ answer }}" as="p"><sc-if value="{{ p.isT }}"><span>{{ p.t }}</span></sc-if><sc-if value="{{ p.isM }}"><k-tex tex="{{ p.m }}"></k-tex></sc-if><sc-if value="{{ p.isC }}"><code style="font-family:'IBM Plex Mono',monospace;background:var(--rule);padding:2px 6px;border-radius:2px">{{ p.c }}</code></sc-if></sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <div style="max-width:720px;width:100%;margin:0 auto;display:grid;gap:16px">
+        <sc-if value="{{ revQ }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ reveal }}" style="width:100%;min-height:72px;background:var(--ink);color:var(--paper);border:none;border-radius:2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+            <span style="font-size:17px;font-weight:500">Mostrar resposta</span>
+            <span style="font-size:13px">espaço</span>
+          </button>
+        </sc-if>
+        <sc-if value="{{ revA }}">
+          <div role="group" aria-label="Avaliar o card" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
+            <button onClick="{{ rate1 }}" style="min-height:72px;background:#440154;color:#FFFFFF;border:none;border-radius:2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 4px"><span style="font-size:17px;font-weight:500">De novo</span><span style="font-size:13px">1</span></button>
+            <button onClick="{{ rate2 }}" style="min-height:72px;background:#31688E;color:#FFFFFF;border:none;border-radius:2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 4px"><span style="font-size:17px;font-weight:500">Difícil</span><span style="font-size:13px">2</span></button>
+            <button onClick="{{ rate3 }}" style="min-height:72px;background:#35B779;color:#16202B;border:none;border-radius:2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 4px"><span style="font-size:17px;font-weight:500">Bom</span><span style="font-size:13px">3</span></button>
+            <button onClick="{{ rate4 }}" style="min-height:72px;background:#FDE725;color:#16202B;border:none;border-radius:2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 4px"><span style="font-size:17px;font-weight:500">Fácil</span><span style="font-size:13px">4</span></button>
+          </div>
+        </sc-if>
+        <div role="status" style="text-align:center;font-size:13px;color:var(--soft)">{{ revFoot }}</div>
+      </div>
+    </sc-if>
+  </main>
+</sc-if>
+
+<sc-if value="{{ notReview }}">
+<div style="display:flex;flex-direction:{{ shellDir }};min-height:{{ fh }}px">
+
+  <sc-if value="{{ railSide }}">
+    <nav aria-label="Principal" style="width:{{ railW }}px;flex:none;border-right:1px solid var(--rule);padding:{{ railPad }};display:flex;flex-direction:column;gap:28px">
+      <sc-if value="{{ collapsed }}">
+        <button onClick="{{ toggleRail }}" aria-label="Expandir menu" aria-expanded="{{ false }}" style="background:none;border:1px solid var(--rule);width:32px;height:32px;cursor:pointer;border-radius:2px;color:var(--ink);font-size:15px">»</button>
+      </sc-if>
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <span style="font-size:15px;font-weight:600">Estudos</span>
+          <button onClick="{{ toggleRail }}" aria-expanded="{{ true }}" style="background:none;border:none;color:var(--soft);font-size:13px;cursor:pointer;padding:4px 0">Recolher</button>
+        </div>
+        <ul style="list-style:none;margin:0;padding:0;display:grid;gap:2px;font-size:15px">
+          <sc-for list="{{ nav }}" as="n" hint-placeholder-count="4"><li><a href="#" onClick="{{ n.on }}" aria-current="{{ n.cur }}" style="display:flex;justify-content:space-between;padding:6px 0;color:{{ n.color }};font-weight:{{ n.weight }}"><span>{{ n.l }}</span><span style="font-size:13px;color:var(--soft);font-weight:400">{{ n.count }}</span></a></li></sc-for>
+        </ul>
+        <sc-if value="{{ showTree }}">
+          <div style="display:grid;gap:6px;font-size:13px">
+            <a href="#" onClick="{{ go.course }}" style="color:var(--soft)">Álgebra linear</a>
+            <ul style="list-style:none;margin:0;padding:0;display:grid;gap:0">
+              <sc-for list="{{ treeMods }}" as="m"><li>
+                <button onClick="{{ m.onToggle }}" aria-expanded="{{ m.open }}" style="display:flex;gap:6px;width:100%;text-align:left;background:none;border:none;padding:4px 0;cursor:pointer;color:var(--ink);font-size:13px"><span aria-hidden="true" style="width:10px;flex:none;color:var(--soft)">{{ m.arrow }}</span><span>{{ m.n }}</span></button>
+                <sc-if value="{{ m.open }}"><ul style="list-style:none;margin:0;padding:0 0 6px 16px;display:grid"><sc-for list="{{ m.lessons }}" as="l"><li><a href="#" onClick="{{ l.onOpen }}" aria-current="{{ l.cur }}" style="display:block;padding:3px 0;color:{{ l.color }};font-weight:{{ l.weight }}">{{ l.n }}</a></li></sc-for></ul></sc-if>
+              </li></sc-for>
+            </ul>
+          </div>
+        </sc-if>
+        <div style="margin-top:auto;display:grid;gap:2px;font-size:13px">
+          <button onClick="{{ toggleTheme }}" style="text-align:left;background:none;border:none;padding:6px 0;cursor:pointer;color:var(--soft);font-size:13px">{{ themeLabel }}</button>
+          <button style="text-align:left;background:none;border:none;padding:6px 0;cursor:pointer;color:var(--soft);font-size:13px">Sair</button>
+        </div>
+      </sc-if>
+    </nav>
+  </sc-if>
+
+  <sc-if value="{{ railTop }}">
+    <nav aria-label="Principal" style="border-bottom:1px solid var(--rule);padding:4px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:0 16px">
+      <span style="font-size:15px;font-weight:600;margin-right:auto">Estudos</span>
+      <button onClick="{{ toggleTheme }}" style="background:none;border:none;min-height:44px;padding:0 4px;cursor:pointer;color:var(--soft);font-size:13px">{{ themeLabel }}</button>
+      <button style="background:none;border:none;min-height:44px;padding:0 4px;cursor:pointer;color:var(--soft);font-size:13px">Sair</button>
+      <ul style="list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:0 20px;width:100%;font-size:15px">
+        <sc-for list="{{ nav }}" as="n" hint-placeholder-count="4"><li><a href="#" onClick="{{ n.on }}" aria-current="{{ n.cur }}" style="display:flex;align-items:center;gap:6px;min-height:44px;color:{{ n.color }};font-weight:{{ n.weight }}"><span>{{ n.l }}</span><span style="font-size:13px;color:var(--soft);font-weight:400">{{ n.count }}</span></a></li></sc-for>
+      </ul>
+    </nav>
+  </sc-if>
+
+  <main style="flex:1;min-width:0;padding:{{ mainPad }}">
+
+  <sc-if value="{{ sDash }}">
+    <div style="max-width:880px;display:grid;gap:40px">
+      <header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 16px">
+        <h1 style="margin:0;font-size:28px;font-weight:500;line-height:1.2">Hoje</h1>
+        <span style="font-size:15px;color:var(--soft)">Terça-feira, 20 de outubro</span>
+      </header>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:24px">
+        <section aria-labelledby="fila-h" style="border:1px solid var(--rule);border-radius:2px;padding:24px;display:grid;gap:20px;align-content:start">
+          <h2 id="fila-h" style="margin:0;font-size:15px;font-weight:500;color:var(--soft)">Fila de hoje</h2>
+          <div style="display:flex;flex-wrap:wrap;gap:16px 48px">
+            <div><div style="font-size:38px;line-height:1;font-variant-numeric:tabular-nums">34</div><div style="font-size:15px;color:var(--soft);margin-top:6px">revisões vencem</div></div>
+            <div><div style="font-size:38px;line-height:1;font-variant-numeric:tabular-nums">12</div><div style="font-size:15px;color:var(--soft);margin-top:6px">cards novos</div></div>
+          </div>
+          <button onClick="{{ go.review }}" style="justify-self:start;background:var(--ink);color:var(--paper);border:none;padding:10px 20px;min-height:44px;font-size:15px;font-weight:500;cursor:pointer;border-radius:2px">Começar revisão</button>
+        </section>
+        <section aria-labelledby="cap-h" style="border:1px solid var(--rule);border-radius:2px;padding:24px;display:grid;gap:20px;align-content:start">
+          <h2 id="cap-h" style="margin:0;font-size:15px;font-weight:500;color:var(--soft)">Captura</h2>
+          <p style="margin:0;font-size:17px;line-height:1.5">Nota nova na aula <a href="#" onClick="{{ go.lesson }}">Projeções</a>, aberta direto no editor.</p>
+          <button onClick="{{ go.edit }}" style="justify-self:start;background:none;color:var(--ink);border:1px solid var(--ink);padding:10px 20px;min-height:44px;font-size:15px;font-weight:500;cursor:pointer;border-radius:2px">Nova nota</button>
+        </section>
+      </div>
+      <dl style="margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:16px 24px">
+        <div style="border-top:1px solid var(--ink);padding-top:12px"><dt style="font-size:13px;color:var(--soft)">Sequência</dt><dd style="margin:4px 0 0;font-size:21px">9 dias seguidos</dd></div>
+        <div style="border-top:1px solid var(--ink);padding-top:12px"><dt style="font-size:13px;color:var(--soft)">Tempo mediano por card</dt><dd style="margin:4px 0 0;font-size:21px">11 s</dd></div>
+      </dl>
+      <section aria-labelledby="rec-h" style="display:grid;gap:8px">
+        <h2 id="rec-h" style="margin:0;font-size:15px;font-weight:500;color:var(--soft)">Últimas notas editadas</h2>
+        <ul style="list-style:none;margin:0;padding:0;border-top:1px solid var(--rule)">
+          <sc-for list="{{ recent }}" as="r" hint-placeholder-count="5"><li style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 16px;padding:12px 0;border-bottom:1px solid var(--rule)">
+            <div style="display:grid;gap:2px;min-width:0"><a href="#" onClick="{{ go.note }}" style="font-size:17px;font-weight:500">{{ r.title }}</a><span style="font-size:13px;color:var(--soft)">{{ r.path }}</span></div>
+            <span style="font-size:13px;color:var(--soft)">{{ r.when }}</span>
+          </li></sc-for>
+        </ul>
+      </section>
+      <div style="display:flex;justify-content:flex-end">
+        <div role="group" aria-label="Limites diários" style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:13px;color:var(--soft)">
+          <span>Limites diários</span>
+          <label style="display:flex;gap:6px;align-items:center">Novos <input type="number" min="0" value="{{ limNew }}" onChange="{{ onLimNew }}" style="width:72px;padding:4px 6px;min-height:32px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);border-radius:2px;font-size:13px"></label>
+          <label style="display:flex;gap:6px;align-items:center">Revisões <input type="number" min="0" value="{{ limRev }}" onChange="{{ onLimRev }}" style="width:72px;padding:4px 6px;min-height:32px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);border-radius:2px;font-size:13px"></label>
+          <span role="status">{{ limMsg }}</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sNote }}">
+    <article style="display:grid;gap:24px">
+      <header style="display:grid;gap:8px;max-width:680px">
+        <div style="display:flex;flex-wrap:wrap;gap:4px 8px;font-size:13px;color:var(--soft)"><a href="#" onClick="{{ go.course }}">Álgebra linear</a><span aria-hidden="true">·</span><a href="#" onClick="{{ go.lesson }}">Projeções</a></div>
+        <h1 style="margin:0;font-family:'IBM Plex Serif',Georgia,serif;font-size:38px;font-weight:500;line-height:1.2">Projeção escalar e vetorial</h1>
+        <div style="display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px;color:var(--soft)"><span>Anotação de aula</span><span>Editada há 2 h</span><span>4 cards</span><a href="#" onClick="{{ go.edit }}">Editar</a></div>
+      </header>
+      <div style="display:grid;grid-template-columns:{{ noteCols }};column-gap:48px;align-items:start;font-family:'IBM Plex Serif',Georgia,serif;font-size:17px;line-height:1.65;text-align:left">
+        <div style="grid-column:1;min-width:0">
+          <p style="margin:0 0 16px">Dados dois vetores <k-tex tex="{{ tx.r }}"></k-tex> e <k-tex tex="{{ tx.s }}"></k-tex>, a projeção de <k-tex tex="{{ tx.s }}"></k-tex> sobre <k-tex tex="{{ tx.r }}"></k-tex> responde a uma pergunta geométrica: quanto de <k-tex tex="{{ tx.s }}"></k-tex> aponta na direção de <k-tex tex="{{ tx.r }}"></k-tex>? Pense na sombra que <k-tex tex="{{ tx.s }}"></k-tex> projeta sobre a reta de <k-tex tex="{{ tx.r }}"></k-tex> quando a luz cai perpendicular a ela.</p>
+        </div>
+
+        <div style="grid-column:1;min-width:0">
+          <h2 style="margin:24px 0 8px;font-size:21px;font-weight:600;line-height:1.3">Projeção escalar</h2>
+          <p style="margin:0 0 16px">Pela definição de produto escalar, <k-tex tex="{{ tx.dot }}"></k-tex>. O cateto adjacente ao ângulo mede <k-tex tex="{{ tx.adj }}"></k-tex>, e dividir o produto escalar por <k-tex tex="{{ tx.nr }}"></k-tex> isola esse comprimento: a projeção escalar de <k-tex tex="{{ tx.s }}"></k-tex> sobre <k-tex tex="{{ tx.r }}"></k-tex> é <span style="border-bottom:1px dotted var(--soft)"><k-tex tex="{{ tx.sc }}"></k-tex></span><a href="#c1" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;vertical-align:super;line-height:0;margin-left:2px">1</a>.</p>
+          <div style="margin:8px 0 20px"><k-tex display="true" tex="{{ tx.scD }}"></k-tex></div>
+        </div>
+        <sc-if value="{{ isWide }}"><aside aria-label="Cards do trecho" style="grid-column:2;display:grid;gap:12px;padding-top:28px"><sc-for list="{{ b2 }}" as="c"><dc-import name="NoteCard" card="{{ c }}" hint-size="100%,150px"></dc-import></sc-for></aside></sc-if>
+
+        <div style="grid-column:1;min-width:0">
+          <h2 style="margin:24px 0 8px;font-size:21px;font-weight:600;line-height:1.3">Projeção vetorial</h2>
+          <p style="margin:0 0 16px">Para obter um vetor, multiplicamos a projeção escalar pelo vetor unitário <k-tex tex="{{ tx.unit }}"></k-tex>. A projeção vetorial de <k-tex tex="{{ tx.s }}"></k-tex> sobre <k-tex tex="{{ tx.r }}"></k-tex> é <span style="border-bottom:1px dotted var(--soft)"><k-tex tex="{{ tx.vec }}"></k-tex></span><a href="#c2" style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;vertical-align:super;line-height:0;margin-left:2px">2</a>.</p>
+          <div style="margin:8px 0 20px"><k-tex display="true" tex="{{ tx.vecD }}"></k-tex></div>
+          <div style="margin:8px 0 20px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:12px 0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 16px">
+            <span style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--soft);padding-top:3px">Pergunta<a href="#c3" style="vertical-align:super;line-height:0;margin-left:2px">3</a></span>
+            <span>Quando a projeção escalar de <k-tex tex="{{ tx.s }}"></k-tex> sobre <k-tex tex="{{ tx.r }}"></k-tex> é zero?</span>
+            <span style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--soft);padding-top:3px">Resposta</span>
+            <span>Quando os vetores são ortogonais, isto é, <k-tex tex="{{ tx.ortho }}"></k-tex>.</span>
+          </div>
+        </div>
+        <sc-if value="{{ isWide }}"><aside aria-label="Cards do trecho" style="grid-column:2;display:grid;gap:12px;padding-top:28px"><sc-for list="{{ b3 }}" as="c"><dc-import name="NoteCard" card="{{ c }}" hint-size="100%,150px"></dc-import></sc-for></aside></sc-if>
+
+        <div style="grid-column:1;min-width:0">
+          <h2 style="margin:24px 0 8px;font-size:21px;font-weight:600;line-height:1.3">Em Python</h2>
+          <p style="margin:0 0 16px">Com <k-tex tex="{{ tx.ex }}"></k-tex>, o produto escalar vale 10 e <k-tex tex="{{ tx.nr5 }}"></k-tex>:</p>
+          <pre aria-label="Código Python" style="margin:0 0 20px;padding:16px;border:1px solid var(--rule);border-radius:2px;overflow-x:auto;font-family:'IBM Plex Mono',monospace;font-size:15px;line-height:1.6"><code style="display:block"><sc-for list="{{ py }}" as="ln" hint-placeholder-count="10"><span style="display:block;white-space:pre;color:{{ ln.color }}">{{ ln.t }}</span></sc-for></code></pre>
+          <div style="margin:8px 0 20px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:12px 0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 16px">
+            <span style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--soft);padding-top:3px">Pergunta<a href="#c4" style="vertical-align:super;line-height:0;margin-left:2px">4</a></span>
+            <span>Que expressão NumPy dá a projeção vetorial de <code style="font-family:'IBM Plex Mono',monospace;font-size:15px">s</code> sobre <code style="font-family:'IBM Plex Mono',monospace;font-size:15px">r</code>?</span>
+            <span style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--soft);padding-top:3px">Resposta</span>
+            <code style="font-family:'IBM Plex Mono',monospace;font-size:15px">(np.dot(r, s) / np.dot(r, r)) * r</code>
+          </div>
+        </div>
+        <sc-if value="{{ isWide }}"><aside aria-label="Cards do trecho" style="grid-column:2;display:grid;gap:12px;padding-top:28px"><sc-for list="{{ b4 }}" as="c"><dc-import name="NoteCard" card="{{ c }}" hint-size="100%,150px"></dc-import></sc-for></aside></sc-if>
+
+        <div style="grid-column:1;min-width:0;display:flex;flex-wrap:wrap;gap:8px 16px;font-family:'IBM Plex Sans',sans-serif;font-size:15px;padding-top:16px;border-top:1px solid var(--rule);margin-top:8px">
+          <a href="#" onClick="{{ go.tag }}">#projecao-vetorial</a><a href="#" onClick="{{ go.tag }}">#produto-escalar</a>
+        </div>
+
+        <sc-if value="{{ notWide }}">
+          <section style="grid-column:1;min-width:0;margin-top:24px;border-top:1px solid var(--rule);font-family:'IBM Plex Sans',sans-serif">
+            <button onClick="{{ toggleCards }}" aria-expanded="{{ cardsOpen }}" style="display:flex;gap:8px;align-items:center;background:none;border:none;padding:0;min-height:44px;cursor:pointer;font-size:15px;font-weight:500;color:var(--ink)"><span aria-hidden="true" style="width:12px;color:var(--soft)">{{ cardsArrow }}</span>Cards desta nota (4)</button>
+            <sc-if value="{{ cardsOpen }}"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:12px;padding-top:8px"><sc-for list="{{ allCards }}" as="c"><dc-import name="NoteCard" card="{{ c }}" hint-size="100%,150px"></dc-import></sc-for></div></sc-if>
+          </section>
+        </sc-if>
+      </div>
+    </article>
+  </sc-if>
+
+  <sc-if value="{{ sEdit }}">
+    <div style="display:grid;gap:16px">
+      <header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:8px 16px">
+        <div style="display:grid;gap:4px;min-width:0">
+          <div style="display:flex;flex-wrap:wrap;gap:4px 8px;font-size:13px;color:var(--soft)"><a href="#" onClick="{{ go.course }}">Álgebra linear</a><span aria-hidden="true">·</span><a href="#" onClick="{{ go.lesson }}">Projeções</a></div>
+          <h1 style="margin:0;font-size:21px;font-weight:500;line-height:1.3">Projeção escalar e vetorial</h1>
+        </div>
+        <div style="display:flex;gap:16px;align-items:baseline;font-size:13px">
+          <span role="status" style="color:var(--soft)">{{ saveText }}</span>
+          <a href="#" onClick="{{ go.note }}">Ver nota</a>
+        </div>
+      </header>
+      <sc-if value="{{ hasErr }}">
+        <div role="alert" style="border:2px solid var(--ink);border-radius:2px;padding:12px 16px;display:grid;gap:4px;font-size:15px;line-height:1.5">
+          <strong style="font-weight:600">Card não criado: lacuna vazia na linha {{ errLine }}</strong>
+          <span>A marcação <code style="font-family:'IBM Plex Mono',monospace;font-size:13px;border:1px solid var(--rule);padding:0 4px">{{ emptyCloze }}</code> não tem resposta. Escreva a resposta entre as chaves, como <code style="font-family:'IBM Plex Mono',monospace;font-size:13px;border:1px solid var(--rule);padding:0 4px">{{ exampleCloze }}</code>, ou apague a marcação. O resto da nota está salvo.</span>
+        </div>
+      </sc-if>
+      <div style="display:grid;grid-template-columns:{{ editCols }};border:1px solid var(--rule);border-radius:2px">
+        <section aria-label="Markdown" style="display:flex;flex-direction:column;min-width:0;border-right:{{ divR }};border-bottom:{{ divB }}">
+          <div style="font-size:13px;color:var(--soft);padding:8px 16px;border-bottom:1px solid var(--rule)">Markdown</div>
+          <textarea value="{{ src }}" onChange="{{ onSrc }}" spellCheck="{{ false }}" aria-label="Texto da nota em Markdown" style="flex:1;min-height:{{ taH }}px;width:100%;resize:vertical;border:none;padding:16px;background:var(--paper);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:15px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;outline-offset:-4px"></textarea>
+        </section>
+        <section aria-label="Pré-visualização" style="min-width:0">
+          <div style="font-size:13px;color:var(--soft);padding:8px 16px;border-bottom:1px solid var(--rule)">Pré-visualização</div>
+          <div style="padding:20px 24px 32px;font-family:'IBM Plex Serif',Georgia,serif;font-size:17px;line-height:1.65;max-width:680px">
+            <h1 style="margin:0 0 4px;font-size:28px;font-weight:500;line-height:1.25">Projeção escalar e vetorial</h1>
+            <div style="display:flex;flex-wrap:wrap;gap:4px 12px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;margin-bottom:16px"><a href="#" onClick="{{ go.tag }}">#projecao-vetorial</a><a href="#" onClick="{{ go.tag }}">#produto-escalar</a></div>
+            <p style="margin:0 0 16px">Dados dois vetores <k-tex tex="{{ tx.r }}"></k-tex> e <k-tex tex="{{ tx.s }}"></k-tex>, a projeção de <k-tex tex="{{ tx.s }}"></k-tex> sobre <k-tex tex="{{ tx.r }}"></k-tex> responde a uma pergunta geométrica: quanto de <k-tex tex="{{ tx.s }}"></k-tex> aponta na direção de <k-tex tex="{{ tx.r }}"></k-tex>?</p>
+            <h2 style="margin:24px 0 8px;font-size:21px;font-weight:600;line-height:1.3">Projeção escalar</h2>
+            <p style="margin:0 0 16px">Pela definição de produto escalar, <k-tex tex="{{ tx.dot }}"></k-tex>. A projeção escalar de <k-tex tex="{{ tx.s }}"></k-tex> sobre <k-tex tex="{{ tx.r }}"></k-tex> é <span style="border-bottom:1px dotted var(--soft)"><k-tex tex="{{ tx.sc }}"></k-tex></span>.</p>
+            <div style="margin:8px 0 20px"><k-tex display="true" tex="{{ tx.scD }}"></k-tex></div>
+            <h2 style="margin:24px 0 8px;font-size:21px;font-weight:600;line-height:1.3">Projeção vetorial</h2>
+            <p style="margin:0 0 16px">Multiplicando pelo vetor unitário <k-tex tex="{{ tx.unit }}"></k-tex>, a projeção vetorial de <k-tex tex="{{ tx.s }}"></k-tex> sobre <k-tex tex="{{ tx.r }}"></k-tex> é <sc-if value="{{ hasErr }}"><span style="font-family:'IBM Plex Mono',monospace;font-size:15px;border:2px solid var(--ink);border-radius:2px;padding:0 6px;white-space:nowrap">{{ emptyCloze }} lacuna vazia</span></sc-if><sc-if value="{{ noErr }}" hint-placeholder-val="{{ true }}"><span style="border-bottom:1px dotted var(--soft)"><k-tex tex="{{ tx.vec }}"></k-tex></span></sc-if>.</p>
+            <div style="margin:8px 0 20px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:12px 0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 16px">
+              <span style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--soft);padding-top:3px">Pergunta</span>
+              <span>Quando a projeção escalar de <k-tex tex="{{ tx.s }}"></k-tex> sobre <k-tex tex="{{ tx.r }}"></k-tex> é zero?</span>
+              <span style="font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--soft);padding-top:3px">Resposta</span>
+              <span>Quando os vetores são ortogonais, isto é, <k-tex tex="{{ tx.ortho }}"></k-tex>.</span>
+            </div>
+            <pre style="margin:0;padding:16px;border:1px solid var(--rule);border-radius:2px;overflow-x:auto;font-family:'IBM Plex Mono',monospace;font-size:15px;line-height:1.6"><code style="display:block"><sc-for list="{{ py }}" as="ln" hint-placeholder-count="10"><span style="display:block;white-space:pre;color:{{ ln.color }}">{{ ln.t }}</span></sc-for></code></pre>
+          </div>
+        </section>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sCourses }}">
+    <div style="max-width:880px;display:grid;gap:40px">
+      <header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 16px">
+        <h1 style="margin:0;font-size:28px;font-weight:500;line-height:1.2">Cursos</h1>
+        <button style="background:none;color:var(--ink);border:1px solid var(--ink);padding:8px 16px;min-height:44px;font-size:15px;font-weight:500;cursor:pointer;border-radius:2px">Novo curso</button>
+      </header>
+      <sc-for list="{{ tracks }}" as="tr" hint-placeholder-count="2">
+        <section style="display:grid;gap:0">
+          <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 16px;border-bottom:1px solid var(--ink);padding-bottom:8px">
+            <h2 style="margin:0;font-size:21px;font-weight:500;line-height:1.3">{{ tr.n }}</h2>
+            <span style="font-size:13px;color:var(--soft)">Especialização · {{ tr.count }}</span>
+          </div>
+          <ul style="list-style:none;margin:0;padding:0">
+            <sc-for list="{{ tr.courses }}" as="c" hint-placeholder-count="3"><li style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 16px;padding:14px 0;border-bottom:1px solid var(--rule)"><a href="#" onClick="{{ c.on }}" style="font-size:17px;font-weight:500">{{ c.n }}</a><span style="font-size:13px;color:var(--soft)">{{ c.meta }}</span></li></sc-for>
+          </ul>
+        </section>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sCourse }}">
+    <div style="max-width:880px;display:grid;gap:32px">
+      <header style="display:grid;gap:8px">
+        <div style="display:flex;flex-wrap:wrap;gap:4px 8px;font-size:13px;color:var(--soft)"><a href="#" onClick="{{ go.courses }}">Cursos</a><span aria-hidden="true">·</span><span>Matemática para machine learning</span></div>
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 16px">
+          <h1 style="margin:0;font-size:28px;font-weight:500;line-height:1.2">Álgebra linear</h1>
+          <button onClick="{{ addModule }}" style="background:none;color:var(--ink);border:1px solid var(--ink);padding:8px 16px;min-height:44px;font-size:15px;font-weight:500;cursor:pointer;border-radius:2px">Novo módulo</button>
+        </div>
+        <div style="font-size:13px;color:var(--soft)">{{ courseMeta }}</div>
+      </header>
+      <ol style="list-style:none;margin:0;padding:0;border-top:1px solid var(--ink)">
+        <sc-for list="{{ mods }}" as="m" hint-placeholder-count="5">
+          <li style="border-bottom:1px solid var(--rule)">
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;padding:6px 0">
+              <sc-if value="{{ m.isRen }}"><input value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onRenKey }}" onBlur="{{ commitRen }}" autoFocus="{{ true }}" aria-label="Novo nome do módulo" style="flex:1 1 240px;font-size:17px;padding:6px 8px;min-height:44px;border:1px solid var(--accent);background:var(--paper);color:var(--ink);border-radius:2px"></sc-if>
+              <sc-if value="{{ m.notRen }}"><button onClick="{{ m.onToggle }}" aria-expanded="{{ m.open }}" style="flex:1 1 240px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;text-align:left;background:none;border:none;padding:6px 0;min-height:44px;cursor:pointer;color:var(--ink)"><span aria-hidden="true" style="width:12px;color:var(--soft);font-size:13px">{{ m.arrow }}</span><span style="font-size:17px;font-weight:500">{{ m.num }}. {{ m.n }}</span><span style="font-size:13px;color:var(--soft)">{{ m.count }}</span></button></sc-if>
+              <div role="group" aria-label="Ações do módulo {{ m.n }}" style="display:flex;flex-wrap:wrap;gap:4px">
+                <button onClick="{{ m.onAdd }}" style="background:none;border:1px solid var(--rule);color:var(--ink);padding:4px 8px;min-height:32px;border-radius:2px;cursor:pointer;font-size:13px">Nova aula</button>
+                <button onClick="{{ m.onRename }}" style="background:none;border:1px solid var(--rule);color:var(--ink);padding:4px 8px;min-height:32px;border-radius:2px;cursor:pointer;font-size:13px">Renomear</button>
+                <button onClick="{{ m.onUp }}" disabled="{{ m.first }}" aria-label="Mover {{ m.n }} para cima" style="background:none;border:1px solid var(--rule);color:{{ m.upColor }};padding:4px 8px;min-width:32px;min-height:32px;border-radius:2px;cursor:pointer;font-size:13px">↑</button>
+                <button onClick="{{ m.onDown }}" disabled="{{ m.last }}" aria-label="Mover {{ m.n }} para baixo" style="background:none;border:1px solid var(--rule);color:{{ m.downColor }};padding:4px 8px;min-width:32px;min-height:32px;border-radius:2px;cursor:pointer;font-size:13px">↓</button>
+                <button onClick="{{ m.onArchive }}" style="background:none;border:1px solid var(--rule);color:var(--ink);padding:4px 8px;min-height:32px;border-radius:2px;cursor:pointer;font-size:13px">Arquivar</button>
+              </div>
+            </div>
+            <sc-if value="{{ m.open }}">
+              <ul style="list-style:none;margin:0;padding:0 0 12px 22px">
+                <sc-for list="{{ m.lessons }}" as="l">
+                  <li style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:6px 0;border-top:1px solid var(--rule)">
+                    <input type="checkbox" checked="{{ l.done }}" onChange="{{ l.onCheck }}" aria-label="Aula estudada: {{ l.n }}" style="width:18px;height:18px;margin:0;accent-color:var(--accent);cursor:pointer">
+                    <sc-if value="{{ l.isRen }}"><input value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onRenKey }}" onBlur="{{ commitRen }}" autoFocus="{{ true }}" aria-label="Novo nome da aula" style="flex:1 1 200px;font-size:15px;padding:4px 8px;min-height:36px;border:1px solid var(--accent);background:var(--paper);color:var(--ink);border-radius:2px"></sc-if>
+                    <sc-if value="{{ l.notRen }}"><a href="#" onClick="{{ l.onOpen }}" style="flex:1 1 200px;min-width:0;font-size:15px">{{ l.n }}</a></sc-if>
+                    <span style="font-size:13px;color:var(--soft)">{{ l.notesLabel }}</span>
+                    <div role="group" aria-label="Ações da aula {{ l.n }}" style="display:flex;gap:4px">
+                      <button onClick="{{ l.onRename }}" style="background:none;border:1px solid var(--rule);color:var(--ink);padding:2px 8px;min-height:32px;border-radius:2px;cursor:pointer;font-size:13px">Renomear</button>
+                      <button onClick="{{ l.onUp }}" disabled="{{ l.first }}" aria-label="Mover {{ l.n }} para cima" style="background:none;border:1px solid var(--rule);color:{{ l.upColor }};min-width:32px;min-height:32px;border-radius:2px;cursor:pointer;font-size:13px">↑</button>
+                      <button onClick="{{ l.onDown }}" disabled="{{ l.last }}" aria-label="Mover {{ l.n }} para baixo" style="background:none;border:1px solid var(--rule);color:{{ l.downColor }};min-width:32px;min-height:32px;border-radius:2px;cursor:pointer;font-size:13px">↓</button>
+                      <button onClick="{{ l.onArchive }}" style="background:none;border:1px solid var(--rule);color:var(--ink);padding:2px 8px;min-height:32px;border-radius:2px;cursor:pointer;font-size:13px">Arquivar</button>
+                    </div>
+                  </li>
+                </sc-for>
+                <sc-if value="{{ m.empty }}"><li style="padding:10px 0;border-top:1px solid var(--rule);font-size:15px">Módulo sem aulas. <button onClick="{{ m.onAdd }}" style="background:none;border:none;padding:0;color:var(--accent);cursor:pointer;font-size:15px">Criar a primeira aula</button></li></sc-if>
+              </ul>
+            </sc-if>
+          </li>
+        </sc-for>
+      </ol>
+      <sc-if value="{{ hasArchived }}">
+        <section style="display:grid;gap:4px">
+          <h2 style="margin:0;font-size:15px;font-weight:500;color:var(--soft)">Arquivados ({{ archivedCount }})</h2>
+          <ul style="list-style:none;margin:0;padding:0">
+            <sc-for list="{{ archivedV }}" as="a"><li style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 16px;padding:6px 0;border-bottom:1px solid var(--rule);font-size:15px;color:var(--soft)"><span>{{ a.label }}</span><button onClick="{{ a.onRestore }}" style="background:none;border:1px solid var(--rule);color:var(--ink);padding:2px 8px;min-height:32px;border-radius:2px;cursor:pointer;font-size:13px">Restaurar</button></li></sc-for>
+          </ul>
+        </section>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sLesson }}">
+    <div style="max-width:880px;display:grid;gap:32px">
+      <header style="display:grid;gap:10px">
+        <div style="display:flex;flex-wrap:wrap;gap:4px 8px;font-size:13px;color:var(--soft)"><a href="#" onClick="{{ go.course }}">Álgebra linear</a><span aria-hidden="true">·</span><span>{{ lesson.mod }}</span></div>
+        <h1 style="margin:0;font-size:28px;font-weight:500;line-height:1.2">{{ lesson.n }}</h1>
+        <div style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center">
+          <button onClick="{{ lesson.onToggle }}" aria-pressed="{{ lesson.done }}" style="background:none;color:var(--ink);border:1px solid var(--ink);padding:8px 16px;min-height:44px;font-size:15px;font-weight:500;cursor:pointer;border-radius:2px">{{ lesson.btn }}</button>
+          <span role="status" style="font-size:13px;color:var(--soft)">{{ lesson.status }}</span>
+        </div>
+      </header>
+      <section style="display:grid;gap:0">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 16px;border-bottom:1px solid var(--ink);padding-bottom:8px">
+          <h2 style="margin:0;font-size:21px;font-weight:500">Notas</h2>
+          <button onClick="{{ go.edit }}" style="background:var(--ink);color:var(--paper);border:none;padding:8px 16px;min-height:44px;font-size:15px;font-weight:500;cursor:pointer;border-radius:2px">Nova nota</button>
+        </div>
+        <sc-if value="{{ lesson.hasNotes }}">
+          <ul style="list-style:none;margin:0;padding:0">
+            <sc-for list="{{ lessonNotes }}" as="n" hint-placeholder-count="3"><li style="display:grid;gap:2px;padding:14px 0;border-bottom:1px solid var(--rule)"><span style="font-size:13px;color:var(--soft)">{{ n.kind }}</span><a href="#" onClick="{{ go.note }}" style="font-size:17px;font-weight:500">{{ n.title }}</a><span style="font-size:13px;color:var(--soft)">{{ n.meta }}</span></li></sc-for>
+          </ul>
+        </sc-if>
+        <sc-if value="{{ lesson.noNotes }}">
+          <p style="margin:16px 0 0;font-size:17px;max-width:60ch">Esta aula ainda não tem notas. Comece pela anotação da aula: <a href="#" onClick="{{ go.edit }}">escrever a primeira nota</a>.</p>
+        </sc-if>
+      </section>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sSearch }}">
+    <div style="max-width:760px;display:grid;gap:20px">
+      <h1 style="margin:0;font-size:28px;font-weight:500;line-height:1.2">Busca</h1>
+      <div role="search">
+        <label for="q" style="display:block;font-size:13px;color:var(--soft);margin-bottom:6px">Buscar em notas e cards</label>
+        <input id="q" type="search" value="{{ q }}" onChange="{{ onQ }}" style="width:100%;font-size:17px;padding:8px 12px;min-height:44px;border:1px solid var(--soft);background:var(--paper);color:var(--ink);border-radius:2px">
+      </div>
+      <p role="status" style="margin:0;font-size:13px;color:var(--soft)">{{ resultsLabel }}</p>
+      <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ true }}">
+        <ol style="list-style:none;margin:0;padding:0;border-top:1px solid var(--ink)">
+          <sc-for list="{{ results }}" as="r" hint-placeholder-count="5"><li style="display:grid;gap:4px;padding:16px 0;border-bottom:1px solid var(--rule)">
+            <span style="font-size:13px;color:var(--soft)">{{ r.type }} · {{ r.path }}</span>
+            <a href="#" onClick="{{ go.note }}" style="font-size:17px;font-weight:500"><sc-for list="{{ r.tp }}" as="p"><sc-if value="{{ p.h }}"><mark style="background:var(--rule);color:inherit;font-weight:600;padding:0 2px">{{ p.t }}</mark></sc-if><sc-if value="{{ p.n }}"><span>{{ p.t }}</span></sc-if></sc-for></a>
+            <p style="margin:0;font-family:'IBM Plex Serif',Georgia,serif;font-size:15px;line-height:1.6"><sc-for list="{{ r.xp }}" as="p"><sc-if value="{{ p.h }}"><mark style="background:var(--rule);color:var(--ink);font-weight:600;padding:0 2px">{{ p.t }}</mark></sc-if><sc-if value="{{ p.n }}"><span>{{ p.t }}</span></sc-if></sc-for></p>
+          </li></sc-for>
+        </ol>
+      </sc-if>
+      <sc-if value="{{ noResults }}"><p style="margin:0;font-size:17px">Nada encontrado para “{{ q }}”. Tente um termo mais curto ou abra o conceito <a href="#" onClick="{{ go.tag }}">#projecao-vetorial</a>.</p></sc-if>
+      <sc-if value="{{ noQuery }}"><p style="margin:0;font-size:17px">Digite um termo para buscar em todas as notas e cards. Acentos são opcionais.</p></sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sTag }}">
+    <div style="max-width:880px;display:grid;gap:32px">
+      <header style="display:grid;gap:6px">
+        <div style="font-size:13px;color:var(--soft)">Conceito</div>
+        <h1 style="margin:0;font-size:28px;font-weight:500;line-height:1.2">#projecao-vetorial</h1>
+        <div style="font-size:15px;color:var(--soft)">Citado em 3 notas e 5 cards</div>
+      </header>
+      <section>
+        <h2 style="margin:0;font-size:21px;font-weight:500;border-bottom:1px solid var(--ink);padding-bottom:8px">Notas</h2>
+        <ul style="list-style:none;margin:0;padding:0">
+          <sc-for list="{{ tagNotes }}" as="n" hint-placeholder-count="3"><li style="display:grid;gap:2px;padding:14px 0;border-bottom:1px solid var(--rule)"><span style="font-size:13px;color:var(--soft)">{{ n.kind }} · {{ n.path }}</span><a href="#" onClick="{{ go.note }}" style="font-size:17px;font-weight:500">{{ n.title }}</a></li></sc-for>
+        </ul>
+      </section>
+      <section>
+        <h2 style="margin:0;font-size:21px;font-weight:500;border-bottom:1px solid var(--ink);padding-bottom:8px">Cards</h2>
+        <ul style="list-style:none;margin:0;padding:0">
+          <sc-for list="{{ tagCards }}" as="c" hint-placeholder-count="5"><li style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 24px;padding:14px 0;border-bottom:1px solid var(--rule)">
+            <div style="flex:1 1 320px;min-width:0;font-family:'IBM Plex Serif',Georgia,serif;font-size:17px;line-height:1.55"><sc-for list="{{ c.face }}" as="p"><sc-if value="{{ p.isT }}"><span>{{ p.t }}</span></sc-if><sc-if value="{{ p.isM }}"><k-tex tex="{{ p.m }}"></k-tex></sc-if><sc-if value="{{ p.isB }}"><span style="border-bottom:2px solid var(--ink);padding:0 4px;color:var(--soft)">[…]</span></sc-if></sc-for></div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;font-size:13px;color:var(--soft)"><span style="border:1px solid var(--soft);padding:0 6px;border-radius:2px;color:var(--ink)">{{ c.state }}</span><a href="#" onClick="{{ go.note }}">{{ c.from }}</a></div>
+          </li></sc-for>
+        </ul>
+      </section>
+    </div>
+  </sc-if>
+
+  </main>
+</div>
+</sc-if>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const TH = {
+  light: { paper: '#FCFCFA', ink: '#16202B', soft: '#5A6B7B', rule: '#DDE3E8', accent: '#31688E' },
+  dark: { paper: '#11171D', ink: '#E8EDF1', soft: '#93A3B2', rule: '#2A353F', accent: '#6FA4CC' }
+};
+const TX = {
+  r: String.raw`\mathbf{r}`, s: String.raw`\mathbf{s}`,
+  dot: String.raw`\mathbf{r}\cdot\mathbf{s} = |\mathbf{r}|\,|\mathbf{s}|\cos\theta`,
+  adj: String.raw`|\mathbf{s}|\cos\theta`, nr: String.raw`|\mathbf{r}|`,
+  sc: String.raw`\frac{\mathbf{r}\cdot\mathbf{s}}{|\mathbf{r}|}`,
+  scD: String.raw`\operatorname{comp}_{\mathbf{r}}\mathbf{s} = \frac{\mathbf{r}\cdot\mathbf{s}}{|\mathbf{r}|} = |\mathbf{s}|\cos\theta`,
+  unit: String.raw`\mathbf{r}/|\mathbf{r}|`,
+  vec: String.raw`\frac{\mathbf{r}\cdot\mathbf{s}}{\mathbf{r}\cdot\mathbf{r}}\,\mathbf{r}`,
+  vecD: String.raw`\operatorname{proj}_{\mathbf{r}}\mathbf{s} = \frac{\mathbf{r}\cdot\mathbf{s}}{|\mathbf{r}|}\,\frac{\mathbf{r}}{|\mathbf{r}|} = \frac{\mathbf{r}\cdot\mathbf{s}}{\mathbf{r}\cdot\mathbf{r}}\,\mathbf{r}`,
+  ortho: String.raw`\mathbf{r}\cdot\mathbf{s} = 0`,
+  ex: String.raw`\mathbf{r} = (3, 4)`, nr5: String.raw`|\mathbf{r}| = 5`
+};
+TX.ex = String.raw`\mathbf{r} = (3, 4)` + ' ' + String.raw`\text{ e }\ \mathbf{s} = (2, 1)`;
+const P = (...xs) => xs.map(x => typeof x === 'string' ? { isT: true, t: x } : x.m ? { isM: true, m: x.m } : x.c ? { isC: true, c: x.c } : x.a ? { isA: true, m: x.a } : { isB: true });
+const VEC = String.raw`{{$\frac{\mathbf{r}\cdot\mathbf{s}}{\mathbf{r}\cdot\mathbf{r}}\,\mathbf{r}$::escalar vezes unitário}}`;
+const PYSRC = ['import numpy as np', '', 'r = np.array([3.0, 4.0])', 's = np.array([2.0, 1.0])', '', '# projeção escalar: 2.0', 'escalar = np.dot(r, s) / np.linalg.norm(r)', '', '# projeção vetorial: [1.2 1.6]', 'vetorial = (np.dot(r, s) / np.dot(r, r)) * r'];
+const SRC = String.raw`# Projeção escalar e vetorial
+
+#projecao-vetorial #produto-escalar
+
+Dados dois vetores $\mathbf{r}$ e $\mathbf{s}$, a projeção de $\mathbf{s}$ sobre $\mathbf{r}$ responde a uma pergunta geométrica: quanto de $\mathbf{s}$ aponta na direção de $\mathbf{r}$?
+
+## Projeção escalar
+
+Pela definição de produto escalar, $\mathbf{r}\cdot\mathbf{s} = |\mathbf{r}|\,|\mathbf{s}|\cos\theta$. A projeção escalar de $\mathbf{s}$ sobre $\mathbf{r}$ é {{$\frac{\mathbf{r}\cdot\mathbf{s}}{|\mathbf{r}|}$}}.
+
+$$
+\operatorname{comp}_{\mathbf{r}}\mathbf{s} = \frac{\mathbf{r}\cdot\mathbf{s}}{|\mathbf{r}|} = |\mathbf{s}|\cos\theta
+$$
+
+## Projeção vetorial
+
+Multiplicando pelo vetor unitário $\mathbf{r}/|\mathbf{r}|$, a projeção vetorial de $\mathbf{s}$ sobre $\mathbf{r}$ é ${VEC}.
+
+Q:: Quando a projeção escalar de $\mathbf{s}$ sobre $\mathbf{r}$ é zero?
+A:: Quando os vetores são ortogonais, isto é, $\mathbf{r}\cdot\mathbf{s} = 0$.
+
+## Em Python
+
+FENCEpython
+${PYSRC.join('\n')}
+FENCE
+`.split('FENCE').join('```');
+const SRC_ERR = SRC.split(VEC).join('{{}}');
+const PY = PYSRC.map(t => ({ t: t || '\u00a0', color: t.startsWith('#') ? 'var(--soft)' : 'var(--ink)' }));
+
+const DECK = [
+  { path: 'Álgebra linear · Projeções', cloze: true, q: P('A projeção escalar de ', { m: TX.s }, ' sobre ', { m: TX.r }, ' é ', { b: 1 }, '.'), a: P('A projeção escalar de ', { m: TX.s }, ' sobre ', { m: TX.r }, ' é ', { a: TX.sc }, '.') },
+  { path: 'Álgebra linear · Projeções', q: P('Quando a projeção escalar de ', { m: TX.s }, ' sobre ', { m: TX.r }, ' é zero?'), a: P('Quando os vetores são ortogonais: ', { m: TX.ortho }, '.') },
+  { path: 'Fundamentos de programação · Listas', q: P('Que expressão devolve a lista ', { c: 'xs' }, ' invertida sem modificá-la?'), a: P({ c: 'xs[::-1]' }) }
+];
+const NCARDS = [
+  { id: 'c1', ref: '1', kind: 'Lacuna', block: 2, face: P('A projeção escalar de ', { m: TX.s }, ' sobre ', { m: TX.r }, ' é ', { b: 1 }, '.'), due: 'Vence em 3 dias · 6 revisões' },
+  { id: 'c2', ref: '2', kind: 'Lacuna', block: 3, face: P('A projeção vetorial de ', { m: TX.s }, ' sobre ', { m: TX.r }, ' é ', { b: 1 }, '.'), due: 'Vence hoje · 2 revisões' },
+  { id: 'c3', ref: '3', kind: 'Pergunta', block: 3, face: P('Quando a projeção escalar de ', { m: TX.s }, ' sobre ', { m: TX.r }, ' é zero?'), due: 'Ainda não revisado' },
+  { id: 'c4', ref: '4', kind: 'Pergunta', block: 4, face: P('Que expressão NumPy dá a projeção vetorial de ', { c: 's' }, ' sobre ', { c: 'r' }, '?'), due: 'Suspenso desde 12 out.' }
+];
+const CORPUS = [
+  { type: 'Nota', title: 'Projeção escalar e vetorial', path: 'Álgebra linear · Projeções', text: 'Dados dois vetores r e s, a projeção de s sobre r responde a uma pergunta geométrica: quanto de s aponta na direção de r?' },
+  { type: 'Nota', title: 'Projeções em uma página', path: 'Álgebra linear · Projeções', text: 'Resumo: a projeção escalar é um número; a projeção vetorial é esse número vezes o vetor unitário de r.' },
+  { type: 'Card', title: 'A projeção escalar de s sobre r é […].', path: 'revisão · de Projeção escalar e vetorial', text: 'Resposta: (r · s) / |r|.' },
+  { type: 'Card', title: 'Quando a projeção escalar de s sobre r é zero?', path: 'novo · de Projeção escalar e vetorial', text: 'Resposta: quando os vetores são ortogonais, r · s = 0.' },
+  { type: 'Nota', title: 'Exercícios do quiz 2', path: 'Álgebra linear · Projeções', text: 'Questão 3: calcular com NumPy a projeção vetorial de s = (2, 1) sobre r = (3, 4); o resultado é (1.2, 1.6).' },
+  { type: 'Nota', title: 'Mudança de base com projeções', path: 'Álgebra linear · Mudança de base', text: 'Se a nova base é ortogonal, cada coordenada é a projeção escalar do vetor sobre um vetor da base.' },
+  { type: 'Nota', title: 'Fatiamento de listas', path: 'Fundamentos de programação · Listas', text: 'xs[::-1] devolve uma cópia invertida; xs.reverse() altera a lista no lugar e devolve None.' }
+];
+const RECENT = [
+  { title: 'Projeção escalar e vetorial', path: 'Álgebra linear · Projeções', when: 'há 2 h' },
+  { title: 'Exercícios do quiz 2', path: 'Álgebra linear · Projeções', when: 'ontem' },
+  { title: 'Fatiamento de listas', path: 'Fundamentos de programação · Listas', when: 'ontem' },
+  { title: 'Mudança de base com projeções', path: 'Álgebra linear · Mudança de base', when: 'sáb.' },
+  { title: 'Dicionários e contagem de palavras', path: 'Estruturas de dados em Python · Dicionários', when: 'qui.' }
+];
+const TRACKS = [
+  { n: 'Matemática para machine learning', courses: [{ n: 'Álgebra linear', live: true }, { n: 'Cálculo multivariado', meta: '6 módulos · 22 aulas · 3 estudadas' }, { n: 'Análise de componentes principais', meta: '4 módulos · 15 aulas · nenhuma estudada' }] },
+  { n: 'Python para todos', courses: [{ n: 'Fundamentos de programação', meta: '7 módulos · 21 aulas · todas estudadas' }, { n: 'Estruturas de dados em Python', meta: '7 módulos · 19 aulas · 11 estudadas' }, { n: 'Acesso a dados da web', meta: '6 módulos · 16 aulas · nenhuma estudada' }] }
+];
+const L = (id, n, done, notes) => ({ id, n, done, notes });
+const MODS = [
+  { id: 'm1', n: 'Introdução à álgebra linear', lessons: [L('l1', 'Motivação: ajuste de dados', true, 2), L('l2', 'Vetores e operações', true, 3)] },
+  { id: 'm2', n: 'Vetores', lessons: [L('l3', 'Módulo e produto escalar', true, 3), L('l4', 'Lei dos cossenos', true, 1), L('l5', 'Projeções', false, 3), L('l6', 'Mudança de base', false, 1), L('l7', 'Base e independência linear', false, 0)] },
+  { id: 'm3', n: 'Matrizes em álgebra linear', lessons: [L('l8', 'Matrizes que transformam vetores', false, 0), L('l9', 'Eliminação gaussiana', false, 0)] },
+  { id: 'm4', n: 'Matrizes como objetos', lessons: [L('l10', 'Composição de transformações', false, 0), L('l11', 'Mudança de base matricial', false, 0)] },
+  { id: 'm5', n: 'Autovalores e autovetores', lessons: [L('l12', 'A ideia geométrica', false, 0), L('l13', 'PageRank', false, 0)] }
+];
+const LESSON_NOTES = [
+  { kind: 'Anotação de aula', title: 'Projeção escalar e vetorial', meta: '4 cards · editada há 2 h' },
+  { kind: 'Resumo', title: 'Projeções em uma página', meta: '2 cards · editada há 3 dias' },
+  { kind: 'Resolução', title: 'Exercícios do quiz 2', meta: '3 cards · editada ontem' }
+];
+const TAG_NOTES = [
+  { kind: 'Anotação de aula', path: 'Álgebra linear · Projeções', title: 'Projeção escalar e vetorial' },
+  { kind: 'Resumo', path: 'Álgebra linear · Projeções', title: 'Projeções em uma página' },
+  { kind: 'Anotação de aula', path: 'Álgebra linear · Mudança de base', title: 'Mudança de base com projeções' }
+];
+const TAG_CARDS = [
+  { face: P('A projeção escalar de ', { m: TX.s }, ' sobre ', { m: TX.r }, ' é ', { b: 1 }, '.'), state: 'revisão', from: 'Projeção escalar e vetorial' },
+  { face: P('A projeção vetorial de ', { m: TX.s }, ' sobre ', { m: TX.r }, ' é ', { b: 1 }, '.'), state: 'aprendendo', from: 'Projeção escalar e vetorial' },
+  { face: P('Quando a projeção escalar de ', { m: TX.s }, ' sobre ', { m: TX.r }, ' é zero?'), state: 'novo', from: 'Projeção escalar e vetorial' },
+  { face: P('Projeção vetorial de ', { m: '(2, 1)' }, ' sobre ', { m: '(3, 4)' }, '?'), state: 'revisão', from: 'Exercícios do quiz 2' },
+  { face: P('Numa base ortogonal, cada coordenada é ', { b: 1 }, ' do vetor sobre o vetor da base.'), state: 'novo', from: 'Mudança de base com projeções' }
+];
+const SCREENS = [['review', 'Revisão'], ['note', 'Nota'], ['dash', 'Painel'], ['edit', 'Editor'], ['courses', 'Cursos'], ['course', 'Curso'], ['lesson', 'Aula'], ['search', 'Busca'], ['tag', 'Tag'], ['decisions', 'Decisões']];
+const TW = `:root {
+  --paper: #FCFCFA; --ink: #16202B; --ink-soft: #5A6B7B;
+  --rule: #DDE3E8; --accent: #31688E;
+  --rate-again: #440154; --rate-hard: #31688E;
+  --rate-good: #35B779; --rate-easy: #FDE725;
+}
+.dark {
+  --paper: #11171D; --ink: #E8EDF1; --ink-soft: #93A3B2;
+  --rule: #2A353F; --accent: #6FA4CC;
+}
+/* tailwind.config: colors → var(--…); fontSize: { xs:13, sm:15,
+   base:17, lg:21, xl:28, '2xl':38 }; fontFamily: Plex Sans/Serif/Mono */`;
+const fold = s => [...s].map(ch => (ch.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()[0]) || ch).join('');
+function hl(text, q) {
+  if (!q) return [{ n: true, t: text }];
+  const f = fold(text), fq = fold(q), out = []; let i = 0, j;
+  while ((j = f.indexOf(fq, i)) >= 0) { if (j > i) out.push({ n: true, t: text.slice(i, j) }); out.push({ h: true, t: text.slice(j, j + q.length) }); i = j + q.length; }
+  if (i < text.length) out.push({ n: true, t: text.slice(i) });
+  return out;
+}
+const hhmm = () => { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+
+class Component extends DCLogic {
+  stageRef = React.createRef();
+  state = (() => {
+    let s = {}; try { s = JSON.parse(localStorage.getItem('estudos-viewer') || '{}'); } catch (e) {}
+    return {
+      screen: s.screen || 'review', theme: s.theme || 'light', width: s.width || 1440,
+      rev: 'q', idx: 0, remaining: 46, hist: [], toast: '',
+      railPref: null, cardsOpen: false,
+      cardSt: { c1: 'revisão', c2: 'aprendendo', c3: 'novo', c4: 'suspenso' }, prevSt: { c4: 'revisão' }, dueOverride: {},
+      src: SRC, saving: false, savedAt: '18:42',
+      mods: MODS, open: { m2: true }, archived: [], renaming: null, draft: '', lessonId: 'l5',
+      q: 'projeção', limNew: 20, limRev: 200, limMsg: '', stageW: 1200
+    };
+  })();
+
+  componentDidMount() {
+    window.addEventListener('keydown', this.onKey);
+    if (this.stageRef.current) {
+      this.ro = new ResizeObserver(([e]) => this.setState({ stageW: e.contentRect.width }));
+      this.ro.observe(this.stageRef.current);
+    }
+  }
+  componentWillUnmount() { window.removeEventListener('keydown', this.onKey); this.ro && this.ro.disconnect(); }
+  componentDidUpdate() {
+    const { screen, theme, width } = this.state;
+    try { localStorage.setItem('estudos-viewer', JSON.stringify({ screen, theme, width })); } catch (e) {}
+  }
+
+  go = s => e => { e && e.preventDefault && e.preventDefault(); this.setState(st => ({ screen: s, rev: s === 'review' && st.rev !== 'empty' ? 'q' : st.rev })); window.scrollTo(0, 0); };
+  onKey = e => {
+    const s = this.state; if (s.screen !== 'review') return;
+    const tag = (e.target.tagName || '').toLowerCase(); if (tag === 'input' || tag === 'textarea') return;
+    if (e.key === 'Escape') { e.preventDefault(); this.go('dash')(); return; }
+    if (s.rev === 'empty') return;
+    if (e.key === ' ' && s.rev === 'q') { e.preventDefault(); this.reveal(); return; }
+    if (s.rev === 'a' && ['1', '2', '3', '4'].includes(e.key)) { e.preventDefault(); this.rate(); return; }
+    if (e.key === 'u' || e.key === 'U') this.undo();
+  };
+  reveal = () => this.setState({ rev: 'a', toast: '' });
+  rate = () => this.setState(s => ({ hist: s.hist.concat({ idx: s.idx, remaining: s.remaining }), idx: s.idx + 1, remaining: s.remaining - 1, rev: s.remaining - 1 <= 0 ? 'empty' : 'q', toast: '' }));
+  undo = () => {
+    const h = this.state.hist; if (!h.length) return;
+    const last = h[h.length - 1];
+    this.setState({ hist: h.slice(0, -1), idx: last.idx, remaining: last.remaining, rev: 'a', toast: 'Avaliação desfeita' });
+    clearTimeout(this._tt); this._tt = setTimeout(() => this.setState({ toast: '' }), 2500);
+  };
+
+  mut(fn) {
+    this.setState(s => {
+      const mods = s.mods.map(m => ({ ...m, lessons: m.lessons.slice() })), archived = s.archived.slice();
+      const extra = fn(mods, archived, s) || {};
+      return { mods, archived, ...extra };
+    });
+  }
+  swap(a, i, j) { if (j < 0 || j >= a.length) return; const t = a[i]; a[i] = a[j]; a[j] = t; }
+  startRen(id, n) { this.setState({ renaming: id, draft: n }); }
+  commitRen = () => {
+    const { renaming, draft } = this.state; if (!renaming) return;
+    this.mut(mods => {
+      mods.forEach(m => { if (m.id === renaming) m.n = draft.trim() || m.n; m.lessons = m.lessons.map(l => l.id === renaming ? { ...l, n: draft.trim() || l.n } : l); });
+      return { renaming: null };
+    });
+  };
+
+  renderVals() {
+    const s = this.state, w = s.width;
+    const isWide = w >= 1100, isMid = w >= 900 && w < 1100, isNarrow = w < 900;
+    const scr = s.screen;
+    const collapsed = !isNarrow && (s.railPref != null ? s.railPref : (isMid && scr === 'edit'));
+    const fw = w, fh = w === 1440 ? 900 : w === 900 ? 1000 : 812;
+    const zoom = Math.min(1, Math.max(0.2, (s.stageW - 8) / fw));
+    const vb = (act, on, l) => ({ l, on, act, bg: act ? '#16202B' : '#F4F6F7', fg: act ? '#FFFFFF' : '#16202B' });
+    const section = { dash: 'dash', review: 'review', search: 'search', tag: 'search' }[scr] || 'courses';
+    const nav = [['dash', 'Painel'], ['courses', 'Cursos'], ['review', 'Revisão'], ['search', 'Busca']].map(([id, l]) => ({
+      l, on: this.go(id), cur: section === id ? 'page' : undefined, count: id === 'review' ? '46' : '',
+      color: section === id ? 'var(--accent)' : 'var(--ink)', weight: section === id ? 500 : 400
+    }));
+
+    let vStates = [];
+    if (scr === 'review') vStates = [['q', 'Pergunta'], ['a', 'Resposta'], ['empty', 'Fila vazia']].map(([k, l]) => vb(s.rev === k, () => this.setState({ rev: k, remaining: k === 'empty' ? 0 : Math.max(s.remaining, 1) }), l));
+    const hasErrNow = s.src.includes('{{}}');
+    if (scr === 'edit') vStates = [vb(!hasErrNow, () => this.setState({ src: SRC }), 'Sem erro'), vb(hasErrNow, () => this.setState({ src: SRC_ERR }), 'Erro de lacuna')];
+    if (scr === 'note' && !isWide) vStates = [vb(s.cardsOpen, () => this.setState({ cardsOpen: !s.cardsOpen }), 'Cards abertos')];
+
+    const rc = DECK[s.idx % DECK.length];
+    const revealed = s.rev === 'a';
+
+    const cardV = c => {
+      const st = s.cardSt[c.id], sus = st === 'suspenso';
+      return { ...c, state: st, action: sus ? 'Retomar' : 'Suspender', line: sus ? 'dashed' : 'solid', faceColor: sus ? 'var(--soft)' : 'var(--ink)', due: s.dueOverride[c.id] || c.due,
+        onToggle: () => this.setState(x => sus
+          ? { cardSt: { ...x.cardSt, [c.id]: x.prevSt[c.id] || 'revisão' }, dueOverride: { ...x.dueOverride, [c.id]: 'Retomado agora' } }
+          : { cardSt: { ...x.cardSt, [c.id]: 'suspenso' }, prevSt: { ...x.prevSt, [c.id]: st }, dueOverride: { ...x.dueOverride, [c.id]: 'Suspenso agora' } }) };
+    };
+    const cards = NCARDS.map(cardV);
+
+    const lines = s.src.split('\n');
+    const errIdx = lines.findIndex(l => l.includes('{{}}'));
+
+    const total = s.mods.reduce((a, m) => a + m.lessons.length, 0), done = s.mods.reduce((a, m) => a + m.lessons.filter(l => l.done).length, 0);
+    const mods = s.mods.map((m, i) => ({
+      ...m, num: i + 1, open: !!s.open[m.id], arrow: s.open[m.id] ? '▾' : '▸',
+      count: m.lessons.length ? `${m.lessons.filter(l => l.done).length} de ${m.lessons.length} estudadas` : 'sem aulas',
+      isRen: s.renaming === m.id, notRen: s.renaming !== m.id, first: i === 0, last: i === s.mods.length - 1,
+      upColor: i === 0 ? 'var(--rule)' : 'var(--ink)', downColor: i === s.mods.length - 1 ? 'var(--rule)' : 'var(--ink)', empty: !m.lessons.length,
+      onToggle: () => this.setState(x => ({ open: { ...x.open, [m.id]: !x.open[m.id] } })),
+      onRename: () => this.startRen(m.id, m.n),
+      onUp: () => this.mut(ms => { this.swap(ms, i, i - 1); }), onDown: () => this.mut(ms => { this.swap(ms, i, i + 1); }),
+      onArchive: () => this.mut((ms, ar) => { const [x] = ms.splice(i, 1); ar.push({ kind: 'Módulo', item: x, pos: i }); }),
+      onAdd: () => { const id = 'n' + Date.now(); this.mut((ms, ar, st) => { ms[i].lessons.push(L(id, 'Nova aula', false, 0)); return { open: { ...st.open, [m.id]: true }, renaming: id, draft: 'Nova aula' }; }); },
+      lessons: m.lessons.map((l, j) => ({
+        ...l, notesLabel: l.notes === 1 ? '1 nota' : l.notes ? `${l.notes} notas` : 'sem notas',
+        isRen: s.renaming === l.id, notRen: s.renaming !== l.id, first: j === 0, last: j === m.lessons.length - 1,
+        upColor: j === 0 ? 'var(--rule)' : 'var(--ink)', downColor: j === m.lessons.length - 1 ? 'var(--rule)' : 'var(--ink)',
+        cur: s.lessonId === l.id && ['note', 'edit', 'lesson'].includes(scr) ? 'page' : undefined,
+        color: s.lessonId === l.id && ['note', 'edit', 'lesson'].includes(scr) ? 'var(--accent)' : 'var(--soft)',
+        weight: s.lessonId === l.id && ['note', 'edit', 'lesson'].includes(scr) ? 500 : 400,
+        onCheck: () => this.mut(ms => { ms[i].lessons[j] = { ...l, done: !l.done }; }),
+        onOpen: e => { e && e.preventDefault(); this.setState({ screen: 'lesson', lessonId: l.id }); },
+        onRename: () => this.startRen(l.id, l.n),
+        onUp: () => this.mut(ms => { this.swap(ms[i].lessons, j, j - 1); }), onDown: () => this.mut(ms => { this.swap(ms[i].lessons, j, j + 1); }),
+        onArchive: () => this.mut((ms, ar) => { const [x] = ms[i].lessons.splice(j, 1); ar.push({ kind: 'Aula', item: x, mid: m.id }); })
+      }))
+    }));
+    const archivedV = s.archived.map((a, k) => ({ label: `${a.kind} · ${a.item.n}`, onRestore: () => this.mut((ms, ar) => {
+      const [x] = ar.splice(k, 1);
+      if (x.kind === 'Aula') { const t = ms.find(mm => mm.id === x.mid) || ms[0]; t && t.lessons.push(x.item); } else ms.splice(Math.min(x.pos, ms.length), 0, x.item);
+    }) }));
+
+    let cl = null, cm = null;
+    s.mods.forEach((m, i) => m.lessons.forEach((l, j) => { if (l.id === s.lessonId) { cl = { l, i, j }; cm = m; } }));
+    const lesson = cl ? {
+      n: cl.l.n, mod: cm.n, done: cl.l.done, btn: cl.l.done ? 'Desmarcar como estudada' : 'Marcar como estudada',
+      status: cl.l.done ? 'Estudada hoje' : 'Ainda não estudada',
+      hasNotes: cl.l.id === 'l5', noNotes: cl.l.id !== 'l5',
+      onToggle: () => this.mut(ms => { ms[cl.i].lessons[cl.j] = { ...cl.l, done: !cl.l.done }; })
+    } : { n: 'Aula arquivada', mod: '', btn: 'Marcar como estudada', status: '', noNotes: true };
+
+    const q = s.q.trim();
+    const results = q ? CORPUS.filter(r => fold(r.title + ' ' + r.text).includes(fold(q))).map(r => ({ ...r, tp: hl(r.title, q), xp: hl(r.text, q) })) : [];
+
+    return {
+      vScreens: SCREENS.map(([id, l]) => vb(scr === id, () => this.setState(x => ({ screen: id, rev: id === 'review' && x.rev === 'empty' ? 'empty' : x.rev })), l)),
+      vStates, hasVStates: vStates.length > 0,
+      vThemes: [['light', 'Claro'], ['dark', 'Escuro']].map(([k, l]) => vb(s.theme === k, () => this.setState({ theme: k }), l)),
+      vWidths: [1440, 900, 375].map(k => vb(w === k, () => this.setState({ width: k }), k + 'px')),
+      zoomLabel: zoom < 1 ? `exibido a ${Math.round(zoom * 100)}%` : '',
+      stageRef: this.stageRef, twTokens: TW,
+      sDecisions: scr === 'decisions', showFrame: scr !== 'decisions',
+      t: TH[s.theme], fw, fh, zoom,
+      isReview: scr === 'review', notReview: scr !== 'review' && scr !== 'decisions',
+      revPad: isNarrow ? '16px 16px 20px' : '28px 56px 40px',
+      rc, remainingLabel: s.rev === 'empty' ? 'Fila concluída' : `Restam ${s.remaining}`,
+      revEmpty: s.rev === 'empty', revCard: s.rev !== 'empty', revQ: s.rev === 'q', revA: revealed,
+      face: revealed && rc.cloze ? rc.a : rc.q, hasAnswer: revealed && !rc.cloze, answer: rc.a,
+      revFoot: s.toast || (revealed ? 'u desfaz · esc sai' : 'esc sai'),
+      reveal: this.reveal, rate1: this.rate, rate2: this.rate, rate3: this.rate, rate4: this.rate,
+      studyAhead: e => { e.preventDefault(); this.setState({ rev: 'q', remaining: 12, idx: 0 }); },
+      go: Object.fromEntries(['dash', 'review', 'note', 'edit', 'courses', 'course', 'lesson', 'search', 'tag'].map(k => [k, k === 'lesson' ? (e => { e && e.preventDefault(); this.setState({ screen: 'lesson', lessonId: 'l5' }); }) : this.go(k)])),
+      shellDir: isNarrow ? 'column' : 'row', railSide: !isNarrow, railTop: isNarrow,
+      collapsed, expanded: !collapsed, railW: collapsed ? 48 : isWide ? 240 : 200, railPad: collapsed ? '20px 8px' : '24px 20px',
+      toggleRail: () => this.setState({ railPref: !collapsed }),
+      showTree: ['note', 'edit', 'course', 'lesson'].includes(scr),
+      treeMods: mods, nav,
+      toggleTheme: () => this.setState({ theme: s.theme === 'light' ? 'dark' : 'light' }),
+      themeLabel: s.theme === 'light' ? 'Tema escuro' : 'Tema claro',
+      mainPad: isWide ? '40px 56px 80px' : isMid ? '32px 32px 64px' : '20px 16px 56px',
+      sDash: scr === 'dash', sNote: scr === 'note', sEdit: scr === 'edit', sCourses: scr === 'courses', sCourse: scr === 'course', sLesson: scr === 'lesson', sSearch: scr === 'search', sTag: scr === 'tag',
+      recent: RECENT, limNew: s.limNew, limRev: s.limRev, limMsg: s.limMsg,
+      onLimNew: e => { this.setState({ limNew: e.target.value, limMsg: 'Salvo' }); },
+      onLimRev: e => { this.setState({ limRev: e.target.value, limMsg: 'Salvo' }); },
+      tx: TX, py: PY, isWide, notWide: !isWide,
+      noteCols: isWide ? 'minmax(0,68ch) 248px' : 'minmax(0,68ch)',
+      b2: cards.filter(c => c.block === 2), b3: cards.filter(c => c.block === 3), b4: cards.filter(c => c.block === 4), allCards: cards,
+      cardsOpen: s.cardsOpen, cardsArrow: s.cardsOpen ? '▾' : '▸', toggleCards: () => this.setState({ cardsOpen: !s.cardsOpen }),
+      src: s.src, hasErr: errIdx >= 0, noErr: errIdx < 0, errLine: errIdx + 1, emptyCloze: '{{}}', exampleCloze: '{{resposta}}',
+      saveText: s.saving ? 'Salvando…' : `Salvo ${s.savedAt}`,
+      onSrc: e => { const v = e.target.value; this.setState({ src: v, saving: true }); clearTimeout(this._sv); this._sv = setTimeout(() => this.setState({ saving: false, savedAt: hhmm() }), 900); },
+      editCols: w >= 900 ? 'minmax(0,1fr) minmax(0,1fr)' : 'minmax(0,1fr)',
+      divR: w >= 900 ? '1px solid var(--rule)' : 'none', divB: w >= 900 ? 'none' : '1px solid var(--rule)', taH: w >= 900 ? 720 : 420,
+      tracks: TRACKS.map(tr => ({ n: tr.n, count: `${tr.courses.length} cursos`, courses: tr.courses.map(c => ({ n: c.n, meta: c.live ? `${s.mods.length} módulos · ${total} aulas · ${done} estudadas` : c.meta, on: this.go('course') })) })),
+      courseMeta: `${s.mods.length} módulos · ${total} aulas · ${done} estudadas`,
+      mods, draft: s.draft, onDraft: e => this.setState({ draft: e.target.value }), commitRen: this.commitRen,
+      onRenKey: e => { if (e.key === 'Enter') { e.preventDefault(); this.commitRen(); } if (e.key === 'Escape') this.setState({ renaming: null }); },
+      addModule: () => { const id = 'nm' + Date.now(); this.mut(ms => { ms.push({ id, n: 'Novo módulo', lessons: [] }); return { renaming: id, draft: 'Novo módulo' }; }); },
+      hasArchived: s.archived.length > 0, archivedCount: s.archived.length, archivedV,
+      lesson, lessonNotes: LESSON_NOTES,
+      q: s.q, onQ: e => this.setState({ q: e.target.value }), results,
+      hasResults: results.length > 0, noResults: !!q && !results.length, noQuery: !q,
+      resultsLabel: q ? (results.length === 1 ? '1 resultado' : `${results.length} resultados`) + ` para “${q}” em notas e cards` : '',
+      tagNotes: TAG_NOTES, tagCards: TAG_CARDS
+    };
+  }
+}
+</script>
+</body>
+</html>

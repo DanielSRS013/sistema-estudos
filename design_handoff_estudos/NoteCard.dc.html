@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<article id="{{ card.id }}" style="border:1px solid var(--rule);border-radius:2px;padding:12px;display:grid;gap:8px;font-family:'IBM Plex Sans',system-ui,sans-serif;background:var(--paper);color:var(--ink)">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--soft)">
+    <span>{{ card.ref }} · {{ card.kind }}</span>
+    <span style="border:1px {{ card.line }} var(--soft);padding:0 6px;border-radius:2px;color:var(--ink)">{{ card.state }}</span>
+  </div>
+  <div style="font-family:'IBM Plex Serif',Georgia,serif;font-size:15px;line-height:1.5;color:{{ card.faceColor }}">
+    <sc-for list="{{ card.face }}" as="p"><sc-if value="{{ p.isT }}"><span>{{ p.t }}</span></sc-if><sc-if value="{{ p.isM }}"><k-tex tex="{{ p.m }}"></k-tex></sc-if><sc-if value="{{ p.isC }}"><code style="font-family:'IBM Plex Mono',monospace">{{ p.c }}</code></sc-if><sc-if value="{{ p.isB }}"><span style="border-bottom:2px solid var(--ink);padding:0 4px;color:var(--soft)">[…]</span></sc-if></sc-for>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 8px;font-size:13px;color:var(--soft)">
+    <span>{{ card.due }}</span>
+    <button onClick="{{ card.onToggle }}" style="background:none;border:1px solid var(--rule);border-radius:2px;padding:4px 10px;min-height:32px;cursor:pointer;color:var(--ink);font-size:13px">{{ card.action }}</button>
+  </div>
+</article>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:260,&quot;height&quot;:180},&quot;card&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;object&quot;}}"></script>
+</body>
+</html>
