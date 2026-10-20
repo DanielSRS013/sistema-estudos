@@ -9,6 +9,12 @@ cada uma cumpre algo que o `SPEC.md` promete ou dá caminho a uma coluna do
 schema que nenhuma interface alcança. Nenhuma delas é feature nova — o que é
 feature nova está no Backlog.
 
+As fatias 12 a 17 saíram de uma varredura do front end em 20/10/2026, depois da
+Fatia 11: são desvios entre o que a §6 do SPEC escreve e o que o código faz, e
+duplicação que já é de duas features e foi copiada em vez de subir. Também não
+são feature nova. Cada apontamento abaixo foi conferido por grep na data da
+varredura — se um número não bater mais, confira antes de executar.
+
 ---
 
 ## Fatia 0 — Fundação
@@ -254,6 +260,170 @@ cards da nota continuam alcançáveis.
 
 ---
 
+## Fatia 12 — Escala tipográfica vinda do token
+
+SPEC §6 fixa a escala em 13 / 15 / 17 / 21 / 28 / 38px, e `globals.css` tem os
+seis degraus como `--text-xs` … `--text-3xl`. Dez lugares escrevem o pixel
+direto: `app/page.tsx:25,68,108`, `notes/components/note-forms.tsx:82`,
+`review/components/limits-form.tsx:105`,
+`review/components/session.tsx:66,69,239,246,255`. Hoje todos coincidem com a
+escala; o problema é que não passam pelo token e vão derivar na próxima tela.
+`leading-[1.65]` aparece em onze arquivos pelo mesmo motivo.
+
+Agravante: `globals.test.ts` trava cor, serif, entrelinha e os dois
+breakpoints, e **nenhum** dos seis tamanhos. A escala é a única parte da §6 sem
+rede.
+
+- Trocar os `text-[Npx]` pelos utilitários da escala.
+- A tipografia da face do card (28 / 21 / 1,35 / 1,5) desce para regras de
+  `.card-face` em `globals.css`, onde a face já mora: o componente escolhe o
+  degrau, não o valor.
+- O parágrafo que imita o corpo da nota (serif 17px / 1,65, repetido em onze
+  arquivos) vira um utilitário único em `globals.css`.
+- `globals.test.ts` ganha os seis degraus e uma varredura de `src/app` e
+  `src/features` que reprova `text-[`, `leading-[` e hex cru em `className`.
+  `src/shared/ui` fica de fora: é saída do registry do shadcn.
+
+**Pronto quando:** a varredura por valor arbitrário em `src/app` e
+`src/features` não devolve nada, o teste novo falha se um deles voltar, e
+`pnpm check` passa com a saída colada.
+
+---
+
+## Fatia 13 — Um idioma de foco, visível de verdade
+
+SPEC §6 pede foco de teclado sempre visível e contraste mínimo 4.5:1. Não há
+foco ausente — há dois idiomas, e o majoritário é fraco: 20 sites usam
+`focus-visible:ring-3 focus-visible:ring-accent/30`, que a 30% de alpha sobre
+`--paper` fica perto de 1,3:1. Três usam anel sólido com offset
+(`app/page.tsx:62`, `review/components/session.tsx:262,290`) — esse se enxerga.
+
+- Um utilitário de foco em `globals.css`, no idioma do anel sólido.
+- Os 20 sites do idioma fraco passam a usá-lo; as strings somem dos
+  componentes.
+- Links que hoje herdam o anel do agente de usuário entram no mesmo utilitário.
+
+**Pronto quando:** `focus-visible:` só aparece no utilitário, o contraste do
+anel contra `--paper` nos dois temas está calculado e anotado no commit (≥3:1),
+e percorrer as nove rotas só de `Tab` mostra foco em todo controle.
+
+---
+
+## Fatia 14 — O que já é de duas features sobe de verdade
+
+CLAUDE.md manda subir para `src/shared/` o que duas features usam — e mover de
+verdade. Quatro coisas foram copiadas:
+
+- `type Action` em quatro cópias idênticas: `courses/components/forms.tsx:22`,
+  `notes/components/note-forms.tsx:13`,
+  `cards/components/suspend-button.tsx:10`,
+  `review/components/limits-form.tsx:13`. É o par natural de
+  `shared/action-state.ts`.
+- Componente `Erro` em `forms.tsx:27` e `note-forms.tsx:21`, reescrito inline
+  em `suspend-button.tsx`, `limits-form.tsx` e `editor.tsx`.
+- Classe de campo de formulário, string idêntica em `note-forms.tsx:19` e
+  `limits-form.tsx:16`, repetida inline em `forms.tsx`, `search/page.tsx` e
+  `editor.tsx`.
+- `Badge`, definido em `cards/components/card-item.tsx` e reescrito inline em
+  `app/courses/page.tsx`, `app/courses/[courseSlug]/page.tsx` e
+  `app/lessons/[lessonId]/page.tsx`.
+
+A CTA do painel (`app/page.tsx:62`) é o único botão do app feito à mão em vez
+de `buttonVariants`; entra junto.
+
+**Pronto quando:** cada um dos cinco itens tem exatamente uma definição, nada
+subiu com um consumidor só, e as telas de curso, aula e nota saem idênticas —
+é a mesma marcação.
+
+---
+
+## Fatia 15 — Breakpoints do SPEC e o painel dentro da casca
+
+SPEC §6 nomeia 900px e 1100px, e `globals.css` tem os dois tokens. Mas a troca
+de layout da casca acontece em `md:` (768px, padrão do Tailwind):
+`shared/shell.tsx:21,26` e `courses/components/rail.tsx:122,141`. Entre 768 e
+900px já há rail de 256px ao lado da coluna, exatamente a faixa que a §6 não
+pede.
+
+A Fatia 11 deixou um resto aqui: a página da nota monta a coluna de margem à
+mão, e o 1100px vive nela em vez de viver na casca.
+
+- `shell.tsx` e `rail.tsx` passam a usar o breakpoint de 900px.
+- `Shell` ganha um slot opcional de margem e passa a conter a regra dos 1100px;
+  `app/notes/[noteId]/page.tsx` deixa de montar a coluna.
+- `/` entra na `Shell` com o rail. Hoje monta o próprio `<main>` sem rail,
+  apesar de o rail marcar `/` como destino ativo. A §6 declara **uma** exceção
+  deliberada, `/review`; `/entrar` tem razão própria, por ser pré-login.
+- **Decisão antes de executar:** `globals.test.ts` trava o nome
+  `--breakpoint-editor`. Ou se acrescenta um segundo nome para o mesmo valor,
+  ou se renomeia para um nome neutro e o teste muda no mesmo commit. Renomear é
+  melhor, para não deixar dois nomes para um número — mas mexe em teste, e a
+  regra 5 pede justificativa antes, não depois.
+
+**Pronto quando:** a 899px o rail está acima da coluna e a 901px ao lado, nas
+duas direções do resize; nenhum `md:` resta decidindo layout; o breakpoint
+`cards` só aparece em `globals.css` e `shell.tsx`; `/review` e `/entrar` são as
+únicas rotas fora da `Shell`.
+
+---
+
+## Fatia 16 — Piso de qualidade: 375px e contraste
+
+SPEC §6 fecha com responsivo até 375px e contraste mínimo 4.5:1. Quatro
+defeitos concretos:
+
+- **KaTeX inline não tem guarda de overflow.** `globals.css:343,380` tratam só
+  `.katex-display`. Nem `.note-prose` nem `.card-face` têm `overflow-wrap`, e o
+  exemplo do próprio SPEC §3.1 é fórmula inline — a 28px na face do card o
+  risco é maior.
+- `app/page.tsx:120`: título da nota recente sem `truncate` nem quebra, ao lado
+  de um irmão que tem. Palavra longa transborda a 375px.
+- `review/components/session.tsx:293`: atalho de teclado em `opacity-80` sobre
+  as paradas do viridis dá cerca de 3,8:1 a 13px — abaixo do piso. Tirar a
+  opacidade resolve.
+- `globals.css:375-378`: `.card-face :is(ul, ol)` força `list-style: disc`, e
+  lista ordenada na face do card sai com bolinhas.
+
+Esta fatia também fecha a verificação que a Fatia 11 não conseguiu fazer: os
+cards da nota alcançáveis a 375px pela seção recolhida.
+
+**Pronto quando:** uma nota com fórmula inline longa e outra com palavra de 60
+caracteres não produzem rolagem horizontal a 375px nos dois temas, o atalho
+sobre as quatro paradas é recalculado e fecha 4.5:1, e lista ordenada na face
+do card sai numerada.
+
+---
+
+## Fatia 17 — Tokens mortos e decisões escritas
+
+`globals.css:53-57` aliasa as quatro paradas do viridis como `--chart-1…5` e
+inventa uma quinta cor saturada, `#1f9e89`, que não existe na §6 — dois
+comentários acima, o próprio arquivo diz para não reaproveitar as paradas em
+decoração. Nenhum gráfico existe no app e o Backlog mantém visualização fora da
+v1: são tokens mortos que convidam ao erro.
+
+- Remover `--chart-*` e o sexto tom, com teste em `globals.test.ts` de que as
+  paradas não voltam a ser aliasadas para decoração.
+- `app/search/page.tsx:22` usa `--accent` como preenchimento de `<mark>`; a §6
+  reserva o accent a links, foco e estado ativo. Trocar, ou escrever a exceção.
+- **Decisão:** `--destructive` é cor carregando informação fora do viridis. Na
+  prática está mitigado — todo erro tem `role="alert"` e texto, nunca só cor —
+  mas é exceção não escrita. Ou vira uma linha de decisão no `globals.css`, ou
+  sai.
+- `shared/ui/button.tsx` aplica `transition-all` a todo botão e `globals.css:2`
+  importa `tw-animate-css` sem nenhum uso, contra o "movimento só responde a
+  ação do usuário" da §6. Os dois vêm do registry: anotar que ali é território
+  de terceiro. Remover o import de animação é seguro; editar `button.tsx` à mão
+  quebra o próximo `shadcn add`.
+- `app/courses/page.tsx:114`: a sobrancelha diz "fatia 1 — casca navegável".
+  Processo de desenvolvimento não é texto de interface (§6, Escrita).
+
+**Pronto quando:** nenhum token de gráfico resta, nenhuma cor fora do viridis
+carrega informação sem uma linha escrita dizendo por quê, e nenhuma tela mostra
+vocabulário de processo.
+
+---
+
 ## Backlog — fora da v1, não implemente
 
 Registrado para não virar escopo acidental:
@@ -278,3 +448,14 @@ Registrado para não virar escopo acidental:
   `reviews`, mas nem SPEC nem PLAN pedem visualização.
 - Mover o bloco "Mover" do fim da coluna de leitura da nota. É gosto, não
   dívida.
+- Rail em gaveta sobreposta no telefone. SPEC §6 pede rail colapsável, não
+  drawer.
+- Controle de tema em `/review`. A §6 e a Fatia 7 proíbem interface no modo
+  foco.
+- Página ou rota de configurações. SPEC §5 não a tem — por isso os limites
+  diários moram num canto discreto do painel.
+- Rota de showcase, design system navegável ou Storybook.
+- Plugin de tipografia do Tailwind, ou regra de ESLint que trave classe
+  arbitrária. As duas exigem dependência nova; por isso as travas das Fatias 12
+  e 17 são teste de Vitest varrendo a árvore.
+- Troca da família de ícones ou do registry de componentes.
