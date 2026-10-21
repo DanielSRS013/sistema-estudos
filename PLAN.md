@@ -17,9 +17,19 @@ um idioma de foco, medidas de cada tela. Onde o handoff dá número e a §6 cala
 handoff manda, e a §6 é atualizada no mesmo commit que aplica o valor. Estas
 fatias absorvem a varredura de front end de 20/10/2026 (as antigas 12 a 17):
 nenhum apontamento dela se perdeu, cada um reaparece na fatia que reconstrói
-aquela camada ou tela. Também não são feature nova. Cada apontamento foi
-conferido por grep em 20/10/2026 — se um número não bater mais, confira antes de
+aquela camada ou tela. Também não são feature nova.
+
+A fatia 12 está entregue, e as fatias 13 a 22 foram reconferidas contra o código
+em 21/10/2026, depois dela: apontamento já cumprido saiu, linha deslocada foi
+corrigida, e a dívida que a própria fatia 12 deixou atrás de si entrou na fatia
+que já abre aquele arquivo. Se um número não bater mais, confira antes de
 executar.
+
+O pacote de design ganhou um fork `Estudos v2.dc.html` — direção mais acolhedora,
+gráficos, sessões de estudo, planejamento semanal, progresso por matéria. O
+próprio README do handoff diz que essa direção visual **não está definida** e que
+a v1 segue sendo a referência final: nenhuma fatia abaixo olha para a v2, e o que
+ela mostra de novo é feature nova, não dívida.
 
 ---
 
@@ -311,35 +321,63 @@ mais de 2px — conferido no navegador com o dev server reiniciado.
 O handoff fixa **um** foco global:
 `:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }`.
 Hoje há dois idiomas e o majoritário é fraco: `focus-visible:ring-3
-ring-accent/30` em cerca de 20 sites (`rail.tsx:30,210,274`, `sign-out.tsx:9`,
-`theme-toggle.tsx:106` entre outros) — a 30% de alpha fica perto de 1,3:1.
-`globals.css:179` ainda aplica `outline-ring/50`.
+ring-accent/30` em 24 linhas de 14 arquivos, 80 utilitários somados — a 30% de
+alpha fica perto de 1,3:1. O outro, `outline-2 outline-offset-2 outline-accent`,
+aparece em três linhas (`app/page.tsx:62`, `session.tsx:262`, `:290`).
+`globals.css:177` ainda aplica `outline-ring/50`.
 
 - Regra global de foco em `globals.css`; as strings `focus-visible:` saem dos
-  componentes.
+  componentes. Três das 24 linhas já são constante de módulo (`rail.tsx:29-30`,
+  `limits-form.tsx:15-16`, `note-forms.tsx:18-19`), então são oito receitas a
+  apagar, não 24.
 - Tirar o movimento que o handoff não tem: `transition-all` e
-  `active:...translate-y-px` em `shared/ui/button.tsx:6`, e o import de
-  `tw-animate-css` em `globals.css:2`, sem uso. `button.tsx` é saída do registry
-  do shadcn — anotar no commit que ali é território de terceiro.
-- Trocar pelos utilitários da escala os pixels escritos à mão, hoje coincidentes
-  mas fora do token: `app/page.tsx:25,68,108`,
-  `notes/components/note-forms.tsx:82`, `review/components/limits-form.tsx:105`,
-  `review/components/session.tsx:66,239,246,255`.
-- Dois estão **fora** da escala e mudam de valor: `shared/ui/button.tsx:25`
-  `text-[0.8rem]` (12,8px) e `session.tsx:239` `leading-[1.35]` — a face do card
-  é 28/1,45 no handoff.
-- `leading-[1.65]` repetido em oito arquivos (`entrar/page.tsx:74`,
-  `notes/[noteId]/page.tsx:93`, `tags/[tagSlug]/page.tsx:35`,
-  `search/page.tsx:61,87,115`, `lessons/[lessonId]/page.tsx:113`) vira um
-  utilitário único em `globals.css`, ao lado de `.note-prose`.
+  `active:not-aria-[haspopup]:translate-y-px` em `shared/ui/button.tsx:6`, e o
+  import de `tw-animate-css` em `globals.css:2` — zero classes `animate-*` em
+  `src`. `button.tsx` é saída do registry do shadcn: anotar no commit que ali é
+  território de terceiro.
+- **Dívida que a Fatia 12 deixou, no mesmo arquivo.** `button.tsx:6` e `:17-18`
+  ainda consomem `destructive` (`aria-invalid:border-destructive`,
+  `ring-destructive/20`, `bg-destructive/10`, `text-destructive` e quatro
+  variantes `dark:`), e `--destructive` foi removido — `globals.test.ts:74-75`
+  trava a ausência. Não quebra build nem lint (utilitário desconhecido no
+  Tailwind v4 é descartado em silêncio fora de `@apply`, a variante nunca é
+  usada, nada seta `aria-invalid`), mas é CSS morto apontando para token que não
+  existe. Remover a variante `destructive` e as cadeias `aria-invalid:` de cor. O
+  erro fala por marcação — borda 2px `--ink`, `role="alert"`, texto —, como o
+  handoff desenha o alerta do editor.
+- Trocar pelos utilitários da escala os pixels escritos à mão. Desde a Fatia 12
+  os seis degraus têm nome, então é substituição mecânica: `app/page.tsx:25`
+  (38), `:68`, `:108` (17), `note-forms.tsx:82` (17), `limits-form.tsx:105` (15),
+  `session.tsx:66,239` (28), `:246` (21), `:255`, `:69` (17).
+- Dois mudam de valor, não de notação: `button.tsx:25` `text-[0.8rem]` (12,8px,
+  o único tamanho realmente fora da escala) e `session.tsx:239` `leading-[1.35]`
+  — a face do card é 28/1,45 no handoff e na §6.
+- `leading-[1.65]` está em doze arquivos (`app/page.tsx:68,108`,
+  `entrar/page.tsx:74`, `search/page.tsx:61,87,115`,
+  `lessons/[lessonId]/page.tsx:113`, `notes/[noteId]/page.tsx:93`,
+  `tags/[tagSlug]/page.tsx:35`, `note-forms.tsx:82`, `limits-form.tsx:105`,
+  `session.tsx:69`) e onze delas são o mesmo parágrafo serif em `--ink-soft`:
+  vira um utilitário em `globals.css`, ao lado de `measure` (`:171-173`). O nome
+  não pode começar por `--text-`: `globals.test.ts:123-128` fecha esse conjunto
+  nos seis degraus.
 - `globals.test.ts` ganha a regra de foco e uma varredura de `src/app` e
   `src/features` que reprova `text-[`, `leading-[` e hex cru em `className`.
-  `src/shared/ui` fica de fora: é saída do registry.
+  `src/shared/ui` fica de fora: é saída do registry. A varredura **não** proíbe
+  valor arbitrário em geral — as Fatias 19 e 22 precisam de medidas do handoff
+  fora da escala do Tailwind (248, 680, 760, 880px), e o lugar delas é
+  `globals.css`. Hoje não há nenhum hex cru em `className` nem nenhum
+  `p-[`/`m-[`/`gap-[`/`w-[`/`h-[` em `src/app` e `src/features`: essa parte da
+  trava é preventiva.
+- Ficam para depois, de propósito, as três únicas dimensões arbitrárias:
+  `max-w-[46rem]` (`session.tsx:219`) é a coluna de revisão, que a Fatia 15 leva
+  a 720px, e `min-h-[24rem]` (`editor.tsx:181,206`) é o textarea, que a Fatia 17
+  leva a 720/420px. Consertar aqui seria consertar duas vezes.
 
 **Pronto quando:** `focus-visible:` só aparece no utilitário global, a varredura
-por valor arbitrário não devolve nada, percorrer as nove rotas só de `Tab` mostra
-o mesmo anel sólido em todo controle, e o contraste do anel contra `--paper` nos
-dois temas está calculado e anotado no commit (≥3:1).
+por `text-[`, `leading-[` e hex em `className` não devolve nada, `destructive`
+não aparece mais em `src/shared/ui/button.tsx`, percorrer as nove rotas só de
+`Tab` mostra o mesmo anel sólido em todo controle, e o contraste do anel contra
+`--paper` nos dois temas está calculado e anotado no commit (≥3:1).
 
 ---
 
@@ -350,46 +388,60 @@ tem três, e o rail é outro desenho.
 
 - Breakpoints: `shell.tsx:21,26,34` e `rail.tsx:122,141` trocam `md:` pelos
   900px do handoff — entre 768 e 900 há hoje rail de 256px ao lado da coluna,
-  faixa que a §6 não pede. **Decisão antes de executar:** `globals.test.ts:87`
-  trava o nome `--breakpoint-editor`, que a casca não usa. Renomear para um nome
-  neutro de faixa é melhor que deixar dois nomes para um número, mas mexe em
-  teste: a justificativa vai escrita no commit, antes da alteração (regra 5).
+  faixa que a §6 não pede. O `sm:px-8` de `shell.tsx:34` é padding, não layout.
+- **Decisão antes de executar:** os 900px já existem como `--breakpoint-editor`
+  (`globals.css:115`), travado por `globals.test.ts:175`, e **com três
+  consumidores** — `editor.tsx:157,181,206`. O nome está certo para o editor e
+  errado para a casca, que passa a usar o mesmo número. Renomear para um nome
+  neutro de faixa (`--breakpoint-rail` diz o que 900px significa no handoff: rail
+  ao lado) custa quatro edições, uma delas em teste: a justificativa vai escrita
+  no commit, antes da alteração (regra 5).
 - Três degraus de padding de conteúdo, hoje todos errados em `shell.tsx:34`
   (`px-4 py-6 sm:px-8`): 40/56/80 em ≥1100, 32/32/64 em 900–1099, 20/16/56
   abaixo de 900.
-- Rail: largura 240px em ≥1100 e 200px em 900–1099, em lugar de `md:w-64`
-  (`rail.tsx:141` e o fallback do Suspense em `shell.tsx:26`); recolhido 48px já
-  confere, mas o padding vai a 20px 8px; expandido 24px 20px, coluna com gap
-  28px.
+- Rail: largura 240px em ≥1100 e 200px em 900–1099, em lugar de `md:w-64`, que
+  está literal em dois lugares sem constante compartilhada (`rail.tsx:141` e o
+  fallback do Suspense em `shell.tsx:26`); recolhido 48px já confere
+  (`rail.tsx:122`), mas o padding vai a 20px 8px; expandido 24px 20px, coluna com
+  gap 28px.
 - Glifos de texto no lugar dos ícones lucide, que o handoff proíbe:
   `PanelLeftOpen` → **»** com `aria-label="Expandir menu"` em botão 32×32 e
   borda 1px `--rule` (`rail.tsx:132`); `PanelLeftClose` → link de texto
   **Recolher** 13px soft (`:169`); `ChevronDown`/`ChevronRight` → **▾**/**▸**
-  (`:201,204,245,248`). Some o import de `lucide-react` (`:3-8`).
-- Marca **Estudos** (Sans 15/600) no topo do rail — não existe em lugar nenhum.
+  (`:201,203,245,247`). Some o import de `lucide-react` (`:3-8`).
+- Marca **Estudos** (Sans 15/600) no topo do rail — não existe em lugar nenhum;
+  "Estudos" só aparece no metadata (`layout.tsx:35`).
 - Nav: rótulos capitalizados **Painel · Cursos · Revisão · Busca** nessa ordem
   (hoje minúsculos e em outra ordem, `rail.tsx:22-27`), Sans 15px em vez de
-  `font-mono text-xs` (`:30`), ativo em `--accent` peso 500 — hoje só muda de cor
-  (`:153`). O `aria-current="page"` já está certo.
+  `font-mono text-xs` (`:29-30` — o tamanho já é 13px desde a Fatia 12, o que
+  muda é família e peso), ativo em `--accent` peso 500 — hoje só muda de cor
+  (`:153`). O `aria-current="page"` já está certo (`:152,208,270-272`).
+  **De brinde:** o teste de ativo é igualdade exata (`:146`), então
+  `/courses/<slug>` não acende "Cursos". Decidir no commit se a árvore do curso
+  compensa ou se o teste passa a ser por prefixo.
 - Contagem de revisão (13px soft) ao lado de "Revisão": não há caminho hoje,
-  `fetchRail()` (`course-rail.tsx:10`) só traz a árvore. Reusar a contagem que o
-  painel já lê em `features/review/queries.ts`, sem consulta nova.
-- Árvore do curso: hoje lista **todos** os cursos em **todas** as rotas a 15px
-  (`rail.tsx:182-296`) → 13px, só nas telas de curso, nota, aula e editor, e só
-  do curso atual.
-- Rodapé: `margin-top:auto`, sem filete (hoje `border-t`, `rail.tsx:299`), itens
-  empilhados (hoje lado a lado, `course-rail.tsx:16`). O tema vira **um** botão
-  "Tema escuro"/"Tema claro" 13px soft em lugar dos três botões mono minúsculos
-  (`theme-toggle.tsx:93-113`): a opção "sistema" sai da interface e continua
-  sendo o estado inicial. "Sair" capitalizado, Sans 13 soft (`sign-out.tsx:9`).
+  `fetchRail()` (`courses/queries.ts:15-43`) só traz a árvore. Reusar a contagem
+  que o painel já lê em `features/review/queries.ts` (`fetchPanel`, `:293-328`,
+  com `countToday` em `:275-291`), sem consulta nova.
+- Árvore do curso: hoje lista **todos** os cursos em **todas** as rotas, a 15px
+  herdados do `<nav>` (`rail.tsx:141,173-297`) → 13px, só nas telas de curso,
+  nota, aula e editor, e só do curso atual.
+- Rodapé: `margin-top:auto`, sem filete (hoje `mt-3 border-t pt-2`,
+  `rail.tsx:299`), itens empilhados (hoje lado a lado,
+  `course-rail.tsx:16-19`). O tema vira **um** botão "Tema escuro"/"Tema claro"
+  13px soft em lugar dos três botões mono minúsculos (`theme-toggle.tsx:90-115`):
+  a opção "sistema" sai da interface e continua sendo o estado inicial. "Sair"
+  capitalizado, Sans 13 soft (`sign-out.tsx:6-13`, cuja classe duplica
+  `CLASSE_ATALHO` sem compartilhar a constante).
 - Abaixo de 900px: marca, tema e sair na primeira linha, nav em linha que quebra
   abaixo (hoje a ordem é inversa e sem marca), `min-height: 44px` em todo item,
   hoje ausente. E corrigir o vazamento do estado recolhido: o `localStorage` é
-  global (`rail.tsx:120-136`), então no telefone a barra fica reduzida a um botão
-  de ícone — abaixo de 900px é **sempre** a barra no topo.
+  global (chaves em `rail.tsx:32-33`, leitura em `:85-91`, escrita em `:93-102`),
+  então no telefone a barra fica reduzida a um botão de ícone — abaixo de 900px é
+  **sempre** a barra no topo.
 - Regra nova: no editor, entre 900 e 1099px, o rail inicia recolhido, com a
-  preferência do usuário prevalecendo. `rail.tsx:88` tem default fixo `false`,
-  sem faixa nem rota.
+  preferência do usuário prevalecendo. Hoje o default é fixo `false` (`:79`,
+  `:88`) e nada no arquivo lê rota nem viewport.
 - `shell.tsx`, `rail.tsx` e `course-rail.tsx` não têm teste nenhum. A fatia deixa
   pelo menos a trava das larguras e dos três degraus de padding em
   `globals.test.ts`, no estilo das travas que já existem.
@@ -406,43 +458,53 @@ a do painel.
 
 A tela mais ousada do app, e a que mais se afastou.
 
-- **O rótulo errado no botão mais importante:** `session.tsx:28` diz "Errei" →
-  **De novo**.
-- Topo: hoje "N na fila · X avaliados" e link "esc sai" (`session.tsx:221-229`) →
+- **O rótulo errado no botão mais importante:** `session.tsx:26` diz "Errei" →
+  **De novo** (os quatro em `:18-38`).
+- Topo: hoje "N na fila · X avaliados" e link "esc sai" (`session.tsx:220-230`) →
   caminho do card à esquerda ("Álgebra linear · Projeções") e **Restam N** à
-  direita; fila concluída diz "Fila concluída". O caminho não é renderizável
-  hoje: `QueueCard` (`review/queries.ts:80-87`) traz `noteTitle` e não traz
-  curso · aula — a consulta precisa do join.
+  direita. O caminho não é renderizável hoje: `QueueCard`
+  (`review/queries.ts:80-87`) traz `noteTitle` e não traz curso · aula, e o join
+  falta em três lugares — `candidatos()` (`:96-130`, join na `:118`),
+  `fetchAheadQueue()` (`:187-228`, `:211`) e `fetchUndoTarget()` (`:342-413`,
+  `:381-382`). A forma do join já existe em `listRecentNotes`
+  (`notes/queries.ts:56-59`): copiar de lá.
 - Botão de pergunta (`session.tsx:259-268`): largura total, `min-height:72px`,
-  fundo `--ink`, texto `--paper`, sem borda; **Mostrar resposta** (17/500) com
-  "espaço" 13px **abaixo**, não ao lado.
-- Botões de avaliação (`:283`): quatro colunas iguais sempre, gap 8px,
+  fundo `--ink`, texto `--paper`, sem borda; **Mostrar resposta** (17/500) — hoje
+  diz "Revelar resposta" — com "espaço" 13px **abaixo**, não ao lado.
+- Botões de avaliação (`:283-297`): quatro colunas iguais sempre, gap 8px,
   `min-height:72px` — hoje `grid-cols-2 sm:grid-cols-4` sem altura mínima.
-- **Dois comportamentos de resposta, hoje um só.** `:242-251` sempre desenha
-  filete e bloco abaixo, qualquer que seja o `kind`. Cloze revelado é resposta
-  in-loco, fundo `--rule`, padding 2px 6px; só pergunta/resposta usa filete 1px
-  com padding-top 24px. Serif 28/1,45 nos dois — hoje 21/1,5 na resposta e 1,35
-  na pergunta.
-- Cloze oculto: `cards/parser.ts:31` injeta `[…]` como texto puro e `.card-face`
-  (`globals.css:359-384`) não tem a regra — falta borda inferior 2px `--ink` e
-  padding 0 8px.
+- **Dois comportamentos de resposta, hoje um só.** `atual.kind` nunca é lido no
+  arquivo: `:242-251` sempre desenha filete e bloco abaixo. Cloze revelado é
+  resposta in-loco, fundo `--rule`, padding 2px 6px; só pergunta/resposta usa
+  filete 1px com padding-top 24px. Serif 28/1,45 nos dois — hoje 21/1,5 na
+  resposta (`:246`) e 1,35 na pergunta (`:239`).
+- Cloze oculto: `cards/parser.ts:31` define `[…]` e `:169` o injeta como **texto
+  puro dentro do Markdown**, sem elemento nem classe que o CSS alcance; e
+  `.card-face` (`globals.css:364-394`) não tem regra para ele. A borda inferior
+  2px `--ink` com padding 0 8px exige envolver a marca na saída do parser — é o
+  item mais estrutural da fatia, e mexe em módulo com teste obrigatório.
 - Rodapé: hoje um **botão** "u desfaz a última avaliação" à esquerda, mais
-  "gravando…" (`:301-311`) → texto 13px soft centralizado em `role="status"`:
-  "esc sai" no estado pergunta, "u desfaz · esc sai" no estado resposta.
-- **"Avaliação desfeita" não existe no código.** Depois de `u`, o aviso aparece
-  por 2,5s no mesmo `role=status`.
-- `desfazer()` (`:156-179`) faz `setRevelado(false)`; o handoff exige voltar ao
-  **estado resposta** do card anterior.
-- O listener global (`:181-209`) não ignora teclas quando o foco está em input ou
-  textarea — exigência explícita do handoff.
-- Sai o que o handoff não tem: `noteTitle` em Mono sob a resposta (`:248-250`), a
+  "gravando…" sem `aria-live` (`:301-311`) → texto 13px soft centralizado em
+  `role="status"`: "esc sai" no estado pergunta, "u desfaz · esc sai" no estado
+  resposta.
+- **"Avaliação desfeita" não existe no código** (zero ocorrências em `src`).
+  Depois de `u`, o aviso aparece por 2,5s no mesmo `role=status`.
+- `desfazer()` (`:156-179`) faz `setRevelado(false)` (`:176`); o handoff exige
+  voltar ao **estado resposta** do card anterior.
+- O listener global (`:181-214`) nunca olha `evento.target`, então não ignora
+  teclas quando o foco está em input ou textarea — exigência explícita do
+  handoff. Hoje é latente: não há campo em `/review`.
+- Sai o que o handoff não tem: `noteTitle` em Mono sob a resposta (`:248`), a
   dica acima do botão (`:253-258`) e as variantes de fila vazia "Nada para
   adiantar.", "Nenhum card espera revisão.", "A próxima revisão é ainda hoje."
   (`:49-55,67`) — o handoff fixa "Nada vence hoje." e "Próxima revisão em 2
   dias.". A fila vazia ganha o rodapé "esc volta ao painel"; hoje sobra o rodapé
   do desfazer.
-- Medidas: coluna interna 720px (hoje `max-w-[46rem]`, 736px, `:219`), padding
-  28px 56px 40px, 16px em móvel, `main` na largura toda.
+- Medidas: coluna interna 720px, padding 28px 56px 40px, 16px em móvel, `main` na
+  largura toda. Hoje são **duas** medidas erradas no mesmo arquivo —
+  `max-w-[46rem]` (736px) no `main` (`:219`) e `measure` (68ch) no vazio
+  (`:65`) —, e o fallback de Suspense da rota (`app/review/page.tsx:45-50`) não
+  tem largura nenhuma, então a troca pisca. Os três vão aos 720px.
 
 **Pronto quando:** revisar uma fila inteira só pelo teclado continua funcionando;
 `u` volta ao card anterior com a resposta visível e mostra "Avaliação desfeita"
@@ -457,43 +519,51 @@ idênticas nos dois temas, sem afrouxar a trava de `globals.test.ts`.
 - Container único: max-width 880px, grid, gap 40px. Hoje `app/page.tsx:138` não
   tem largura máxima e cada seção usa `measure`, 68ch.
 - Cabeçalho: **Hoje** 28/500 e a data em 15px soft à direita, na mesma linha. A
-  data não existe no código; saem a sobrancelha "painel" em Mono e o `h1
-  text-3xl font-semibold` (`:139-142`).
+  data não existe no código; saem a sobrancelha "painel" em Mono (`:140`) e o
+  `h1 text-2xl font-semibold` (`:141`) — que depois da renomeação da escala é
+  **38px**, o mesmo tamanho dos números grandes, de modo que hoje cabeçalho e
+  número competem.
 - **As duas caixas não existem** — hoje é uma grade de cinco números soltos
-  (`:47-56`). Duas `section` com borda 1px `--rule`, padding 24, `grid auto-fit
-  minmax(300px)`, gap 24, `aria-labelledby`, H2 15/500 soft:
+  (`:47-56`, com `Numero` em `:16-31`). Duas `section` com borda 1px `--rule`,
+  padding 24, `grid auto-fit minmax(300px)`, gap 24, `aria-labelledby`, H2
+  15/500 soft:
   - **Fila de hoje** — "34 revisões vencem" e "12 cards novos", números 38px com
     `font-variant-numeric: tabular-nums`, que falta (`:25`), rótulos Sans 15px
-    soft em lugar de `font-mono text-xs`, e a CTA **Começar revisão** com fundo
-    `--ink` — hoje "Revisar N cards" em `bg-accent` (`:60-66`), e o accent é
-    reservado a links, foco e item ativo.
+    soft em lugar de `font-mono text-xs` (`:28`), e a CTA **Começar revisão** com
+    fundo `--ink` — hoje "Revisar N cards" em `bg-accent` (`:60-66`), link feito
+    à mão que não passa por `buttonVariants`, diferente de todo botão do app; e o
+    accent é reservado a links, foco e item ativo.
   - **Captura** — "Nota nova na aula _Projeções_, aberta direto no editor."
     (17/1,5, aula como link) e botão secundário **Nova nota**, borda 1px `--ink`,
     min-height 44px, que cria na última aula aberta. Hoje é um formulário com
     input de título, `select` de aula e botão "Criar e escrever" com ícone `Plus`
-    (`notes/components/note-forms.tsx:92-121`); ícones são proibidos.
+    (`notes/components/note-forms.tsx:71-125`); ícones são proibidos. O irmão
+    `CreateNoteForm` (`:32-64`) serve à tela da aula e é a Fatia 20 que o mexe.
 - Métricas: `<dl>` separado, filete superior 1px `--ink`, `dt` 13 soft e `dd`
   21px, com os rótulos exatos "Sequência" → "9 dias seguidos" e "Tempo mediano
   por card" → "11 s". Hoje `streak`, avaliados hoje e mediana moram na mesma
   grade de 38px (`:50-55`); "avaliados hoje" não existe no handoff e sai. Os
-  dados já estão em `review/queries.ts:258-273,293-328`.
-- "Últimas notas" → **Últimas notas editadas** (`:158`). Cada linha com filete,
-  padding 12px 0 e `justify-between`: título 17/500, caminho Sans 13 soft **sob**
-  o título, tempo à direita. Hoje tudo em uma linha, título 15px, caminho e tempo
-  em `font-mono text-xs` (`:115-131`).
-- `notes/recent.ts:50-59` devolve "hoje 18:42", "ontem 23:47", "14/10"; o handoff
-  usa tempo relativo ("há 2 h", "ontem"). É lógica pura: teste novo em
+  dados já estão em `review/queries.ts` (`medianDuration` `:258-273`,
+  `countToday` `:275-291`).
+- "Últimas notas" → **Últimas notas editadas** (`:157-162`). Cada linha com
+  filete, padding 12px 0 e `justify-between`: título 17/500, caminho Sans 13 soft
+  **sob** o título, tempo à direita. Hoje tudo em uma linha, título 15px, caminho
+  e tempo em `font-mono text-xs` (`Recentes`, `:103-134`).
+- `notes/recent.ts:50-60` devolve "hoje 18:42", "ontem 23:47", "14/10"; o handoff
+  usa tempo relativo ("há 2 h", "ontem"). Não existe nenhum
+  `Intl.RelativeTimeFormat` no repositório: é lógica pura nova, com teste em
   `recent.test.ts` no mesmo commit.
-- Limites diários: hoje um `<details>` no fluxo (`:164-168`,
+- Limites diários: hoje um `<details>` no fluxo (`page.tsx:97-101,164-168`,
   `review/components/limits-form.tsx:42-50`) → canto inferior direito, sempre
   visível, `role="group" aria-label="Limites diários"`, 13px soft; rótulos
-  **Novos** e **Revisões** inline, hoje em Mono; inputs 72px por 32px, hoje
-  `w-20` sem altura; **salva ao alterar**, sem botão — hoje há "Salvar limites"
-  com ícone `Check` (`:84-91`) —; confirmação **Salvo** num `<span role=status>`
-  permanente, em lugar de "Limites salvos." aparecendo e desaparecendo. Saem o
-  parágrafo explicativo (`:105-108`), o link "Cursos e aulas" (`page.tsx:81-83`),
-  porque navegação mora no rail, e o texto de fila vazia no painel (`:67-79`),
-  que pertence a `/review`.
+  **Novos** e **Revisões** inline, hoje em Mono (`:55-57,70-72`); inputs 72px por
+  32px, hoje `w-20` sem altura (`:15-16`); **salva ao alterar**, sem botão — hoje
+  há "Salvar limites" com ícone `Check` (`:84-91`) —; confirmação **Salvo** num
+  `<span role=status>` permanente. O texto atual, "Limites salvos." (`:99-103`),
+  já nunca se apaga por causa do latch da `:31-39`, mas só aparece depois de um
+  envio. Saem o parágrafo explicativo (`:105-108`), o link "Cursos e aulas"
+  (`page.tsx:81-83`), porque navegação mora no rail, e o texto de fila vazia no
+  painel (`:68-78`), que pertence a `/review`.
 
 **Pronto quando:** o painel inteiro cabe nas duas caixas, nas métricas, na lista
 e no canto dos limites; a 375px nada transborda; "Nova nota" leva direto ao
@@ -505,46 +575,56 @@ o tempo mediano bate com o que está em `reviews`.
 ## Fatia 17 — Editor fiel, com o alerta certo
 
 - **Um container com borda, não duas caixas.** `notes/components/editor.tsx:157`
-  usa `grid gap-4 editor:grid-cols-2` com borda em cada painel → container único
-  com borda 1px `--rule`, duas colunas iguais sem gap, divisória vertical
-  (`border-right` no painel esquerdo) em ≥900px e horizontal abaixo disso.
+  usa `grid gap-4 editor:grid-cols-2` e as bordas estão nos elementos internos —
+  textarea (`:181`) e caixa do preview (`:206`) —, não no container. Vira
+  container único com borda 1px `--rule`, duas colunas iguais sem gap, divisória
+  vertical (`border-right` no painel esquerdo) em ≥900px e horizontal abaixo
+  disso.
 - Cabeçalhos dos painéis **dentro** deles: "Markdown" e "Pré-visualização", 13px
   soft, padding 8px 16px, `border-bottom`. Hoje minúsculos, em Mono e fora do
   painel (`:159-164,203-205`).
 - Textarea: sem borda, padding 16, min-height 720px (420 em móvel), Mono 15/1,65.
-  Hoje borda, `rounded-md`, `px-3 py-2`, 384px e `leading-relaxed` (`:181`).
-  `spellCheck={false}`, hoje ligado (`:175`). Sai o `placeholder` longo com
-  exemplo de LaTeX (`:178-180`).
-- **O alerta de erro de sintaxe está no lugar e no texto errados.** Hoje linhas
-  `role="alert"` em `text-xs text-destructive` abaixo do textarea (`:183-199`),
-  com o texto vindo de `cards/parser.ts:154`. O handoff pede bloco acima do
-  editor, borda 2px `--ink`, padding 12px 16px, 15/1,5, título 600 "Card não
-  criado: lacuna vazia na linha N" e corpo exato: "A marcação de lacuna vazia não
-  tem resposta. Escreva a resposta entre as chaves, ou apague a marcação. O resto
-  da nota está salvo." Sem cor de erro. A mensagem muda em `parser.ts` — teste
-  novo no mesmo commit.
+  Hoje borda, `rounded-md`, `px-3 py-2`, `min-h-[24rem]` com
+  `editor:min-h-[60vh]` e `leading-relaxed` (`:181`). `spellCheck={false}`, hoje
+  ligado (`:175`). Sai o `placeholder` longo com exemplo de LaTeX (`:178-180`).
+- **O alerta de erro de sintaxe está no lugar e no texto errados** — mas não mais
+  na cor errada: a Fatia 12 levou `--destructive` embora e hoje são linhas
+  `role="alert" className="text-xs"` abaixo do textarea (`:183-199`), com o texto
+  vindo de `cards/parser.ts:154`. O handoff pede bloco acima do editor, borda 2px
+  `--ink`, padding 12px 16px, 15/1,5, título 600 "Card não criado: lacuna vazia
+  na linha N" e corpo exato: "A marcação de lacuna vazia não tem resposta.
+  Escreva a resposta entre as chaves, ou apague a marcação. O resto da nota está
+  salvo." A contagem "N cards" (`:185-187`) sai.
+- A mensagem muda em `parser.ts:154` (as outras três estão em `:144-145`, `:199`
+  e `:214`). `parser.test.ts` não fixa a frase inteira: assere as substrings
+  `"vazia"` (`:144`), `"fecha"` (`:164`) e `"resposta"` (`:95`). A redação nova
+  preserva essas palavras, ou o teste muda no mesmo commit com a justificativa
+  escrita antes (regra 5). Teste novo da mensagem, de todo modo.
 - No preview, o trecho com lacuna vazia aparece marcado em Mono com borda 2px
   `--ink`; nada faz isso hoje (`:206-214`).
 - Preview com max-width 680px, padding 20px 24px 32px, Serif 17/1,65 no
-  container. Saem o placeholder "O que você escrever à esquerda aparece aqui."
-  (`:207-210`) e o contador "N cards" (`:183-187`).
+  container. E o render (`:212`) **não aplica `note-prose`**: "renderização
+  idêntica à leitura" exige a classe, sem ela nenhuma medida bate. Saem o
+  placeholder "O que você escrever à esquerda aparece aqui." (`:207-210`) e o
+  contador de cards.
 - Cabeçalho: breadcrumb Sans 13 soft com curso · aula, hoje Mono e incluindo
   módulo (`notes/[noteId]/edit/page.tsx:29-40`); título `h1` 21/500 estático,
-  hoje input editável `text-2xl` (`editor.tsx:136-144`); indicador em
-  `role="status"`, hoje `aria-live="polite"` (`:145-147`), só com "Salvando…" e
-  "Salvo 18:42" — saem "Não salvo" e o erro colorido (`:149-153`) —; e link de
-  texto **Ver nota** 13px ao lado dele, em lugar do botão "Ler" com ícone
-  `BookOpen` (`edit/page.tsx:41-50`).
+  hoje input editável com `text-xl` (`editor.tsx:136-144`), que depois da
+  renomeação é 28px; indicador em `role="status"`, hoje `aria-live="polite"`
+  (`:145-154`), só com "Salvando…" e "Salvo 18:42" — saem "Não salvo" e o erro
+  —; e link de texto **Ver nota** 13px ao lado dele, em lugar do botão "Ler" com
+  ícone `BookOpen` (`edit/page.tsx:41-50`).
 - **Conflito SPEC × handoff:** o debounce do autosave é 1,5s no SPEC e em
-  `editor.tsx:20`, e ~900ms no handoff. O handoff ganha; o SPEC é corrigido no
-  mesmo commit.
+  `editor.tsx:19`, usado na `:97`, e ~900ms no handoff. O handoff ganha; o SPEC é
+  corrigido no mesmo commit. O save imediato no blur (`:114-116`) e o Ctrl/Cmd+S
+  (`:118-125`) ficam.
 - O rail recolhido entre 900 e 1099px no editor fica na Fatia 14, onde a casca
   mora.
 
-**Pronto quando:** o editor é um retângulo com divisória, o alerta de lacuna
-vazia aparece acima com o texto exato e o trecho marcado no preview, o autosave
-sobrevive a um refresh no meio da digitação com a janela de 900ms, e nenhuma cor
-carrega informação de erro.
+**Pronto quando:** o editor é um retângulo com divisória, o preview usa a mesma
+tipografia da leitura, o alerta de lacuna vazia aparece acima com o texto exato e
+o trecho marcado no preview, o autosave sobrevive a um refresh no meio da
+digitação com a janela de 900ms, e nenhuma cor carrega informação de erro.
 
 ---
 
@@ -553,18 +633,26 @@ carrega informação de erro.
 Três telas do handoff mostram o tipo da nota e o schema não o tem. Vem antes das
 telas que o exibem, para não refazê-las depois.
 
-- `src/db/schema.ts`: enum `note_kind` (`lesson_note` | `summary` | `solution`) e
-  coluna `notes.kind` not null com default `lesson_note`, para as notas
-  existentes nascerem classificadas sem backfill manual.
-- `pnpm db:generate`, revisar o SQL, commitar o arquivo de migration. Regras 1 e
-  2: branch do Neon primeiro, conferir, só então a `main`. Nada de `push`.
+- `src/db/schema.ts`: enum `note_kind` (`lesson_note` | `summary` | `solution`)
+  ao lado dos três que já existem (`:25-36`), e coluna `notes.kind` not null com
+  default `lesson_note`, para as notas existentes nascerem classificadas sem
+  backfill manual. A tabela `notes` está em `:102-125`.
+- `pnpm db:generate`, revisar o SQL, commitar o arquivo de migration. É a
+  `0004` — as existentes são `0000_rainy_paladin`, `0001_typical_tana_nile`,
+  `0002_gifted_venom` e `0003_true_solo`. Regras 1 e 2: branch do Neon primeiro,
+  conferir, só então a `main`. Nada de `push`.
 - Rótulos em português num módulo puro da feature `notes` (Anotação de aula,
   Resumo, Resolução), com teste. Domínio em inglês no código, interface em
   português.
-- `listNotesForLesson` (`notes/queries.ts:17-21`) devolve só `id` e `title`:
-  passa a trazer `kind`, `updatedAt` e a contagem de cards — é o que as linhas de
-  `/lessons/[lessonId]` e o meta da leitura precisam.
+- `listNotesForLesson` (`notes/queries.ts:14-22`) devolve só `id` e `title`
+  (tipo na `:11`, `columns` na `:20`): passa a trazer `kind`, `updatedAt` e a
+  contagem de cards — é o que as linhas de `/lessons/[lessonId]` e o meta da
+  leitura precisam.
 - Seletor de tipo no editor, por Server Action com validação Zod.
+- **Nenhuma coluna além dessa.** O handoff escreve "Suspenso desde 12 out." no
+  card da margem e não existe `cards.suspendedAt` — `cards.suspended` é booleano
+  (`schema.ts:161`) e a Fatia 9 fixou que suspender não grava nada. A data cai; o
+  desvio está escrito na Fatia 19.
 
 **Pronto quando:** a migration está aplicada no branch e na `main` com a saída
 colada, toda nota existente tem `kind`, e trocar o tipo no editor sobrevive a um
@@ -577,61 +665,75 @@ refresh.
 A tela com mais estrutura nova.
 
 - **Grade por bloco.** Hoje é `flex` com uma única `aside` contendo todos os
-  cards (`notes/[noteId]/page.tsx:140-152`). O handoff pede
+  cards (`notes/[noteId]/page.tsx:140,147`, margem em `w-64`). O handoff pede
   `grid-template-columns: minmax(0,68ch) 248px`, `column-gap:48px`,
   `align-items:start`, e **cada bloco da nota como linha da grade**, com os cards
   daquele bloco na segunda coluna da mesma linha (padding-top 28px, gap 12px). A
-  base existe: `data-line` por bloco em `shared/markdown-lines.ts:26-34` e
-  `cards.ordinal` com a linha de origem no parser. Com isso **sai** o
-  `opacity-50` dos cards fora do trecho visível (`cards/components/card-list.tsx`
-  `:92-101`, `card-item.tsx:51`): a Fatia 11 resolveu o vínculo por opacidade, o
-  handoff resolve por posição. Margem 248px, não 256px.
-- Cabeçalho com max 680px, hoje 68ch: breadcrumb Sans 13 soft com curso · aula,
-  hoje Mono com três níveis (`:65-76`); título Serif 38/500, hoje Sans 28/600
-  (`:79-81`); e a linha de meta que não existe — "Anotação de aula · Editada há
-  2 h · 4 cards · Editar", com *Editar* como link, hoje botão com ícone `Pencil`
-  (`:82-89`). Depende dos dados da Fatia 18.
-- **Cloze no corpo.** `shared/markdown.tsx:36-43` entrega a marcação de lacuna
-  como texto literal. O handoff pede sublinhado pontilhado 1px `--ink-soft` e
-  número sobrescrito Sans 13 linkando `#cN`; o card recebe a âncora `id="cN"`
-  (`card-item.tsx:48` é um `<li>` sem `id`).
+  base existe: `data-line` por bloco em `shared/markdown-lines.ts:24-34`, ligado
+  em `shared/markdown.tsx:12,21-39`, e `cards.ordinal` com a linha de origem no
+  parser. Com isso **sai** o `opacity-50` dos cards fora do trecho visível
+  (`cards/components/card-list.tsx:92-93,101`, `card-item.tsx:49-52`): a Fatia 11
+  resolveu o vínculo por opacidade, o handoff resolve por posição. Margem 248px,
+  não 256px. `blocoDe` e `cardsNoTrecho` (`cards/lines.ts:55-88`) seguem
+  servindo — é deles que sai a linha da grade —, mas `destaqueDoTrecho`
+  (`:98-106`) e os testes dele perdem a razão de ser: a justificativa vai escrita
+  no commit antes de apagar teste (regra 5).
+- Cabeçalho com max 680px, hoje 68ch (`page.tsx:64`): breadcrumb Sans 13 soft com
+  curso · aula, hoje Mono com três níveis e o módulo sem link (`:65-75`); título
+  Serif 38/500, hoje `text-xl font-semibold`, que depois da renomeação já é 28px
+  (`:79`); e a linha de meta que não existe — "Anotação de aula · Editada há
+  2 h · 4 cards · Editar", com *Editar* como link de texto, hoje `Link` com ícone
+  `Pencil` (`:82-88`). `getNoteById` já lê `updatedAt` (`notes/queries.ts:84`) e
+  a página nunca usa. Depende dos dados da Fatia 18.
+- **Cloze no corpo.** `shared/markdown.tsx` tem 45 linhas e nenhum tratamento de
+  `{{…}}` nem de `Q::`/`A::`: a marcação sai como texto literal. O handoff pede
+  sublinhado pontilhado 1px `--ink-soft` e número sobrescrito Sans 13 linkando
+  `#cN`; o card recebe a âncora `id="cN"` (`card-item.tsx:48` é um `<li>` sem
+  `id`).
 - **Bloco Pergunta/Resposta** no corpo: não existe. Filetes superior e inferior
   1px `--rule`, padding 12px 0, grade `auto minmax(0,1fr)`, rótulos "Pergunta" e
   "Resposta" Sans 13 soft, com o sobrescrito `#cN` no rótulo "Pergunta".
-- Código: `.note-prose pre` perde o fundo `--muted` e ganha borda 1px `--rule`,
-  raio 2px, Mono 15/1,6 e padding 16. O realce monocromático vem de um **módulo
-  puro próprio** na feature `notes` — comentário, string, palavra-chave e número
-  em `--ink` e `--ink-soft` —, com teste. Sem dependência nova: o `SPEC.md` §7
-  não muda.
+- Código: `.note-prose pre` já é fundo transparente, borda 1px `--rule`, raio
+  2px, Mono 15/1,6 e padding 16 desde a Fatia 12 (`globals.css:307-315`). Resta o
+  realce monocromático, que vem de um **módulo puro próprio** na feature `notes`
+  — comentário, string, palavra-chave e número em `--ink` e `--ink-soft` —, com
+  teste. Sem dependência nova: o `SPEC.md` §7 não muda. `.note-prose code` segue
+  com fundo `--muted` (`:298-303`): o handoff não fala de código inline, então
+  fica, e isso vai anotado para não parecer esquecimento.
 - Display math alinhada à esquerda com recuo de 24px; hoje `.katex-display` só
-  tem `overflow-x:auto`.
+  tem `overflow-x:auto` (`globals.css:353-357`).
 - Tags em bloco ao fim da nota, Sans 15, filete superior, padding-top 16. Hoje
-  `tags/linkify.ts:11-26` as transforma em link onde aparecem no texto.
-- Abaixo de 1100px: o `<details>/<summary>` (`cards/components/margin.tsx:69-72`)
-  vira `<button aria-expanded>` com glifo ▸/▾, 15/500, min-height 44px sobre
-  filete — `<summary>` não emite `aria-expanded`. Grade
-  `auto-fill minmax(min(100%,240px),1fr)`, gap 12; hoje coluna única (`:74-82`).
+  `tags/linkify.ts:11-26` as transforma em link onde aparecem no texto, e não há
+  bloco nenhum.
+- Abaixo de 1100px: a variante `cards:` já existe e é usada (`page.tsx:140,147`,
+  `margin.tsx:69`), mas o `<details>/<summary>` (`margin.tsx:69-72`) vira
+  `<button aria-expanded>` com glifo ▸/▾, 15/500, min-height 44px sobre filete —
+  `<summary>` não emite `aria-expanded`. Grade
+  `auto-fill minmax(min(100%,240px),1fr)`, gap 12; hoje coluna única.
 - **Card da margem** reescrito contra `NoteCard.dc.html`: caixa com borda 1px
   `--rule`, raio 2px, padding 12, grid com gap 8 — hoje `<li>` com `border-t`
   (`card-item.tsx:48-52`). Linha 1: "1 · Lacuna" — o `ordinal` existe em
   `cards/queries.ts:11` e é descartado pelo `Omit` em `card-item.tsx:9` — mais o
-  badge de estado só de contorno, texto `--ink`, hoje `bg-muted`, Mono, minúsculo
-  e com contagem de revisões (`:22-27,54-62`). Uma face Serif 15/1,5 com a lacuna
-  oculta, borda inferior 2px `--ink`, **sem revelar a resposta** — hoje mostra
-  `prompt` e `answer` (`:65-68`). Linha final nova com o vencimento 13 soft
-  ("Vence em 3 dias · 6 revisões", "Ainda não revisado", "Suspenso desde 12
-  out."): o tipo `NoteCard` (`queries.ts:8-25`) não tem `due`, a consulta precisa
-  trazê-lo. Botão **com texto** "Suspender"/"Retomar", 13px, borda `--rule`,
-  min-height 32px, em lugar do botão só-ícone (`suspend-button.tsx:35-46`).
-  Suspenso não ganha badge extra, como hoje (`card-item.tsx:57`): a borda do
-  badge de estado passa a tracejada e a face vai para `--ink-soft`. Rótulos novo,
-  aprendendo, revisão, suspenso; `relearning` (`:15-20`) cai em "aprendendo".
+  badge de estado só de contorno, texto `--ink`, hoje `bg-muted`, Mono e
+  minúsculo (`:22-28`), com a contagem de revisões em span separado (`:58-62`).
+  Uma face Serif 15/1,5 com a lacuna oculta, borda inferior 2px `--ink`, **sem
+  revelar a resposta** — hoje mostra `prompt` e `answer` (`:65-68`). Linha final
+  nova com o vencimento 13 soft ("Vence em 3 dias · 6 revisões", "Ainda não
+  revisado", "Suspenso"): o tipo `NoteCard` (`queries.ts:8-25`) não tem `due`, a
+  consulta precisa trazê-lo (colunas em `:51-63`). Botão **com texto**
+  "Suspender"/"Retomar", 13px, borda `--rule`, min-height 32px, em lugar do botão
+  só-ícone (`suspend-button.tsx:35-46`). Suspenso não ganha badge extra, como
+  hoje (`card-item.tsx:57`): a borda do badge de estado passa a tracejada e a
+  face vai para `--ink-soft`. Rótulos novo, aprendendo, revisão, suspenso;
+  `relearning` (`:15-20`) cai em "aprendendo".
 - A margem perde a borda esquerda, o `pl-4` e o título "cards (N)"
-  (`margin.tsx:42-46`), e os parágrafos de cards suspensos e arquivados
-  (`:12-25`), que o handoff não tem.
-- **Desvio consciente:** o bloco "Mover" (`page.tsx:109-120`) não existe em
+  (`margin.tsx:40-46`), e os parágrafos de cards suspensos e arquivados
+  (`:7-28`), que o handoff não tem.
+- **Desvios conscientes.** O bloco "Mover" (`page.tsx:109-120`) não existe em
   nenhuma tela do handoff, mas mover nota entre aulas é capacidade exigida pela
-  Fatia 2. Fica onde está, em Sans 13 soft — tirá-lo seria perder função.
+  Fatia 2: fica onde está, em Sans 13 soft — tirá-lo seria perder função. E o
+  card suspenso mostra só "Suspenso", sem data, porque não existe `suspendedAt` e
+  a Fatia 9 fixou que suspender não escreve nada.
 
 **Pronto quando:** numa nota com clozes, bloco Pergunta/Resposta, código Python e
 fórmula em display, cada card aparece na linha do seu trecho a 1440px; o
@@ -643,51 +745,64 @@ nos quatro estados, inclusive suspenso.
 
 ## Fatia 20 — Cursos, curso e aula
 
+Nas três telas o `h1` usa `text-xl font-semibold`, que depois da renomeação da
+escala **já é 28px**: o que muda é o peso, para 500.
+
 - **`/courses`:** sai a sobrancelha "fatia 1 — casca navegável"
   (`courses/page.tsx:113-115`) — processo de desenvolvimento não é texto de
   interface (§6, Escrita) —, sai o parágrafo descritivo (`:117-120`) e sai o
   formulário sempre visível (`:123-128`), substituído por botão **Novo curso**,
-  borda 1px `--ink`, 15/500, 44px, no cabeçalho ao lado do `h1` 28/500. O H2 da
+  borda 1px `--ink`, 15/500, 44px, no cabeçalho ao lado do `h1` (`:116`). O H2 da
   especialização vira 21/500 com filete inferior 1px `--ink` e "Especialização ·
   N cursos" 13 soft à direita, hoje Mono xs (`:45-47`). Linha de curso 17/500
-  (`:67`) e meta "5 módulos · 18 aulas · 14 estudadas" — a contagem de estudadas
-  não existe em `courses/queries.ts:54-55,78-79` e precisa do agregado. Saem as
-  ações por linha (`:55-57,83-97`): reordenar e arquivar são da tela do curso.
+  (`:65-70`) e meta "5 módulos · 18 aulas · 14 estudadas" (`:79-81`) — a contagem
+  de estudadas não existe em `courses/queries.ts` (`CourseRow` `:47-56`,
+  `listCourses` `:59-81`, que já agrega em JS) e sai de uma coluna a mais no
+  `columns` das aulas (`:67-71`), reusando o módulo puro `courses/studied.ts`,
+  que já tem teste. Saem as ações por linha (`:83-97`): reordenar e arquivar são
+  da tela do curso.
 - **`/courses/[courseSlug]`:** breadcrumb Sans 13 "Cursos · Especialização", hoje
-  mono minúsculo (`:38-42`); `h1` 28/500 e botão **Novo módulo** no cabeçalho
-  (`:50-52,76-84`); meta "5 módulos · 18 aulas · 14 estudadas" em lugar de
-  `track · provider` (`:69-73`). **Módulos passam a ser expansíveis**: hoje as
-  aulas são sempre listadas (`:102-187`) → `<button aria-expanded>` com ▸/▾,
-  44px, "2. Vetores" 17/500 e "2 de 5 estudadas" 13 soft, agregado novo por
-  módulo a partir de `lessons.studiedOn`. A numeração "01" em span mono
-  (`:103-105`) vira "2. " dentro do próprio botão. Ações como botões de texto
-  13px com borda `--rule` e min-height 32px — "Nova aula · Renomear · ↑ · ↓ ·
-  Arquivar" no módulo, "Renomear ↑ ↓ Arquivar" na aula —, com ↑ e ↓ como glifos,
-  hoje botões-ícone (`:120-134,168-182`); o `disabled` nas pontas já está certo e
-  se mantém. A aula ganha checkbox "estudada" (18px, `accent-color`,
-  `aria-label`) como primeiro elemento da linha e "3 notas" 13 soft; nenhum dos
-  dois existe (`:143-183`). **Renomear inline**
-  (`courses/components/forms.tsx:139-192`): hoje Enter salva, mas Esc não cancela
-  e blur não salva → input com borda 1px `--accent`, `autoFocus`, Enter salva,
-  Esc cancela, blur salva, sem botões auxiliares. **Arquivados (N)** como seção
-  ao fim, com botão "Restaurar", em lugar do item com `opacity-60` e badge na
-  própria lista (`:115-119,162-166`). Módulo vazio ganha "Módulo sem aulas.
-  Criar a primeira aula"; hoje a lista só não renderiza (`:137`). Estrutura em
+  um nível só, mono e minúsculo (`:38-42`); `h1` 28/500 e botão **Novo módulo**
+  no cabeçalho, hoje seção com H2 e formulário sempre visível (`:50-52,76-84`);
+  meta "5 módulos · 18 aulas · 14 estudadas" em lugar de `track · provider`
+  (`:69-73`). **Módulos passam a ser expansíveis**: hoje as aulas são sempre
+  listadas (`:137-187`) → `<button aria-expanded>` com ▸/▾, 44px, "2. Vetores"
+  17/500 e "2 de 5 estudadas" 13 soft. O agregado por módulo sai em JS sem
+  consulta nova: `getCourseBySlug` (`queries.ts:89-111`) já traz as aulas
+  inteiras, com `studiedOn`. A numeração "01" em span mono (`:103-105`) vira
+  "2. " dentro do próprio botão. Ações como botões de texto 13px com borda
+  `--rule` e min-height 32px — "Nova aula · Renomear · ↑ · ↓ · Arquivar" no
+  módulo, "Renomear ↑ ↓ Arquivar" na aula —, com ↑ e ↓ como glifos, hoje
+  botões-ícone (`:120-134,168-182`); o `disabled` nas pontas já está certo e se
+  mantém. A aula ganha checkbox "estudada" (18px, `accent-color`, `aria-label`)
+  como primeiro elemento da linha e "3 notas" 13 soft; nenhum dos dois existe
+  (`:143-183`). **Renomear inline** (`courses/components/forms.tsx:116-192`):
+  hoje Enter salva, e não há `onKeyDown` nem `onBlur` em todo o arquivo → input
+  com borda 1px `--accent`, `autoFocus`, Enter salva, Esc cancela, blur salva,
+  sem os botões `Check`/`X` (`:169-187`). **Arquivados (N)** como seção ao fim,
+  com botão "Restaurar", em lugar do item com `opacity-60` e badge na própria
+  lista (`:96-101,143-148`) — `getCourseBySlug` não filtra arquivados, então a
+  separação é no render, sem consulta nova. Módulo vazio ganha "Módulo sem aulas.
+  Criar a primeira aula"; hoje a lista só não renderiza (`:187`). Estrutura em
   `<ol>` com filete superior `--ink` e cada módulo com filete inferior `--rule`,
-  hoje `<ul>` com `border-y` por grupo (`:91,138`).
+  hoje `<ul>` em `:91` e `:138`.
 - **`/lessons/[lessonId]`:** breadcrumb Sans 13 soft, hoje Mono (`:53-61`); `h1`
-  28/500; saem `MoveButtons` e `ArchiveButton` do cabeçalho (`:78-92`), que o
-  handoff não tem nesta tela. O `StudiedButton` (`forms.tsx:299-309`) passa a
-  dizer "Marcar como estudada" e "Desmarcar como estudada", sem ícone, borda 1px
-  `--ink`, 15/500, 44px, com `aria-pressed`, que falta. Status em
-  `<span role="status">` 13 soft, hoje `<p class="font-mono text-xs">` (`:101`).
-  H2 "Notas" 21/500 com filete inferior `--ink` e botão primário **Nova nota**,
-  fundo `--ink`, na mesma linha, abrindo o editor — hoje H2 15px soft e
-  formulário inline (`:110,131`). Cada nota em três linhas: tipo 13 soft, título
-  17/500, "4 cards · editada há 2 h", com os dados da Fatia 18; hoje só o título
-  a 15px (`:117-128`). Vazio com o texto exato: "Esta aula ainda não tem notas.
-  Comece pela anotação da aula: escrever a primeira nota.", com link no fim
-  (`:112-115`).
+  28/500 (`:69-71`); saem `MoveButtons` e `ArchiveButton` do cabeçalho
+  (`:78-92`), que o handoff não tem nesta tela. O `StudiedButton`
+  (`forms.tsx:285-313`) passa a dizer "Marcar como estudada" e "Desmarcar como
+  estudada" — hoje diz só "Desmarcar" —, sem ícone, borda 1px `--ink`, 15/500,
+  44px, com `aria-pressed`, que falta. Status em `<span role="status">` 13 soft,
+  hoje `<p class="font-mono text-xs">` (`:101-105`). H2 "Notas" 21/500 com filete
+  inferior `--ink` e botão primário **Nova nota**, fundo `--ink`, na mesma linha,
+  abrindo o editor — hoje H2 15px soft e formulário inline no fim da seção
+  (`:110,131`). Cada nota em três linhas: tipo 13 soft, título 17/500, "4 cards ·
+  editada há 2 h", com os dados da Fatia 18; hoje só o título a 15px
+  (`:117-128`). Vazio com o texto exato: "Esta aula ainda não tem notas. Comece
+  pela anotação da aula: escrever a primeira nota.", com link no fim (`:112-115`).
+- Depois desta fatia, `lucide-react` não tem mais nenhum consumidor em `src` — as
+  Fatias 14, 16, 17 e 19 tiram os outros. Conferir se a dependência ainda se
+  justifica e, se não, tirá-la do `package.json` e do `SPEC.md` §7 no mesmo
+  commit.
 
 **Pronto quando:** criar curso, módulo e aula pela interface continua funcionando
 com os botões novos; expandir e recolher módulo funciona por teclado com
@@ -700,19 +815,22 @@ contagem do módulo e do curso; e a 375px nenhuma barra de ações transborda.
 ## Fatia 21 — Busca acento-insensível, sobre notas e cards
 
 O handoff descreve `/search` buscando notas **e** cards, com acentos opcionais.
-Hoje a busca só varre `notes` e o vetor não passa por `unaccent`.
+Hoje a busca só varre `notes` e o vetor não passa por `unaccent` — a palavra não
+aparece em nenhuma migration nem em `src`.
 
 - `CREATE EXTENSION IF NOT EXISTS unaccent`, e a coluna gerada de `notes`
   (`schema.ts:111-113`) recriada com `unaccent` por dentro do `to_tsvector`: o
   stemmer português não remove diacríticos. Vetor equivalente em `cards`, sobre
-  `prompt` e `answer`, com índice GIN.
+  `prompt` e `answer`, com índice GIN — os índices de `cards` hoje são só
+  `:171-176`, nenhum de texto.
 - **Regra 3:** recriar coluna gerada é `DROP COLUMN` seguido de `ADD COLUMN`, com
   recriação de índice. Não perde `notes.title` nem `notes.content`, porque a
   coluna é derivada, mas é alteração destrutiva em forma: parar, mostrar o SQL e
   esperar autorização explícita. Regra 2 também vale — branch do Neon primeiro.
 - A consulta passa a unir notas e cards num resultado só, com o tipo e o estado
-  do card, e com `unaccent` no lado do termo. Hoje `search/queries.ts:54-71` só
-  consulta `notes`.
+  do card, e com `unaccent` no lado do termo. Hoje `search/queries.ts:49-81` só
+  consulta `notes` (`SearchHit` `:8-16`, limite 30 na `:18`, opções de
+  `ts_headline` em `:24-38`).
 
 **Pronto quando:** a migration está aplicada no branch e na `main` com a saída
 colada, buscar "projecao" encontra "projeção", e um card cujo texto não está em
@@ -725,35 +843,39 @@ nenhum título de nota aparece nos resultados.
 Fecha o realinhamento.
 
 - **Busca:** container 760px, gap 20, hoje `measure` (`search/page.tsx:138`); só
-  `h1` "Busca" 28/500 — saem a sobrancelha "busca" e o título "Buscar nas notas"
-  (`:140-144`). `<div role="search">` com label **visível** 13 soft "Buscar em
-  notas e cards", input `type=search` 17px, 44px, borda 1px `--ink-soft`, largura
-  total, sem botão e sem placeholder; hoje label `sr-only`, input 15px e botão
-  "Buscar" (`:36-53`). Contagem em `role="status"`: "N resultados para “termo” em
-  notas e cards", hoje "N notas (primeiras 30)" em Mono e sem `role` (`:70-73`).
-  O `<mark>` com fundo `--rule`, peso 600, cor herdada e sem raio, hoje
-  `bg-accent/15` com `rounded-sm` (`:22`) — o accent é reservado a link, foco e
-  item ativo. A montagem do `<mark>` por segmentos React, sem
-  `dangerouslySetInnerHTML` (`search/highlight.ts:24-53`), está certa e fica.
-  Meta "{tipo} · {caminho}", com o tipo à frente, hoje só o caminho (`:86`).
-  `<ol>` com filete superior `--ink`, itens com padding 16px 0 e filete inferior
-  `--rule`, trecho Serif 15/1,6 em cor normal, hoje `text-ink-soft` (`:87`).
-  Textos exatos do handoff no vazio ("Digite um termo para buscar em todas as
-  notas e cards. Acentos são opcionais.") e no sem-resultado ("Nada encontrado
-  para “x”. Tente um termo mais curto ou abra o conceito #…", com link para a
-  tag); os dois textos atuais saem (`:61-65,115-118`).
+  `h1` "Busca" 28/500 — saem a sobrancelha "busca" (`:140`) e o título "Buscar
+  nas notas" (`:141-143`). `<div role="search">`, que não existe (`:36` é um
+  `<form>` puro), com label **visível** 13 soft "Buscar em notas e cards", input
+  `type=search` 17px, 44px, borda 1px `--ink-soft`, largura total, sem botão e
+  sem placeholder; hoje label `sr-only` (`:37-39`), input 15px com placeholder de
+  exemplo (`:40-48`) e botão "Buscar" (`:49-51`). Contagem em `role="status"`:
+  "N resultados para “termo” em notas e cards", hoje "N notas (primeiras 30)" em
+  Mono e sem `role` (`:70-73`). O `<mark>` com fundo `--rule`, peso 600, cor
+  herdada e sem raio, hoje `bg-accent/15` com `rounded-sm` (`:21-23`) — o accent
+  é reservado a link, foco e item ativo. A montagem do `<mark>` por segmentos
+  React, sem `dangerouslySetInnerHTML` (`search/highlight.ts:24-53`), está certa
+  e fica. Meta "{tipo} · {caminho}", com o tipo à frente, hoje só o caminho em
+  Mono (`:86`). `<ol>` com filete superior `--ink`, itens com padding 16px 0 e
+  filete inferior `--rule`, trecho Serif 15/1,6 em cor normal, hoje
+  `text-ink-soft` (`:87-89`). Textos exatos do handoff no vazio ("Digite um termo
+  para buscar em todas as notas e cards. Acentos são opcionais.") e no
+  sem-resultado ("Nada encontrado para “x”. Tente um termo mais curto ou abra o
+  conceito #…", com link para a tag); os dois textos atuais saem (`:115-118`,
+  `:61-65`).
 - **Conceito:** container 880px, gap 32, hoje `measure`
-  (`tags/[tagSlug]/page.tsx:85`); "Conceito" 13 soft em Sans, hoje Mono
-  minúsculo (`:25`); `h1` 28/500 (`:26`); "Citado em 3 notas e 5 cards" 15 soft,
-  hoje "3 notas · 5 cards" (`:27-31`). Os dois H2 em 21/500 com filete inferior
+  (`tags/[tagSlug]/page.tsx:85`); "Conceito" 13 soft em Sans, hoje Mono minúsculo
+  (`:25`); `h1` 28/500 (`:26`); "Citado em 3 notas e 5 cards" 15 soft, hoje
+  "3 notas · 5 cards" (`:27-31`). Os dois H2 em 21/500 com filete inferior
   `--ink`, o segundo rotulado só "Cards", hoje 15px soft e "Cards do conceito"
-  (`:41,63-65`), e **sempre visível**, mesmo vazio, hoje escondido (`:62`). Item
+  (`:41,63-65`), e **sempre visível**, mesmo vazio, hoje escondido (`:61`). Item
   de nota com "{tipo} · {caminho}" 13 soft **acima** do título 17/500, padding
-  14px 0 com filete, hoje título 15px e caminho em Mono abaixo (`:42-57`). O item
+  14px 0 com filete, hoje título 15px e caminho em Mono abaixo (`:43-56`). O item
   de card deixa de reusar `CardItem` (`:69`) e passa à forma do handoff: face
   Serif 17/1,55 com a lacuna oculta à esquerda, badge de estado de contorno e
-  link para a nota de origem à direita. Sai o texto de vazio "A tag continua
-  valendo…" (`:34-38`).
+  link para a nota de origem à direita (`TagCard` em `tags/queries.ts:16-27`,
+  colunas em `:88-98`). Sai o texto de vazio "A tag continua valendo…"
+  (`:34-38`), que ainda por cima imprime o slug onde o usuário escreveu outra
+  coisa.
 
 **Pronto quando:** buscar "projeção" acha a nota certa e pelo menos um card, o
 termo sai destacado em `--rule` nos dois temas, as duas seções do conceito
