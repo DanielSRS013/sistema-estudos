@@ -5,7 +5,7 @@
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-import { notes } from "@/db/schema";
+import { noteKindEnum, notes } from "@/db/schema";
 
 const title = z
   .string({ error: "Informe um título." })
@@ -18,6 +18,12 @@ const title = z
 const content = z
   .string({ error: "Conteúdo inválido." })
   .max(200_000, "A nota passou de 200 mil caracteres. Divida em duas.");
+
+// O seletor manda o valor do enum, não o rótulo: tipo fora da lista é entrada
+// inválida, e a mensagem volta para a tela como qualquer outra.
+const kind = z.enum(noteKindEnum.enumValues, {
+  error: "Tipo de nota inválido.",
+});
 
 const noteId = z.uuid({ error: "Nota não encontrada." });
 const lessonId = z.uuid({ error: "Aula não encontrada." });
@@ -32,6 +38,9 @@ export const saveNoteSchema = z.object({ id: noteId, title, content });
 
 export const moveNoteSchema = z.object({ id: noteId, lessonId });
 
+export const setNoteKindSchema = z.object({ id: noteId, kind });
+
 export type CreateNoteInput = z.output<typeof createNoteSchema>;
 export type SaveNoteInput = z.output<typeof saveNoteSchema>;
 export type MoveNoteInput = z.output<typeof moveNoteSchema>;
+export type SetNoteKindInput = z.output<typeof setNoteKindSchema>;

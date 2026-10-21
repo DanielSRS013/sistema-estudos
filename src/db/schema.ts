@@ -35,6 +35,14 @@ export const cardStateEnum = pgEnum("card_state", [
 // Espelha ts-fsrs Rating: 1 Again, 2 Hard, 3 Good, 4 Easy
 export const ratingEnum = pgEnum("rating", ["again", "hard", "good", "easy"]);
 
+// O que a nota é: anotação da aula, resumo de revisão ou resolução comentada
+// — SPEC §2. Toda nota nasce `lesson_note`, que é o caso comum.
+export const noteKindEnum = pgEnum("note_kind", [
+  "lesson_note",
+  "summary",
+  "solution",
+]);
+
 /* ──────────────────────── tipo auxiliar: tsvector ─────────────────── */
 
 const tsvector = customType<{ data: string }>({
@@ -107,6 +115,7 @@ export const notes = pgTable(
       .notNull()
       .references(() => lessons.id, { onDelete: "restrict" }),
     title: text("title").notNull(),
+    kind: noteKindEnum("kind").notNull().default("lesson_note"),
     content: text("content").notNull().default(""),
     searchVector: tsvector("search_vector").generatedAlwaysAs(
       sql`to_tsvector('portuguese', coalesce(title, '') || ' ' || coalesce(content, ''))`,

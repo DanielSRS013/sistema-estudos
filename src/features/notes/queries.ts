@@ -1,24 +1,49 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { connection } from "next/server";
 
 import { db } from "@/db";
-import { courses, lessons, modules, notes } from "@/db/schema";
+import { cards, courses, lessons, modules, notes } from "@/db/schema";
 
+import type { NoteKind } from "./kind";
 import { lastEditLabel } from "./recent";
 
 /* ───────────────────────── notas de uma aula ─────────────────────────── */
 
-export type NoteRow = { id: string; title: string };
+export type NoteRow = {
+  id: string;
+  title: string;
+  kind: NoteKind;
+  updatedAt: Date;
+  /** Cards vivos da nota: o arquivado não entra na conta que a aula mostra. */
+  cardCount: number;
+};
 
-/** Notas da aula, na ordem em que foram criadas. */
+/**
+ * Notas da aula, na ordem em que foram criadas. Traz o que a linha da aula
+ * escreve — tipo, última edição e contagem de cards —, numa consulta só: uma
+ * contagem por nota em ida separada daria N+1 numa tela de lista.
+ *
+ * O `leftJoin` é o que mantém na lista a nota que ainda não gerou card, e o
+ * `filter` é o que tira o arquivado da conta sem tirar a nota.
+ */
 export async function listNotesForLesson(
   lessonId: string,
 ): Promise<NoteRow[]> {
-  return db.query.notes.findMany({
-    where: (note, { eq }) => eq(note.lessonId, lessonId),
-    orderBy: (note, { asc }) => [asc(note.createdAt)],
-    columns: { id: true, title: true },
-  });
+  return db
+    .select({
+      id: notes.id,
+      title: notes.title,
+      kind: notes.kind,
+      updatedAt: notes.updatedAt,
+      cardCount: sql<number>`count(${cards.id}) filter (where ${cards.archivedAt} is null)`.mapWith(
+        Number,
+      ),
+    })
+    .from(notes)
+    .leftJoin(cards, eq(cards.noteId, notes.id))
+    .where(eq(notes.lessonId, lessonId))
+    .groupBy(notes.id)
+    .orderBy(asc(notes.createdAt));
 }
 
 /* ───────────────────────── últimas notas editadas ────────────────────── */
@@ -127,6 +152,7 @@ export async function getNoteById(id: string) {
     columns: {
       id: true,
       title: true,
+      kind: true,
       content: true,
       lessonId: true,
       updatedAt: true,

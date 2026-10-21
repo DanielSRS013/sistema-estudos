@@ -6,7 +6,8 @@ import { useCallback, useEffect, useState } from "react";
 import { marcarLacunasVazias } from "@/features/cards/empty-gaps";
 import type { ParseIssue } from "@/features/cards/parser";
 
-import { saveNote } from "../actions";
+import { saveNote, setNoteKind } from "../actions";
+import { isNoteKind, noteKindOptions, type NoteKind } from "../kind";
 import {
   idleStatus,
   saveStatusLabel,
@@ -43,6 +44,42 @@ function Aviso({ titulo, corpo }: { titulo: string | null; corpo: string }) {
   );
 }
 
+/**
+ * Seletor do tipo da nota, no cabeçalho. Troca na hora: o tipo é um valor de
+ * uma lista fechada, não texto a digitar, então não entra no debounce do
+ * autosave. Sem rótulo visível porque o próprio valor se lê — o handoff não
+ * tem esse controle no editor, e inventar uma etiqueta seria inventar tela.
+ */
+function SeletorDeTipo({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: NoteKind;
+  disabled: boolean;
+  onChange: (kind: NoteKind) => void;
+}) {
+  return (
+    <select
+      value={value}
+      disabled={disabled}
+      aria-label="Tipo da nota"
+      onChange={(event) => {
+        // O `<select>` só oferece os valores da lista; o guarda existe porque
+        // o tipo dele é `string`, e asserção não é verificação.
+        if (isNoteKind(event.target.value)) onChange(event.target.value);
+      }}
+      className="w-fit justify-self-start rounded-md border border-rule bg-paper px-2 py-1 text-xs text-ink-soft"
+    >
+      {noteKindOptions().map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 /** O cabeçalho de cada painel: 13px soft sobre filete, dentro do painel. */
 function Painel({ titulo }: { titulo: string }) {
   return (
@@ -61,11 +98,13 @@ function Painel({ titulo }: { titulo: string }) {
 export function Editor({
   noteId,
   initialTitle,
+  initialKind,
   initialContent,
   trilha,
 }: {
   noteId: string;
   initialTitle: string;
+  initialKind: NoteKind;
   initialContent: string;
   trilha: Trilha;
 }) {
@@ -83,6 +122,11 @@ export function Editor({
   // autosave não insiste sozinho — ver `shouldAutosave`.
   const [falhou, setFalhou] = useState<Texto | null>(null);
   const [status, setStatus] = useState<SaveStatus>(idleStatus);
+  // O tipo da nota e a troca em voo. O valor na tela é o que o usuário
+  // escolheu; se o servidor recusar, volta ao que era e o erro se diz.
+  const [tipo, setTipo] = useState<NoteKind>(initialKind);
+  const [trocandoTipo, setTrocandoTipo] = useState(false);
+  const [erroDoTipo, setErroDoTipo] = useState<string | null>(null);
   // O que a última gravação disse sobre a sintaxe dos cards. `null` enquanto
   // nada foi gravado nesta sessão.
   const [issues, setIssues] = useState<ParseIssue[] | null>(null);
@@ -113,6 +157,26 @@ export function Editor({
     setIssues(result.issues);
     setStatus({ kind: "saved", at: new Date(result.savedAt) });
   }, [noteId]);
+
+  const trocarTipo = useCallback(
+    async (escolhido: NoteKind) => {
+      const anterior = tipo;
+
+      setTipo(escolhido);
+      setTrocandoTipo(true);
+      setErroDoTipo(null);
+
+      const result = await setNoteKind({ id: noteId, kind: escolhido });
+
+      setTrocandoTipo(false);
+
+      if (!result.ok) {
+        setTipo(anterior);
+        setErroDoTipo(result.message);
+      }
+    },
+    [noteId, tipo],
+  );
 
   useEffect(() => {
     if (
@@ -185,6 +249,11 @@ export function Editor({
             </Link>
           </nav>
           <h1 className="text-lg leading-tight font-medium">{texto.title}</h1>
+          <SeletorDeTipo
+            value={tipo}
+            disabled={trocandoTipo}
+            onChange={(escolhido) => void trocarTipo(escolhido)}
+          />
         </div>
         <div className="flex items-baseline gap-4 text-xs">
           {/* Permanente: um `role=status` que nasce junto com a mensagem não é
@@ -198,12 +267,15 @@ export function Editor({
         </div>
       </header>
 
-      {erro === null && reclamacoes.length === 0 ? null : (
+      {erro === null && erroDoTipo === null && reclamacoes.length === 0 ? null : (
         <div
           role="alert"
           className="grid gap-3 rounded-md border-2 border-ink px-4 py-3 text-sm leading-normal"
         >
           {erro === null ? null : <Aviso titulo={null} corpo={erro} />}
+          {erroDoTipo === null ? null : (
+            <Aviso titulo={null} corpo={erroDoTipo} />
+          )}
           {/* Sintaxe torta é erro de validação, não silêncio — SPEC §3.3. */}
           {reclamacoes.map((issue, indice) => (
             <Aviso

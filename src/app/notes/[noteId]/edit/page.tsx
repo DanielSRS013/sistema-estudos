@@ -25,6 +25,7 @@ async function NoteEditor({ params }: { params: Promise<{ noteId: string }> }) {
     <Editor
       noteId={note.id}
       initialTitle={note.title}
+      initialKind={note.kind}
       initialContent={note.content}
       trilha={{
         courseTitle: modulo.course.title,

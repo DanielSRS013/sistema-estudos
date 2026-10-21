@@ -11,7 +11,12 @@ import { cardWrites, planCards } from "@/features/cards/sync";
 import { planTags, tagWrites } from "@/features/tags/sync";
 import type { ActionState } from "@/shared/action-state";
 
-import { createNoteSchema, moveNoteSchema, saveNoteSchema } from "./schemas";
+import {
+  createNoteSchema,
+  moveNoteSchema,
+  saveNoteSchema,
+  setNoteKindSchema,
+} from "./schemas";
 
 const FALHA_GENERICA =
   "Não foi possível salvar agora. Confira a conexão e tente de novo.";
@@ -87,6 +92,49 @@ export async function moveNote(
 
   // A nota mudou de lugar na árvore: o rail e a aula de destino precisam ver.
   revalidatePath("/", "layout");
+
+  return { ok: true };
+}
+
+/**
+ * Troca o tipo da nota. Não é um formulário: o seletor do editor manda o valor
+ * novo na hora, como o autosave manda o texto.
+ *
+ * Grava `updatedAt` junto, como `moveNote` já faz — toda alteração da linha da
+ * nota conta como edição dela, e é esse campo que ordena o painel.
+ */
+export async function setNoteKind(input: unknown): Promise<ActionState> {
+  const parsed = setNoteKindSchema.safeParse(input);
+
+  if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message ?? "Entrada inválida.";
+    return { ok: false, message };
+  }
+
+  const { id, kind } = parsed.data;
+
+  try {
+    const nota = await db.query.notes.findFirst({
+      where: (n, { eq: igual }) => igual(n.id, id),
+      columns: { lessonId: true },
+    });
+
+    if (!nota) return { ok: false, message: "Nota não encontrada." };
+
+    await db
+      .update(notes)
+      .set({ kind, updatedAt: new Date() })
+      .where(eq(notes.id, id));
+
+    // O tipo aparece no meta da leitura e na linha da aula; o painel ordena
+    // por `updatedAt`.
+    revalidatePath(`/notes/${id}`);
+    revalidatePath(`/lessons/${nota.lessonId}`);
+    revalidatePath("/");
+  } catch (error) {
+    console.error(error);
+    return { ok: false, message: FALHA_GENERICA };
+  }
 
   return { ok: true };
 }
