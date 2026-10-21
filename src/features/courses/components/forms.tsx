@@ -77,7 +77,7 @@ export function CreateForm({
           placeholder={placeholder}
           aria-label={placeholder}
           autoComplete="off"
-          className="min-w-0 flex-1 rounded-md border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
+          className="min-w-0 flex-1 rounded-md border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft"
         />
         {withCourseMeta ? (
           <>
@@ -86,14 +86,14 @@ export function CreateForm({
               placeholder="Especialização (opcional)"
               aria-label="Especialização (opcional)"
               autoComplete="off"
-              className="min-w-0 flex-1 rounded-md border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
+              className="min-w-0 flex-1 rounded-md border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft"
             />
             <input
               name="provider"
               placeholder="Instituição (opcional)"
               aria-label="Instituição (opcional)"
               autoComplete="off"
-              className="min-w-0 flex-1 rounded-md border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
+              className="min-w-0 flex-1 rounded-md border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft"
             />
           </>
         ) : null}
@@ -164,7 +164,7 @@ export function RenameForm({
           defaultValue={current}
           aria-label="Novo título"
           autoFocus
-          className="min-w-0 flex-1 rounded-md border border-rule bg-paper px-2 py-1 text-sm text-ink focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
+          className="min-w-0 flex-1 rounded-md border border-rule bg-paper px-2 py-1 text-sm text-ink"
         />
         <button
           type="submit"

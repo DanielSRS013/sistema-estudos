@@ -27,7 +27,7 @@ const ATALHOS = [
 ] as const;
 
 const CLASSE_ATALHO =
-  "rounded-sm px-1 font-mono text-xs tracking-wide text-ink-soft hover:text-ink focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none";
+  "rounded-sm px-1 font-mono text-xs tracking-wide text-ink-soft hover:text-ink";
 
 const CHAVE_COLAPSADO = "rail.collapsed";
 const CHAVE_EXPANDIDO = "rail.expanded";
@@ -207,7 +207,7 @@ export function Rail({
                     href={`/courses/${course.slug}`}
                     aria-current={ativo ? "page" : undefined}
                     className={cn(
-                      "min-w-0 flex-1 truncate rounded-sm px-1 py-0.5 hover:bg-muted focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none",
+                      "min-w-0 flex-1 truncate rounded-sm px-1 py-0.5 hover:bg-muted",
                       ativo && "font-medium text-accent",
                     )}
                   >
@@ -271,7 +271,7 @@ export function Rail({
                                             aulaAtiva ? "page" : undefined
                                           }
                                           className={cn(
-                                            "block truncate rounded-sm px-2 py-0.5 hover:bg-muted focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none",
+                                            "block truncate rounded-sm px-2 py-0.5 hover:bg-muted",
                                             aulaAtiva &&
                                               "font-medium text-accent",
                                           )}

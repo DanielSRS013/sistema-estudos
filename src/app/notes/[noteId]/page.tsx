@@ -90,7 +90,7 @@ async function NoteDetail({ params }: { params: Promise<{ noteId: string }> }) {
       </header>
 
       {note.content.trim() === "" ? (
-        <p className="font-serif text-base leading-[1.65] text-ink-soft">
+        <p className="font-serif text-base leading-prose text-ink-soft">
           Esta nota está vazia.{" "}
           <Link href={`/notes/${note.id}/edit`} className="text-accent underline">
             Escrever agora

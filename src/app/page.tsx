@@ -22,7 +22,7 @@ function Numero({
 }) {
   return (
     <div className="space-y-1">
-      <p className="font-sans text-[38px] leading-none tracking-tight">
+      <p className="font-sans text-2xl leading-none tracking-tight">
         {valor}
       </p>
       <p className="font-mono text-xs text-ink-soft">{rotulo}</p>
@@ -59,13 +59,13 @@ async function Painel() {
         {temFila ? (
           <Link
             href="/review"
-            className="rounded-md bg-accent px-4 py-2 font-sans text-sm font-medium text-paper focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="rounded-md bg-accent px-4 py-2 font-sans text-sm font-medium text-paper"
           >
             Revisar {painel.queueSize}{" "}
             {painel.queueSize === 1 ? "card" : "cards"}
           </Link>
         ) : (
-          <p className="font-serif text-[17px] leading-[1.65] text-ink-soft">
+          <p className="font-serif text-base leading-prose text-ink-soft">
             Nada vence hoje.{" "}
             {painel.nextDueInDays === null
               ? "Nenhum card espera revisão."
@@ -105,7 +105,7 @@ async function Recentes() {
 
   if (notas.length === 0) {
     return (
-      <p className="font-serif text-[17px] leading-[1.65] text-ink-soft">
+      <p className="font-serif text-base leading-prose text-ink-soft">
         Nenhuma nota ainda. Comece pelo campo acima.
       </p>
     );
@@ -117,7 +117,7 @@ async function Recentes() {
         <li key={nota.id} className="flex flex-wrap items-baseline gap-x-3">
           <Link
             href={`/notes/${nota.id}`}
-            className="min-w-0 rounded-sm text-sm font-medium hover:text-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
+            className="min-w-0 rounded-sm text-sm font-medium hover:text-accent"
           >
             {nota.title}
           </Link>

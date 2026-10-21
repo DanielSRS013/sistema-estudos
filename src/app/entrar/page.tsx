@@ -71,7 +71,7 @@ export default function EntrarPage({
           <h1 className="text-xl font-semibold tracking-tight">
             Entrar para continuar
           </h1>
-          <p className="font-serif text-base leading-[1.65] text-ink-soft">
+          <p className="font-serif text-base leading-prose text-ink-soft">
             As notas, os cards e o histórico de revisão ficam atrás do login.
           </p>
         </header>

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -7,6 +7,26 @@ import { describe, expect, it } from "vitest";
 // componente novo traz tokens. Este teste trava os valores de SPEC.md §6
 // para que a paleta não seja sobrescrita em silêncio.
 const css = readFileSync(join(import.meta.dirname, "globals.css"), "utf8");
+
+const raiz = join(import.meta.dirname, "..");
+
+// Os pares [caminho relativo, conteúdo] de todo `.ts`/`.tsx` de fonte sob as
+// pastas pedidas. Teste fica de fora: ele cita as próprias agulhas que proíbe.
+function arquivosDeFonte(pastas: readonly string[]): [string, string][] {
+  return pastas.flatMap((pasta) =>
+    readdirSync(join(raiz, pasta), { withFileTypes: true, recursive: true })
+      .filter(
+        (entrada) =>
+          entrada.isFile() &&
+          /\.tsx?$/.test(entrada.name) &&
+          !entrada.name.endsWith(".test.ts"),
+      )
+      .map((entrada): [string, string] => {
+        const caminho = join(entrada.parentPath, entrada.name);
+        return [caminho.slice(raiz.length + 1), readFileSync(caminho, "utf8")];
+      }),
+  );
+}
 
 describe("tokens de SPEC.md §6", () => {
   it.each([
@@ -179,5 +199,86 @@ describe("corpo da nota de SPEC.md §6", () => {
 describe("margem de cards de SPEC.md §6", () => {
   it("some abaixo de 1100px", () => {
     expect(css).toContain("--breakpoint-cards: 68.75rem;");
+  });
+});
+
+describe("um idioma de foco só", () => {
+  it("fixa o foco global em filete sólido de 2px no accent", () => {
+    // O handoff tem uma receita de foco e só uma. O anel de 30% de alpha que
+    // vivia nos componentes ficava perto de 1,3:1 contra o papel.
+    const regra = css.slice(css.indexOf(":focus-visible {"));
+    expect(regra.slice(0, regra.indexOf("}"))).toContain(
+      "outline: 2px solid var(--accent);",
+    );
+    expect(regra.slice(0, regra.indexOf("}"))).toContain(
+      "outline-offset: 2px;",
+    );
+  });
+
+  it("não reintroduz o anel de meia opacidade do registry", () => {
+    // `@apply outline-ring/50` no seletor universal era o terceiro idioma.
+    expect(css).not.toContain("outline-ring");
+  });
+});
+
+describe("nenhuma receita de foco nos componentes", () => {
+  it("não deixa `focus-visible:` em nenhum arquivo de `src`", () => {
+    // Inclui `src/shared/ui`: a saída do registry do shadcn é justamente o
+    // lugar por onde o anel fraco volta quando um componente novo é gerado.
+    const comFoco = arquivosDeFonte(["app", "features", "shared"])
+      .filter(([, texto]) => texto.includes("focus-visible:"))
+      .map(([caminho]) => caminho);
+    expect(comFoco).toEqual([]);
+  });
+
+  it("não deixa `destructive` no botão do registry", () => {
+    // `--destructive` saiu dos tokens na Fatia 12; a variante e as cadeias
+    // `aria-invalid:` ficaram apontando para token que não existe.
+    const botao = readFileSync(
+      join(import.meta.dirname, "..", "shared", "ui", "button.tsx"),
+      "utf8",
+    );
+    expect(botao).not.toContain("destructive");
+    expect(botao).not.toContain("aria-invalid");
+  });
+});
+
+describe("nenhum valor arbitrário de tipografia ou cor", () => {
+  // A escala tem seis degraus com nome desde a Fatia 12 e a entrelinha de
+  // corpo tem utilitário: pixel escrito à mão em `className` não tem desculpa.
+  // Medida de layout fora da escala do Tailwind continua permitida — o lugar
+  // dela é `globals.css`, e as Fatias 19 e 22 precisam de 248/680/760/880px.
+  it.each([
+    ["text-[", "tamanho de fonte"],
+    ["leading-[", "entrelinha"],
+  ])("não escreve %s à mão (%s)", (agulha) => {
+    const comValor = arquivosDeFonte(["app", "features"])
+      .filter(([, texto]) => texto.includes(agulha))
+      .map(([caminho]) => caminho);
+    expect(comValor).toEqual([]);
+  });
+
+  it("não escreve hex cru em `className`", () => {
+    const comHex = arquivosDeFonte(["app", "features"])
+      .filter(([, texto]) =>
+        [...texto.matchAll(/className=(?:"[^"]*"|\{`[^`]*`\}|\{[^}]*\})/g)].some(
+          (m) => /#[0-9a-fA-F]{3,8}\b/.test(m[0]),
+        ),
+      )
+      .map(([caminho]) => caminho);
+    expect(comHex).toEqual([]);
+  });
+});
+
+describe("entrelinha com nome", () => {
+  it("dá nome à entrelinha do corpo de nota", () => {
+    // 1,65 aparecia escrito à mão em doze linhas, sempre no mesmo parágrafo
+    // serif em `--ink-soft`.
+    expect(css).toContain("--leading-prose: 1.65;");
+  });
+
+  it("fixa a face do card em 1,45, como SPEC §6", () => {
+    const face = css.slice(css.indexOf(".card-face {"));
+    expect(face.slice(0, face.indexOf("}"))).toContain("line-height: 1.45;");
   });
 });

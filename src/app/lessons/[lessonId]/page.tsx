@@ -110,7 +110,7 @@ async function LessonDetail({
         <h2 className="text-sm font-medium text-ink-soft">Notas</h2>
 
         {notas.length === 0 ? (
-          <p className="font-serif text-base leading-[1.65] text-ink-soft">
+          <p className="font-serif text-base leading-prose text-ink-soft">
             Esta aula ainda não tem notas. Crie a primeira abaixo.
           </p>
         ) : (
@@ -119,7 +119,7 @@ async function LessonDetail({
               <li key={nota.id}>
                 <Link
                   href={`/notes/${nota.id}`}
-                  className="block truncate rounded-sm px-1 py-0.5 hover:bg-muted focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
+                  className="block truncate rounded-sm px-1 py-0.5 hover:bg-muted"
                 >
                   {nota.title}
                 </Link>

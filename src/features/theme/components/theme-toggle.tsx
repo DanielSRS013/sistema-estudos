@@ -103,7 +103,7 @@ export function ThemeToggle() {
             onClick={() => escolher(opcao)}
             aria-pressed={ativo}
             className={cn(
-              "rounded-sm px-1 text-ink-soft hover:text-ink focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none",
+              "rounded-sm px-1 text-ink-soft hover:text-ink",
               ativo && "text-accent",
             )}
           >

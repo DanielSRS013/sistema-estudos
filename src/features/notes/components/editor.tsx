@@ -140,7 +140,7 @@ export function Editor({
           }
           onBlur={agora}
           aria-label="Título da nota"
-          className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-xl font-semibold tracking-tight text-ink hover:border-rule focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
+          className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-xl font-semibold tracking-tight text-ink hover:border-rule"
         />
         <p
           aria-live="polite"
@@ -178,7 +178,7 @@ export function Editor({
             placeholder={
               "# Título\n\nInline: $a^2 + b^2 = c^2$.\n\nEm bloco:\n\n$$\nx^2 + y^2 = r^2\n$$"
             }
-            className="min-h-[24rem] w-full resize-y rounded-md border border-rule bg-paper px-3 py-2 font-mono text-sm leading-relaxed text-ink placeholder:text-ink-soft focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none editor:min-h-[60vh]"
+            className="min-h-[24rem] w-full resize-y rounded-md border border-rule bg-paper px-3 py-2 font-mono text-sm leading-relaxed text-ink placeholder:text-ink-soft editor:min-h-[60vh]"
           />
           {cards === null ? null : (
             <div className="space-y-1 px-1 pt-1">

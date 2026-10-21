@@ -63,10 +63,10 @@ function Vazio({
 }) {
   return (
     <div className="measure space-y-4">
-      <h1 className="font-serif text-[28px] leading-snug">
+      <h1 className="font-serif text-xl leading-snug">
         {ahead ? "Nada para adiantar." : "Nada vence hoje."}
       </h1>
-      <p className="font-serif text-[17px] leading-[1.65] text-ink-soft">
+      <p className="font-serif text-base leading-prose text-ink-soft">
         {proximaRevisao(nextDueInDays)}
       </p>
       <div className="flex flex-wrap gap-4 text-sm">
@@ -236,14 +236,14 @@ export function ReviewSession({
           <article className="space-y-8">
             <MathMarkdown
               content={atual.prompt}
-              className="card-face font-serif text-[28px] leading-[1.35]"
+              className="card-face font-serif text-xl"
             />
 
             {revelado ? (
               <div className="space-y-6 border-t border-rule pt-8">
                 <MathMarkdown
                   content={atual.answer}
-                  className="card-face font-serif text-[21px] leading-[1.5]"
+                  className="card-face font-serif text-lg leading-normal"
                 />
                 <p className="font-mono text-xs text-ink-soft">
                   {atual.noteTitle}
@@ -252,14 +252,14 @@ export function ReviewSession({
             ) : (
               <div className="space-y-6 border-t border-rule pt-8">
                 {atual.hint === null ? null : (
-                  <p className="font-serif text-[17px] text-ink-soft">
+                  <p className="font-serif text-base text-ink-soft">
                     {atual.hint}
                   </p>
                 )}
                 <button
                   type="button"
                   onClick={revelar}
-                  className="rounded-md border border-rule px-4 py-2 font-sans text-sm text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="rounded-md border border-rule px-4 py-2 font-sans text-sm text-ink"
                 >
                   Revelar resposta
                   <span className="ml-2 font-mono text-xs text-ink-soft">
@@ -287,7 +287,7 @@ export function ReviewSession({
                 type="button"
                 disabled={pendente}
                 onClick={() => avaliar(botao.rating)}
-                className={`flex flex-col items-center gap-0.5 rounded-md px-4 py-3 font-sans text-sm font-medium disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${botao.cor}`}
+                className={`flex flex-col items-center gap-0.5 rounded-md px-4 py-3 font-sans text-sm font-medium disabled:opacity-50 ${botao.cor}`}
               >
                 {botao.label}
                 <span className="font-mono text-xs opacity-80">

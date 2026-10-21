@@ -16,7 +16,7 @@ type Action = (
 ) => Promise<ActionState>;
 
 const campo =
-  "min-w-0 flex-1 rounded-md border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none";
+  "min-w-0 flex-1 rounded-md border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft";
 
 function Erro({ state }: { state: ActionState }) {
   if (state.ok) return null;
@@ -79,7 +79,7 @@ export function CaptureNoteForm({
 
   if (options.length === 0) {
     return (
-      <p className="font-serif text-[17px] leading-[1.65] text-ink-soft">
+      <p className="font-serif text-base leading-prose text-ink-soft">
         Nenhuma aula cadastrada ainda. Uma nota nasce dentro de uma aula:{" "}
         <Link href="/courses" className="text-accent underline">
           criar o primeiro curso

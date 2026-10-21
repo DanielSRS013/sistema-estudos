@@ -32,7 +32,7 @@ async function TagDetail({ params }: { params: Promise<{ tagSlug: string }> }) {
       </header>
 
       {tag.notes.length === 0 ? (
-        <p className="measure font-serif text-base leading-[1.65] text-ink-soft">
+        <p className="measure font-serif text-base leading-prose text-ink-soft">
           A tag continua valendo: escreva <code className="font-mono">#{tag.slug}</code>{" "}
           em qualquer nota e ela aparece aqui.
         </p>

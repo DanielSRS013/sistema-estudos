@@ -154,7 +154,7 @@ async function CourseDetail({ params }: { params: Promise<{ courseSlug: string }
                             >
                               <Link
                                 href={`/lessons/${aula.id}`}
-                                className="truncate rounded-sm text-sm hover:text-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
+                                className="truncate rounded-sm text-sm hover:text-accent"
                               >
                                 {aula.title}
                               </Link>

@@ -47,12 +47,31 @@ IBM Plex Sans na interface, Serif no corpo das notas e na face dos cards, Mono
 só em código, sintaxe de card e editor — metadado e caminho são Sans 13px em
 `--ink-soft`, nunca Mono. Escala fechada 13 / 15 / 17 / 21 / 28 / 38px, no
 Tailwind `xs sm base lg xl 2xl`, sem degrau nenhum fora dela. Corpo de nota a
-17px, `line-height` 1,65, medida máxima 68 caracteres.
+17px, `line-height` 1,65, medida máxima 68 caracteres. Entrelinha não se escreve
+à mão na classe: 1,65 é o degrau `leading-prose`, 1,45 mora em `.card-face`, 1,6
+em `.note-prose pre`.
 
 ## Forma
 
 Raio de 2px em tudo. Nenhuma sombra, nenhum gradiente, nenhum ícone decorativo:
 ▸ ▾ ↑ ↓ » entram como texto.
+
+## Foco
+
+Um idioma só, global, em `globals.css`:
+
+```css
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+```
+
+Nenhum componente escreve receita de foco própria — nem `focus-visible:ring-*`,
+nem `focus-visible:outline-*`, nem `focus-visible:border-*`. Anel de baixa
+opacidade fica perto de 1,3:1 e não é foco visível; o filete sólido dá 5,4:1 no
+claro e 6,7:1 no escuro. Componente vindo do registry do shadcn chega com o anel
+fraco e com `outline-none`: tire os dois, ou o foco global não desenha.
 
 ## Layout
 
@@ -80,13 +99,15 @@ houve e como resolver, sem pedir desculpa.
 
 Acessibilidade e robustez:
 - [ ] funciona a 375px sem rolagem horizontal
-- [ ] foco de teclado visível em todo elemento interativo
+- [ ] foco de teclado visível em todo elemento interativo, pelo idioma global
+- [ ] nenhum `focus-visible:` fora de `globals.css`
 - [ ] contraste ≥ 4.5:1 em todo texto, conferido — não estimado
 - [ ] `prefers-reduced-motion` desliga toda animação não essencial
 - [ ] a tela funciona nos dois temas
 
 Intenção:
 - [ ] nenhum hex literal fora dos tokens
+- [ ] nenhum `text-[` nem `leading-[` em `className`: a escala tem seis degraus
 - [ ] nenhum rótulo em caixa alta espaçada acima de título
 - [ ] nenhum `→` colado no texto de link ou botão
 - [ ] nenhuma numeração 01/02/03 em conteúdo que não é sequência

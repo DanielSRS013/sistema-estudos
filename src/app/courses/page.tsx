@@ -64,7 +64,7 @@ async function CourseList() {
                     >
                       <Link
                         href={`/courses/${course.slug}`}
-                        className="truncate rounded-sm text-base hover:text-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
+                        className="truncate rounded-sm text-base hover:text-accent"
                       >
                         {course.title}
                       </Link>

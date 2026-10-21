@@ -44,7 +44,7 @@ function Busca({ termo }: { termo: string }) {
         defaultValue={termo}
         autoFocus
         placeholder="projeção, autovalor, gradiente…"
-        className="min-w-0 flex-1 rounded-sm border border-rule bg-paper px-3 py-2 text-sm focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none"
+        className="min-w-0 flex-1 rounded-sm border border-rule bg-paper px-3 py-2 text-sm"
       />
       <button type="submit" className={cn(buttonVariants({ size: "sm" }))}>
         Buscar
@@ -58,7 +58,7 @@ async function Resultados({ termo }: { termo: string }) {
 
   if (hits.length === 0) {
     return (
-      <p className="font-serif text-base leading-[1.65] text-ink-soft">
+      <p className="font-serif text-base leading-prose text-ink-soft">
         Nada encontrado para <span className="font-mono">{termo}</span>. Tente
         outra palavra do conceito, ou uma só palavra em vez da frase.
       </p>
@@ -84,7 +84,7 @@ async function Resultados({ termo }: { termo: string }) {
               <Trecho segmentos={hit.title} />
             </Link>
             <p className="font-mono text-xs text-ink-soft">{hit.path}</p>
-            <p className="font-serif text-sm leading-[1.65] text-ink-soft">
+            <p className="font-serif text-sm leading-prose text-ink-soft">
               <Trecho segmentos={hit.snippet} />
             </p>
           </li>
@@ -112,7 +112,7 @@ async function Painel({
       <Busca termo={termo} />
 
       {termo === "" ? (
-        <p className="font-serif text-base leading-[1.65] text-ink-soft">
+        <p className="font-serif text-base leading-prose text-ink-soft">
           Digite uma palavra do conceito. A busca varre título e corpo de todas
           as notas, com radical em português: “projeções” encontra “projeção”.
         </p>

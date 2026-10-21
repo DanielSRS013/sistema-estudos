@@ -13,7 +13,7 @@ import type { Limits } from "../scheduler";
 type Action = (state: ActionState, formData: FormData) => Promise<ActionState>;
 
 const campo =
-  "w-20 rounded-md border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none";
+  "w-20 rounded-md border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink";
 
 /**
  * Lugar discreto para os dois números do SPEC §4: recolhido por padrão, com os
@@ -40,7 +40,7 @@ export function LimitsForm({
 
   return (
     <details className="space-y-3">
-      <summary className="cursor-pointer rounded-sm text-sm font-medium text-ink-soft hover:text-ink focus-visible:ring-3 focus-visible:ring-accent/30 focus-visible:outline-none">
+      <summary className="cursor-pointer rounded-sm text-sm font-medium text-ink-soft hover:text-ink">
         Limites diários
         <span className="ml-2 font-mono text-xs">
           {limits.newPerDay} {limits.newPerDay === 1 ? "novo" : "novos"} ·{" "}
@@ -102,7 +102,7 @@ export function LimitsForm({
           </p>
         ) : null}
 
-        <p className="font-serif text-[15px] leading-[1.65] text-ink-soft">
+        <p className="font-serif text-sm leading-prose text-ink-soft">
           Zero em novos por dia pausa a entrada de cards novos sem mexer no que
           já está em revisão.
         </p>
