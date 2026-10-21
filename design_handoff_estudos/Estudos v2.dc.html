@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&amp;family=Figtree:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="./tex.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#ECE7DF;font-family:'Figtree',system-ui,sans-serif;color:#221E2F}
+a{color:oklch(0.5 0.2 285);text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:3px}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid oklch(0.62 0.2 285);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</helmet>
+
+<div style="position:sticky;top:0;z-index:5;background:#ECE7DF;border-bottom:1px solid #D9D2C7;padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;font-size:13px">
+  <div role="group" aria-label="Tela" style="display:flex;flex-wrap:wrap;gap:4px">
+    <sc-for list="{{ vScreens }}" as="b" hint-placeholder-count="11"><button onClick="{{ b.on }}" aria-pressed="{{ b.act }}" style="border:none;background:{{ b.bg }};color:{{ b.fg }};padding:5px 12px;cursor:pointer;border-radius:999px;font-size:13px;font-weight:600">{{ b.l }}</button></sc-for>
+  </div>
+  <div role="group" aria-label="Estado" style="display:flex;gap:4px">
+    <sc-for list="{{ vStates }}" as="b"><button onClick="{{ b.on }}" aria-pressed="{{ b.act }}" style="border:none;background:{{ b.bg }};color:{{ b.fg }};padding:5px 12px;cursor:pointer;border-radius:999px;font-size:13px;font-weight:600">{{ b.l }}</button></sc-for>
+  </div>
+  <div role="group" aria-label="Dispositivo" style="display:flex;gap:4px">
+    <sc-for list="{{ vDevices }}" as="b" hint-placeholder-count="2"><button onClick="{{ b.on }}" aria-pressed="{{ b.act }}" style="border:none;background:{{ b.bg }};color:{{ b.fg }};padding:5px 12px;cursor:pointer;border-radius:999px;font-size:13px;font-weight:600">{{ b.l }}</button></sc-for>
+  </div>
+  <span style="color:#6E6880">{{ zoomLabel }}</span>
+</div>
+
+<div ref="{{ stageRef }}" style="padding:28px 16px 64px">
+<div style="width:{{ fw }}px;zoom:{{ zoom }};margin:0 auto;background:#FBF8F4;color:#221E2F;font-size:15px;line-height:1.5;overflow-wrap:anywhere;border-radius:{{ frameRadius }};border:{{ frameBorder }};overflow:hidden;box-shadow:0 2px 6px rgba(34,30,47,.08),0 20px 60px rgba(34,30,47,.10);display:flex;flex-direction:{{ shellDir }};height:{{ frameH }};min-height:{{ frameMinH }}">
+
+<sc-if value="{{ showSide }}" hint-placeholder-val="{{ true }}">
+  <nav aria-label="Principal" style="width:248px;flex:none;padding:24px 16px;display:flex;flex-direction:column;gap:24px;border-right:1px solid #EEE8E0;background:#FFFFFF">
+    <div style="display:flex;align-items:center;gap:10px;padding:0 8px">
+      <span aria-hidden="true" style="width:32px;height:32px;border-radius:10px;background:oklch(0.55 0.2 285);display:grid;place-items:center;color:#FFFFFF;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:18px">e</span>
+      <span style="font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700;letter-spacing:-0.02em">estudos</span>
+    </div>
+    <ul style="list-style:none;margin:0;padding:0;display:grid;gap:2px">
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="8"><li><a href="#" onClick="{{ n.on }}" aria-current="{{ n.cur }}" style="display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:12px;background:{{ n.bg }};color:{{ n.fg }};font-weight:600;text-decoration:none"><span aria-hidden="true" style="width:8px;height:8px;border-radius:999px;background:{{ n.dot }}"></span><span style="flex:1">{{ n.l }}</span><span style="font-size:12px;font-weight:700;color:oklch(0.5 0.2 285)">{{ n.count }}</span></a></li></sc-for>
+    </ul>
+    <button onClick="{{ go.timer }}" style="margin-top:auto;text-align:left;border:none;cursor:pointer;border-radius:18px;padding:16px;background:oklch(0.95 0.035 285);display:grid;gap:4px">
+      <span style="font-size:12px;font-weight:700;color:oklch(0.42 0.13 285);display:flex;align-items:center;gap:6px"><span aria-hidden="true" style="width:8px;height:8px;border-radius:999px;background:{{ liveDot }}"></span>{{ timerStatus }}</span>
+      <span style="font-family:'Bricolage Grotesque',sans-serif;font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;color:#221E2F">{{ clock }}</span>
+      <span style="font-size:13px;color:oklch(0.42 0.13 285)">Álgebra linear · Projeções</span>
+    </button>
+    <div style="display:flex;justify-content:space-between;padding:0 8px;font-size:13px;color:#6E6880"><span>Você</span><button style="background:none;border:none;cursor:pointer;color:#6E6880;font-size:13px;padding:0">Sair</button></div>
+  </nav>
+</sc-if>
+
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;min-height:0">
+  <sc-if value="{{ showMobileHead }}">
+    <header style="padding:14px 20px 10px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#FBF8F4">
+      <span style="font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700;letter-spacing:-0.02em">{{ mobileTitle }}</span>
+      <div style="display:flex;gap:6px">
+        <button onClick="{{ go.search }}" style="border:none;background:#FFFFFF;border-radius:999px;padding:8px 14px;min-height:40px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 2px rgba(34,30,47,.06)">Buscar</button>
+        <button onClick="{{ go.stats }}" style="border:none;background:#FFFFFF;border-radius:999px;padding:8px 14px;min-height:40px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 2px rgba(34,30,47,.06)">Números</button>
+      </div>
+    </header>
+  </sc-if>
+
+  <main style="flex:1;min-height:0;overflow-y:{{ mainOverflow }};padding:{{ mainPad }}">
+
+  <sc-if value="{{ sDash }}" hint-placeholder-val="{{ true }}">
+    <div style="display:grid;gap:20px;max-width:1120px">
+      <header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px 24px">
+        <div>
+          <div style="font-size:15px;color:#6E6880;font-weight:500">Terça, 20 de outubro</div>
+          <h1 style="margin:2px 0 0;font-family:'Bricolage Grotesque',sans-serif;font-size:{{ h1Size }};font-weight:700;letter-spacing:-0.03em;line-height:1.1">Bom dia! Faltam 40 min pra meta de hoje.</h1>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onClick="{{ go.edit }}" style="border:1px solid #E3DCD1;background:#FFFFFF;border-radius:999px;padding:10px 18px;min-height:44px;font-weight:600;cursor:pointer">Nova nota</button>
+          <button onClick="{{ go.timer }}" style="border:none;background:oklch(0.55 0.2 285);color:#FFFFFF;border-radius:999px;padding:10px 20px;min-height:44px;font-weight:700;cursor:pointer">Continuar estudando</button>
+        </div>
+      </header>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px">
+        <section style="background:#FFFFFF;border-radius:24px;padding:22px;box-shadow:0 1px 2px rgba(34,30,47,.05),0 6px 20px rgba(34,30,47,.04);display:flex;gap:20px;align-items:center">
+          <div aria-label="67% da meta de hoje" style="width:116px;height:116px;flex:none;border-radius:999px;background:conic-gradient(oklch(0.55 0.2 285) 0 67%, oklch(0.94 0.03 285) 67% 100%);display:grid;place-items:center">
+            <div style="width:88px;height:88px;border-radius:999px;background:#FFFFFF;display:grid;place-items:center;text-align:center;line-height:1.1"><span style="font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:700">1h20</span><span style="font-size:12px;color:#6E6880;margin-top:-14px">de 2h</span></div>
+          </div>
+          <div style="display:grid;gap:6px">
+            <h2 style="margin:0;font-size:13px;font-weight:700;color:#6E6880;letter-spacing:.02em">Meta de hoje</h2>
+            <p style="margin:0;font-size:17px;font-weight:600;line-height:1.35">Mais um bloco de Álgebra linear e o dia está fechado.</p>
+            <a href="#" onClick="{{ go.timer }}" style="font-weight:700;font-size:15px">Retomar 18 min restantes</a>
+          </div>
+        </section>
+
+        <section style="background:oklch(0.55 0.2 285);color:#FFFFFF;border-radius:24px;padding:22px;display:grid;gap:14px;align-content:start">
+          <h2 style="margin:0;font-size:13px;font-weight:700;opacity:.9;letter-spacing:.02em">Revisões de hoje</h2>
+          <div style="display:flex;gap:28px;align-items:baseline">
+            <div><span style="font-family:'Bricolage Grotesque',sans-serif;font-size:48px;font-weight:700;line-height:1">34</span><span style="font-size:15px;margin-left:6px">vencem</span></div>
+            <div><span style="font-family:'Bricolage Grotesque',sans-serif;font-size:32px;font-weight:700;line-height:1">12</span><span style="font-size:15px;margin-left:6px">novos</span></div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px">
+            <button onClick="{{ go.review }}" style="border:none;background:#FFFFFF;color:oklch(0.42 0.17 285);border-radius:999px;padding:10px 20px;min-height:44px;font-weight:700;cursor:pointer">Revisar agora · 9 min</button>
+            <span style="font-size:12px;opacity:.9">Limite: <input aria-label="Novos por dia" type="number" value="{{ limNew }}" onChange="{{ onLimNew }}" style="width:46px;border:none;border-radius:8px;padding:2px 4px;background:rgba(255,255,255,.2);color:#FFFFFF;font-size:12px;font-weight:700"> novos · <input aria-label="Revisões por dia" type="number" value="{{ limRev }}" onChange="{{ onLimRev }}" style="width:54px;border:none;border-radius:8px;padding:2px 4px;background:rgba(255,255,255,.2);color:#FFFFFF;font-size:12px;font-weight:700"> revisões</span>
+          </div>
+        </section>
+
+        <section style="background:#FFFFFF;border-radius:24px;padding:22px;box-shadow:0 1px 2px rgba(34,30,47,.05),0 6px 20px rgba(34,30,47,.04);display:grid;gap:14px;align-content:start">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><h2 style="margin:0;font-size:13px;font-weight:700;color:#6E6880;letter-spacing:.02em">Constância</h2><span style="font-size:13px;color:#6E6880">recorde: 21 dias</span></div>
+          <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:32px;font-weight:700;line-height:1">9 dias seguidos</div>
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
+            <sc-for list="{{ streak }}" as="d" hint-placeholder-count="7"><div style="display:grid;gap:4px;justify-items:center"><span style="width:100%;aspect-ratio:1;max-width:36px;border-radius:999px;background:{{ d.bg }};border:{{ d.border }};display:grid;place-items:center;color:#FFFFFF;font-size:12px;font-weight:700">{{ d.mark }}</span><span style="font-size:12px;color:#6E6880">{{ d.l }}</span></div></sc-for>
+          </div>
+        </section>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px">
+        <section style="background:#FFFFFF;border-radius:24px;padding:22px;box-shadow:0 1px 2px rgba(34,30,47,.05),0 6px 20px rgba(34,30,47,.04);display:grid;gap:16px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">
+            <h2 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700">Últimos 7 dias</h2>
+            <span style="font-size:15px;color:#6E6880"><strong style="color:#221E2F">13h</strong> de 14h na meta semanal</span>
+          </div>
+          <div role="img" aria-label="Horas estudadas por dia nos últimos 7 dias" style="display:grid;grid-template-columns:repeat(7,1fr);gap:10px;align-items:end;height:170px;padding-top:12px">
+            <sc-for list="{{ week }}" as="d" hint-placeholder-count="7"><div style="display:grid;gap:6px;justify-items:center;align-content:end;height:100%"><span style="font-size:12px;font-weight:700;color:#6E6880">{{ d.label }}</span><div style="width:100%;max-width:44px;height:{{ d.px }}px;border-radius:10px 10px 4px 4px;display:flex;flex-direction:column-reverse;overflow:hidden;background:#F3EEE7"><sc-for list="{{ d.segs }}" as="sg"><span style="height:{{ sg.pct }}%;background:{{ sg.c }}"></span></sc-for></div><span style="font-size:12px;color:{{ d.dayColor }};font-weight:{{ d.dayWeight }}">{{ d.d }}</span></div></sc-for>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:#6E6880"><sc-for list="{{ legend }}" as="s"><span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:{{ s.solid }}"></span>{{ s.n }}</span></sc-for></div>
+        </section>
+
+        <section style="background:#FFFFFF;border-radius:24px;padding:22px;box-shadow:0 1px 2px rgba(34,30,47,.05),0 6px 20px rgba(34,30,47,.04);display:grid;gap:14px;align-content:start">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><h2 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700">Progresso por curso</h2><a href="#" onClick="{{ go.courses }}" style="font-size:13px;font-weight:700">Ver cursos</a></div>
+          <sc-for list="{{ progress }}" as="p" hint-placeholder-count="4"><div style="display:grid;gap:6px">
+            <div style="display:flex;justify-content:space-between;gap:8px;font-size:15px"><span style="font-weight:600">{{ p.n }}</span><span style="color:#6E6880;font-size:13px">{{ p.done }} de {{ p.total }} aulas</span></div>
+            <div style="height:10px;border-radius:999px;background:{{ p.tint }};overflow:hidden"><div style="height:100%;width:{{ p.pct }}%;background:{{ p.solid }};border-radius:999px"></div></div>
+          </div></sc-for>
+        </section>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px">
+        <section style="background:#FFFFFF;border-radius:24px;padding:22px;box-shadow:0 1px 2px rgba(34,30,47,.05),0 6px 20px rgba(34,30,47,.04);display:grid;gap:12px;align-content:start">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><h2 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700">Próximos no ciclo</h2><a href="#" onClick="{{ go.plan }}" style="font-size:13px;font-weight:700">Ver plano</a></div>
+          <sc-for list="{{ nextBlocks }}" as="b" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:14px;padding:10px 12px;border-radius:16px;background:{{ b.tint }}">
+            <span style="width:44px;height:44px;flex:none;border-radius:14px;background:{{ b.solid }};display:grid;place-items:center;font-weight:700;font-size:13px;color:#221E2F">{{ b.min }}′</span>
+            <div style="flex:1;min-width:0;display:grid"><span style="font-weight:700">{{ b.n }}</span><span style="font-size:13px;color:{{ b.deep }}">{{ b.what }}</span></div>
+            <span style="font-size:12px;font-weight:700;color:{{ b.deep }}">{{ b.tag }}</span>
+          </div></sc-for>
+        </section>
+        <section style="background:#FFFFFF;border-radius:24px;padding:22px;box-shadow:0 1px 2px rgba(34,30,47,.05),0 6px 20px rgba(34,30,47,.04);display:grid;gap:4px;align-content:start">
+          <h2 style="margin:0 0 8px;font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700">Notas recentes</h2>
+          <sc-for list="{{ recent }}" as="r" hint-placeholder-count="4"><a href="#" onClick="{{ go.note }}" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #F1ECE4;color:#221E2F;text-decoration:none">
+            <span style="width:10px;height:10px;flex:none;border-radius:3px;background:{{ r.solid }}"></span>
+            <span style="flex:1;min-width:0;display:grid"><span style="font-weight:600">{{ r.title }}</span><span style="font-size:13px;color:#6E6880">{{ r.path }}</span></span>
+            <span style="font-size:13px;color:#6E6880">{{ r.when }}</span>
+          </a></sc-for>
+        </section>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sTimer }}">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:20px;max-width:1120px;align-items:start">
+      <section style="background:#FFFFFF;border-radius:28px;padding:{{ cardPadL }};box-shadow:0 1px 2px rgba(34,30,47,.05),0 6px 20px rgba(34,30,47,.04);display:grid;gap:24px;justify-items:center;text-align:center">
+        <div role="radiogroup" aria-label="Curso" style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px">
+          <sc-for list="{{ subjChips }}" as="s" hint-placeholder-count="4"><button role="radio" aria-checked="{{ s.act }}" onClick="{{ s.on }}" style="border:2px solid {{ s.border }};background:{{ s.bg }};color:#221E2F;border-radius:999px;padding:6px 14px;min-height:40px;font-weight:700;font-size:13px;cursor:pointer">{{ s.n }}</button></sc-for>
+        </div>
+        <div style="width:{{ ringSize }}px;height:{{ ringSize }}px;border-radius:999px;background:conic-gradient({{ cur.solid }} 0 {{ ringPct }}%, {{ cur.tint }} {{ ringPct }}% 100%);display:grid;place-items:center">
+          <div style="width:86%;height:86%;border-radius:999px;background:#FFFFFF;display:grid;place-content:center;gap:4px">
+            <span style="font-size:13px;font-weight:700;color:{{ cur.deep }}">{{ timerStatus }}</span>
+            <span role="timer" aria-live="off" style="font-family:'Bricolage Grotesque',sans-serif;font-size:{{ clockSize }};font-weight:700;letter-spacing:-0.03em;font-variant-numeric:tabular-nums;line-height:1">{{ clock }}</span>
+            <span style="font-size:13px;color:#6E6880">bloco de 50 min · faltam {{ leftMin }} min</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px">
+          <button onClick="{{ toggleRun }}" style="border:none;background:oklch(0.55 0.2 285);color:#FFFFFF;border-radius:999px;padding:12px 28px;min-height:52px;font-size:17px;font-weight:700;cursor:pointer;min-width:160px">{{ runLabel }}</button>
+          <button onClick="{{ finish }}" style="border:1px solid #E3DCD1;background:#FFFFFF;border-radius:999px;padding:12px 24px;min-height:52px;font-size:17px;font-weight:700;cursor:pointer">Encerrar e registrar</button>
+        </div>
+        <sc-if value="{{ savedMsg }}"><p role="status" style="margin:0;padding:10px 16px;border-radius:14px;background:oklch(0.95 0.04 150);color:oklch(0.38 0.11 150);font-weight:700">Sessão registrada! Meta de hoje: 1h52 de 2h.</p></sc-if>
+      </section>
+
+      <div style="display:grid;gap:20px">
+        <section style="background:#FFFFFF;border-radius:24px;padding:22px;box-shadow:0 1px 2px rgba(34,30,47,.05),0 6px 20px rgba(34,30,47,.04);display:grid;gap:14px">
+          <h2 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700">Sobre esta sessão</h2>
+          <label style="display:grid;gap:6px;font-size:13px;font-weight:700;color:#6E6880">Aula
+            <select style="border:1px solid #E3DCD1;border-radius:12px;padding:10px 12px;min-height:44px;background:#FFFFFF;font-size:15px;font-weight:500;color:#221E2F"><option>Vetores · Projeções</option><option>Vetores · Mudança de base</option><option>Vetores · Base e independência linear</option></select>
+          </label>
+          <div style="display:grid;gap:6px"><span style="font-size:13px;font-weight:700;color:#6E6880">Tipo</span>
+            <div role="radiogroup" aria-label="Tipo de estudo" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:#F3EEE7;border-radius:14px;padding:4px">
+              <sc-for list="{{ kinds }}" as="k" hint-placeholder-count="3"><button role="radio" aria-checked="{{ k.act }}" onClick="{{ k.on }}" style="border:none;border-radius:10px;padding:8px 4px;min-height:40px;background:{{ k.bg }};font-weight:700;font-size:13px;cursor:pointer;box-shadow:{{ k.shadow }}">{{ k.l }}</button></sc-for>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <label style="display:grid;gap:6px;font-size:13px;font-weight:700;color:#6E6880">Questões feitas<input type="number" value="12" style="border:1px solid #E3DCD1;border-radius:12px;padding:10px 12px;min-height:44px;font-size:15px;color:#221E2F;width:100%"></label>
+            <label style="display:grid;gap:6px;font-size:13px;font-weight:700;color:#6E6880">Acertos<input type="number" value="10" style="border:1px solid #E3DCD1;border-radius:12px;padding:10px 12px;min-height:44px;font-size:15px;color:#221E2F;width:100%"></label>
+          </div>
+        </section>
+        <section style="background:#FFFFFF;border-radius:24px;padding:22px;box-shadow:0 1px 2px rgba(34,30,47,.05),0 6px 20px rgba(34,30,47,.04);display:grid;gap:4px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><h2 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700">Hoje</h2><span style="font-size:13px;color:#6E6880">1h20 registradas</span></div>
+          <sc-for list="{{ sessions }}" as="s" hint-placeholder-count="2"><div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid #F1ECE4"><span style="width:10px;height:36px;border-radius:999px;background:{{ s.solid }};flex:none"></span><div style="flex:1;min-width:0;display:grid"><span style="font-weight:600">{{ s.n }}</span><span style="font-size:13px;color:#6E6880">{{ s.meta }}</span></div><span style="font-weight:700;font-variant-numeric:tabular-nums">{{ s.dur }}</span></div></sc-for>
+        </section>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sPlan }}">
+    <div style="display:grid;gap:20px;max-width:1120px">
+      <header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px">
+        <div><h1 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:{{ h1Size }};font-weight:700;letter-spacing:-0.03em;line-height:1.1">Plano da semana</h1><p style="margin:4px 0 0;color:#6E6880;font-size:15px">Ciclo de 14h · você está no bloco 4 de 15</p></div>
+        <button style="border:1px solid #E3DCD1;background:#FFFFFF;border-radius:999px;padding:10px 18px;min-height:44px;font-weight:600;cursor:pointer">Editar ciclo</button>
+      </header>
+      <section style="background:#FFFFFF;border-radius:24px;padding:22px;box-shadow:0 1px 2px rgba(34,30,47,.05),0 6px 20px rgba(34,30,47,.04);display:grid;gap:14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px"><h2 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700">Ciclo de estudos</h2><span style="font-size:15px;color:#6E6880"><strong style="color:#221E2F">2h52</strong> de 14h concluídas</span></div>
+        <div role="img" aria-label="Blocos do ciclo, 3 concluídos e 1 em andamento" style="display:flex;gap:4px;height:40px">
+          <sc-for list="{{ cycle }}" as="b" hint-placeholder-count="15"><span title="{{ b.n }} · {{ b.min }} min" style="flex:{{ b.min }};border-radius:8px;background:{{ b.bg }};border:{{ b.border }};opacity:{{ b.op }}"></span></sc-for>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:#6E6880"><sc-for list="{{ cycleLegend }}" as="s"><span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:{{ s.solid }}"></span>{{ s.n }} · {{ s.h }}</span></sc-for></div>
+      </section>
+      <sc-if value="{{ isMobile }}">
+        <div role="tablist" aria-label="Dia" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">
+          <sc-for list="{{ days }}" as="d" hint-placeholder-count="7"><button role="tab" aria-selected="{{ d.act }}" onClick="{{ d.on }}" style="border:none;border-radius:14px;padding:8px 0;min-height:52px;background:{{ d.bg }};color:{{ d.fg }};cursor:pointer;display:grid;gap:0;font-weight:700"><span style="font-size:12px">{{ d.d }}</span><span style="font-size:15px">{{ d.n }}</span></button></sc-for>
+        </div>
+      </sc-if>
+      <div style="display:grid;grid-template-columns:{{ weekCols }};gap:10px;align-items:start">
+        <sc-for list="{{ daysShown }}" as="d" hint-placeholder-count="7"><section aria-label="{{ d.full }}" style="background:{{ d.colBg }};border-radius:20px;padding:12px;display:grid;gap:8px;border:{{ d.colBorder }}">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;padding:2px 4px"><span style="font-weight:700">{{ d.full }}</span><span style="font-size:12px;color:#6E6880">{{ d.total }}</span></div>
+          <sc-for list="{{ d.blocks }}" as="b"><div style="border-radius:14px;padding:10px 12px;background:{{ b.tint }};display:grid;gap:2px;border-left:0;opacity:{{ b.op }}">
+            <span style="font-size:13px;font-weight:700;color:{{ b.deep }}">{{ b.n }}</span>
+            <span style="font-size:12px;color:{{ b.deep }}">{{ b.min }} min · {{ b.state }}</span>
+          </div></sc-for>
+          <sc-if value="{{ d.rest }}"><div style="border-radius:14px;padding:14px 12px;border:1.5px dashed #E3DCD1;font-size:13px;color:#6E6880;text-align:center">Descanso</div></sc-if>
+        </section></sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sStats }}">
+    <div style="display:grid;gap:20px;max-width:1120px">
+      <header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px">
+        <h1 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:{{ h1Size }};font-weight:700;letter-spacing:-0.03em;line-height:1.1">Seus números</h1>
+        <div role="tablist" aria-label="Período" style="display:flex;gap:4px;background:#F3EEE7;border-radius:999px;padding:4px">
+          <sc-for list="{{ periods }}" as="p" hint-placeholder-count="3"><button role="tab" aria-selected="{{ p.act }}" onClick="{{ p.on }}" style="border:none;border-radius:999px;padding:6px 16px;min-height:36px;background:{{ p.bg }};font-weight:700;font-size:13px;cursor:pointer;box-shadow:{{ p.shadow }}">{{ p.l }}</button></sc-for>
+        </div>
+      </header>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:12px">
+        <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4"><div style="background:{{ k.bg }};border-radius:20px;padding:18px;display:grid;gap:2px"><span style="font-size:13px;font-weight:700;color:{{ k.deep }}">{{ k.l }}</span><span style="font-family:'Bricolage Grotesque',sans-serif;font-size:36px;font-weight:700;letter-spacing:-0.02em;line-height:1.1">{{ k.v }}</span><span style="font-size:13px;color:{{ k.deep }}">{{ k.sub }}</span></div></sc-for>
+      </div>
+      <section style="background:#FFFFFF;border-radius:24px;padding:22px;box-shadow:0 1px 2px rgba(34,30,47,.05),0 6px 20px rgba(34,30,47,.04);display:grid;gap:14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px"><h2 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700">Horas por dia</h2><span style="font-size:13px;color:#6E6880">média de 1h32 · linha = meta de 2h</span></div>
+        <div role="img" aria-label="Horas estudadas por dia" style="position:relative;display:grid;grid-template-columns:repeat({{ barsN }},1fr);gap:{{ barGap }};align-items:end;height:180px">
+          <span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:120px;border-top:2px dashed oklch(0.8 0.08 285)"></span>
+          <sc-for list="{{ bars }}" as="b" hint-placeholder-count="30"><span style="height:{{ b.px }}px;border-radius:6px 6px 2px 2px;background:{{ b.c }}"></span></sc-for>
+        </div>
+      </section>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px">
+        <section style="background:#FFFFFF;border-radius:24px;padding:22px;box-shadow:0 1px 2px rgba(34,30,47,.05),0 6px 20px rgba(34,30,47,.04);display:grid;gap:14px;align-content:start">
+          <h2 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700">Onde foi seu tempo</h2>
+          <div role="img" aria-label="Distribuição de horas por curso" style="display:flex;height:28px;border-radius:999px;overflow:hidden;gap:3px"><sc-for list="{{ dist }}" as="s"><span style="flex:{{ s.h }};background:{{ s.solid }}"></span></sc-for></div>
+          <sc-for list="{{ dist }}" as="s" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:10px;font-size:15px"><span style="width:12px;height:12px;border-radius:4px;background:{{ s.solid }}"></span><span style="flex:1;font-weight:600">{{ s.n }}</span><span style="color:#6E6880">{{ s.label }}</span></div></sc-for>
+        </section>
+        <section style="background:#FFFFFF;border-radius:24px;padding:22px;box-shadow:0 1px 2px rgba(34,30,47,.05),0 6px 20px rgba(34,30,47,.04);display:grid;gap:14px;align-content:start">
+          <h2 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700">Acerto em questões</h2>
+          <sc-for list="{{ accuracy }}" as="a" hint-placeholder-count="4"><div style="display:grid;gap:6px"><div style="display:flex;justify-content:space-between;font-size:15px"><span style="font-weight:600">{{ a.n }}</span><span style="font-weight:700">{{ a.pct }}%<span style="font-weight:400;color:#6E6880;font-size:13px"> · {{ a.q }} questões</span></span></div><div style="height:10px;border-radius:999px;background:{{ a.tint }}"><div style="height:100%;width:{{ a.pct }}%;border-radius:999px;background:{{ a.solid }}"></div></div></div></sc-for>
+        </section>
+      </div>
+      <section style="background:#FFFFFF;border-radius:24px;padding:22px;box-shadow:0 1px 2px rgba(34,30,47,.05),0 6px 20px rgba(34,30,47,.04);display:grid;gap:14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px"><h2 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700">Constância · 12 semanas</h2><span style="font-size:13px;color:#6E6880">72 de 84 dias com estudo</span></div>
+        <div role="img" aria-label="Dias estudados nas últimas 12 semanas" style="display:grid;grid-template-rows:repeat(7,1fr);grid-auto-flow:column;grid-auto-columns:1fr;gap:5px;max-width:640px">
+          <sc-for list="{{ heat }}" as="h" hint-placeholder-count="84"><span style="aspect-ratio:1;border-radius:5px;background:{{ h.c }}"></span></sc-for>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#6E6880">menos<sc-for list="{{ heatScale }}" as="c"><span style="width:14px;height:14px;border-radius:4px;background:{{ c }}"></span></sc-for>mais</div>
+      </section>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sReview }}">
+    <div style="max-width:760px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;gap:20px">
+      <div style="display:flex;align-items:center;gap:14px">
+        <button onClick="{{ go.dash }}" aria-label="Sair da revisão (esc)" style="border:none;background:#FFFFFF;border-radius:999px;width:40px;height:40px;cursor:pointer;font-size:17px;box-shadow:0 1px 2px rgba(34,30,47,.06)">×</button>
+        <div role="progressbar" aria-valuenow="{{ doneN }}" aria-valuemin="0" aria-valuemax="46" style="flex:1;height:12px;border-radius:999px;background:#EEE8E0;overflow:hidden"><div style="height:100%;width:{{ revPct }}%;background:oklch(0.72 0.15 150);border-radius:999px"></div></div>
+        <span style="font-size:13px;font-weight:700;color:#6E6880;font-variant-numeric:tabular-nums">{{ doneN }}/46</span>
+      </div>
+      <sc-if value="{{ revEmpty }}">
+        <div style="flex:1;display:grid;place-content:center;justify-items:center;text-align:center;gap:14px;padding:40px 0">
+          <div aria-hidden="true" style="width:120px;height:120px;border-radius:999px;background:conic-gradient(oklch(0.72 0.15 150) 0 100%);display:grid;place-items:center"><div style="width:92px;height:92px;border-radius:999px;background:#FBF8F4;display:grid;place-items:center;font-family:'Bricolage Grotesque',sans-serif;font-size:36px;font-weight:800;color:oklch(0.5 0.13 150)">46</div></div>
+          <h1 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:36px;font-weight:700;letter-spacing:-0.03em">Fila zerada!</h1>
+          <p style="margin:0;font-size:17px;color:#6E6880;max-width:36ch">46 cards em 9 minutos, 87% como bom ou fácil. Próxima revisão em 2 dias.</p>
+          <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:8px">
+            <button onClick="{{ studyAhead }}" style="border:1px solid #E3DCD1;background:#FFFFFF;border-radius:999px;padding:10px 20px;min-height:48px;font-weight:700;cursor:pointer">Estudar adiantado</button>
+            <button onClick="{{ go.dash }}" style="border:none;background:oklch(0.55 0.2 285);color:#FFFFFF;border-radius:999px;padding:10px 22px;min-height:48px;font-weight:700;cursor:pointer">Voltar ao início</button>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ revCard }}">
+        <article style="flex:1;background:#FFFFFF;border-radius:28px;padding:{{ cardPadL }};box-shadow:0 1px 2px rgba(34,30,47,.05),0 10px 30px rgba(34,30,47,.06);display:flex;flex-direction:column;gap:24px;min-height:360px">
+          <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span style="background:{{ rc.tint }};color:{{ rc.deep }};border-radius:999px;padding:4px 12px;font-size:13px;font-weight:700">{{ rc.path }}</span><span style="font-size:13px;color:#6E6880;font-weight:600">{{ rc.kind }}</span></div>
+          <div aria-live="polite" style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:20px">
+            <div style="font-size:{{ faceSize }};font-weight:600;line-height:1.4;letter-spacing:-0.01em"><sc-for list="{{ face }}" as="p"><sc-if value="{{ p.isT }}"><span>{{ p.t }}</span></sc-if><sc-if value="{{ p.isM }}"><k-tex tex="{{ p.m }}"></k-tex></sc-if><sc-if value="{{ p.isC }}"><code style="font-family:'JetBrains Mono',monospace;background:#F3EEE7;border-radius:8px;padding:2px 8px">{{ p.c }}</code></sc-if><sc-if value="{{ p.isB }}"><span style="display:inline-block;min-width:3em;border-radius:10px;background:oklch(0.94 0.03 285);color:oklch(0.5 0.2 285);padding:0 10px;text-align:center">?</span></sc-if><sc-if value="{{ p.isA }}"><span style="border-radius:10px;background:oklch(0.94 0.05 150);padding:2px 10px"><k-tex tex="{{ p.m }}"></k-tex></span></sc-if></sc-for></div>
+            <sc-if value="{{ hasAnswer }}"><div style="border-top:2px dashed #EEE8E0;padding-top:20px;font-size:{{ faceSize }};font-weight:600;line-height:1.4;color:oklch(0.38 0.11 150)"><sc-for list="{{ answer }}" as="p"><sc-if value="{{ p.isT }}"><span>{{ p.t }}</span></sc-if><sc-if value="{{ p.isM }}"><k-tex tex="{{ p.m }}"></k-tex></sc-if><sc-if value="{{ p.isC }}"><code style="font-family:'JetBrains Mono',monospace;background:oklch(0.94 0.05 150);border-radius:8px;padding:2px 8px">{{ p.c }}</code></sc-if></sc-for></div></sc-if>
+          </div>
+        </article>
+        <sc-if value="{{ revQ }}"><button onClick="{{ reveal }}" style="border:none;background:oklch(0.55 0.2 285);color:#FFFFFF;border-radius:20px;min-height:64px;font-size:17px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px">Mostrar resposta<span style="font-size:12px;background:rgba(255,255,255,.2);border-radius:6px;padding:2px 8px">espaço</span></button></sc-if>
+        <sc-if value="{{ revA }}"><div role="group" aria-label="Como foi?" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
+          <sc-for list="{{ ratings }}" as="r" hint-placeholder-count="4"><button onClick="{{ rate }}" style="border:none;background:{{ r.bg }};color:#221E2F;border-radius:20px;min-height:72px;cursor:pointer;display:grid;place-content:center;gap:2px;padding:8px 4px"><span style="font-size:15px;font-weight:700">{{ r.l }}</span><span style="font-size:12px;font-weight:600">{{ r.k }}</span></button></sc-for>
+        </div></sc-if>
+        <p role="status" style="margin:0;text-align:center;font-size:13px;color:#6E6880">{{ revFoot }}</p>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sNote }}">
+    <article style="display:grid;grid-template-columns:{{ noteCols }};gap:32px;max-width:1120px;align-items:start">
+      <div style="background:#FFFFFF;border-radius:28px;padding:{{ cardPadL }};box-shadow:0 1px 2px rgba(34,30,47,.05),0 6px 20px rgba(34,30,47,.04);min-width:0">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;margin-bottom:12px"><span style="background:oklch(0.95 0.035 285);color:oklch(0.42 0.13 285);border-radius:999px;padding:4px 12px;font-weight:700">Álgebra linear</span><a href="#" onClick="{{ go.course }}" style="font-weight:600">Vetores · Projeções</a></div>
+        <h1 style="margin:0 0 6px;font-family:'Bricolage Grotesque',sans-serif;font-size:{{ h1Size }};font-weight:700;letter-spacing:-0.03em;line-height:1.1">Projeção escalar e vetorial</h1>
+        <div style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:#6E6880;margin-bottom:24px"><span>Anotação de aula</span><span>editada há 2 h</span><span>4 cards</span><a href="#" onClick="{{ go.edit }}" style="font-weight:700">Editar</a></div>
+        <div style="font-size:17px;line-height:1.7;max-width:68ch">
+          <p style="margin:0 0 16px">Dados dois vetores <k-tex tex="{{ tx.r }}"></k-tex> e <k-tex tex="{{ tx.s }}"></k-tex>, a projeção de <k-tex tex="{{ tx.s }}"></k-tex> sobre <k-tex tex="{{ tx.r }}"></k-tex> responde a uma pergunta geométrica: quanto de <k-tex tex="{{ tx.s }}"></k-tex> aponta na direção de <k-tex tex="{{ tx.r }}"></k-tex>? Pense na sombra que um projeta sobre a reta do outro.</p>
+          <h2 style="margin:28px 0 8px;font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.02em">Projeção escalar</h2>
+          <p style="margin:0 0 16px">Pela definição de produto escalar, <k-tex tex="{{ tx.dot }}"></k-tex>. Dividindo por <k-tex tex="{{ tx.nr }}"></k-tex>, a projeção escalar de <k-tex tex="{{ tx.s }}"></k-tex> sobre <k-tex tex="{{ tx.r }}"></k-tex> é <mark style="background:oklch(0.94 0.04 285);color:inherit;border-radius:6px;padding:1px 4px"><k-tex tex="{{ tx.sc }}"></k-tex></mark><a href="#c1" style="font-size:12px;font-weight:700;vertical-align:super;line-height:0;margin-left:2px">1</a>.</p>
+          <div style="margin:12px 0 20px;padding:16px;border-radius:16px;background:#FAF7F2"><k-tex display="true" tex="{{ tx.scD }}"></k-tex></div>
+          <h2 style="margin:28px 0 8px;font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.02em">Projeção vetorial</h2>
+          <p style="margin:0 0 16px">Multiplicando pelo vetor unitário <k-tex tex="{{ tx.unit }}"></k-tex>, a projeção vetorial é <mark style="background:oklch(0.94 0.04 285);color:inherit;border-radius:6px;padding:1px 4px"><k-tex tex="{{ tx.vec }}"></k-tex></mark><a href="#c2" style="font-size:12px;font-weight:700;vertical-align:super;line-height:0;margin-left:2px">2</a>.</p>
+          <div style="margin:12px 0 20px;padding:16px;border-radius:16px;background:#FAF7F2"><k-tex display="true" tex="{{ tx.vecD }}"></k-tex></div>
+          <div style="margin:12px 0 20px;border-radius:16px;background:oklch(0.96 0.03 230);padding:14px 16px;display:grid;gap:6px">
+            <span style="font-size:12px;font-weight:700;color:oklch(0.42 0.12 230)">Pergunta e resposta<a href="#c3" style="vertical-align:super;line-height:0;margin-left:2px">3</a></span>
+            <span style="font-weight:600">Quando a projeção escalar de <k-tex tex="{{ tx.s }}"></k-tex> sobre <k-tex tex="{{ tx.r }}"></k-tex> é zero?</span>
+            <span>Quando os vetores são ortogonais, isto é, <k-tex tex="{{ tx.ortho }}"></k-tex>.</span>
+          </div>
+          <h2 style="margin:28px 0 8px;font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.02em">Em Python</h2>
+          <pre style="margin:0 0 20px;padding:18px;border-radius:16px;background:#221E2F;color:#F3EEE7;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:14px;line-height:1.65"><code style="display:block"><sc-for list="{{ py }}" as="ln" hint-placeholder-count="10"><span style="display:block;white-space:pre;color:{{ ln.dark }}">{{ ln.t }}</span></sc-for></code></pre>
+          <div style="display:flex;flex-wrap:wrap;gap:8px"><a href="#" onClick="{{ go.tag }}" style="background:oklch(0.95 0.035 285);color:oklch(0.42 0.13 285);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:700;text-decoration:none">#projecao-vetorial</a><a href="#" onClick="{{ go.tag }}" style="background:oklch(0.95 0.035 175);color:oklch(0.4 0.1 175);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:700;text-decoration:none">#produto-escalar</a></div>
+        </div>
+      </div>
+      <aside aria-label="Cards desta nota" style="display:grid;gap:12px;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;padding:0 4px"><h2 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700">Cards desta nota</h2><span style="font-size:13px;color:#6E6880">4</span></div>
+        <sc-for list="{{ cards }}" as="c" hint-placeholder-count="4"><div id="{{ c.id }}" style="background:#FFFFFF;border-radius:20px;padding:16px;box-shadow:0 1px 2px rgba(34,30,47,.05);display:grid;gap:10px;opacity:{{ c.op }}">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;color:#6E6880">{{ c.ref }} · {{ c.kind }}</span><span style="background:{{ c.stTint }};color:{{ c.stDeep }};border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700">{{ c.state }}</span></div>
+          <div style="font-size:15px;font-weight:600;line-height:1.45"><sc-for list="{{ c.face }}" as="p"><sc-if value="{{ p.isT }}"><span>{{ p.t }}</span></sc-if><sc-if value="{{ p.isM }}"><k-tex tex="{{ p.m }}"></k-tex></sc-if><sc-if value="{{ p.isC }}"><code style="font-family:'JetBrains Mono',monospace;font-size:13px;background:#F3EEE7;border-radius:6px;padding:1px 5px">{{ p.c }}</code></sc-if><sc-if value="{{ p.isB }}"><span style="background:oklch(0.94 0.03 285);color:oklch(0.5 0.2 285);border-radius:6px;padding:0 8px">?</span></sc-if></sc-for></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:#6E6880"><span>{{ c.due }}</span><button onClick="{{ c.onToggle }}" style="border:1px solid #E3DCD1;background:#FFFFFF;border-radius:999px;padding:4px 12px;min-height:32px;cursor:pointer;font-size:12px;font-weight:700">{{ c.action }}</button></div>
+        </div></sc-for>
+      </aside>
+    </article>
+  </sc-if>
+
+  <sc-if value="{{ sEdit }}">
+    <div style="display:grid;gap:14px;max-width:1240px">
+      <header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px">
+        <div style="display:grid;gap:2px;min-width:0"><span style="font-size:13px;color:#6E6880;font-weight:600">Álgebra linear · Projeções</span><h1 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.02em">Projeção escalar e vetorial</h1></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span role="status" style="display:flex;align-items:center;gap:6px;background:{{ saveBg }};color:{{ saveFg }};border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700"><span aria-hidden="true" style="width:8px;height:8px;border-radius:999px;background:{{ saveFg }}"></span>{{ saveText }}</span>
+          <button onClick="{{ go.note }}" style="border:none;background:oklch(0.55 0.2 285);color:#FFFFFF;border-radius:999px;padding:8px 18px;min-height:40px;font-weight:700;cursor:pointer">Ver nota</button>
+        </div>
+      </header>
+      <sc-if value="{{ hasErr }}">
+        <div role="alert" style="border-radius:18px;background:oklch(0.95 0.04 25);color:oklch(0.38 0.13 25);padding:14px 18px;display:grid;gap:4px;font-size:15px">
+          <strong style="font-weight:700">Linha {{ errLine }}: essa lacuna está vazia, então o card não foi criado.</strong>
+          <span>Coloque a resposta entre as chaves, por exemplo <code style="font-family:'JetBrains Mono',monospace;font-size:13px;background:#FFFFFF;border-radius:6px;padding:1px 6px">{{ exampleCloze }}</code>. O resto da nota já está salvo.</span>
+        </div>
+      </sc-if>
+      <div style="display:grid;grid-template-columns:{{ editCols }};gap:14px">
+        <section aria-label="Markdown" style="background:#221E2F;border-radius:24px;overflow:hidden;display:flex;flex-direction:column;min-width:0">
+          <div style="padding:10px 18px;font-size:12px;font-weight:700;color:#B7AFC6">Markdown</div>
+          <textarea value="{{ src }}" onChange="{{ onSrc }}" spellCheck="{{ false }}" aria-label="Texto da nota em Markdown" style="flex:1;min-height:{{ taH }}px;width:100%;resize:vertical;border:none;padding:4px 18px 18px;background:#221E2F;color:#F3EEE7;font-family:'JetBrains Mono',monospace;font-size:14px;line-height:1.7;outline-offset:-4px"></textarea>
+        </section>
+        <section aria-label="Pré-visualização" style="background:#FFFFFF;border-radius:24px;padding:22px 26px;box-shadow:0 1px 2px rgba(34,30,47,.05);min-width:0;font-size:17px;line-height:1.7">
+          <div style="font-size:12px;font-weight:700;color:#6E6880;margin-bottom:10px">Pré-visualização</div>
+          <h2 style="margin:0 0 12px;font-family:'Bricolage Grotesque',sans-serif;font-size:28px;font-weight:700;letter-spacing:-0.02em;line-height:1.15">Projeção escalar e vetorial</h2>
+          <p style="margin:0 0 16px">Pela definição de produto escalar, <k-tex tex="{{ tx.dot }}"></k-tex>. A projeção escalar é <mark style="background:oklch(0.94 0.04 285);color:inherit;border-radius:6px;padding:1px 4px"><k-tex tex="{{ tx.sc }}"></k-tex></mark>.</p>
+          <div style="margin:12px 0 20px;padding:16px;border-radius:16px;background:#FAF7F2"><k-tex display="true" tex="{{ tx.scD }}"></k-tex></div>
+          <p style="margin:0 0 16px">A projeção vetorial é <sc-if value="{{ hasErr }}"><span style="background:oklch(0.95 0.04 25);color:oklch(0.38 0.13 25);border:2px dashed oklch(0.68 0.17 25);border-radius:8px;padding:0 8px;font-family:'JetBrains Mono',monospace;font-size:14px;white-space:nowrap">{{ emptyCloze }} vazia</span></sc-if><sc-if value="{{ noErr }}" hint-placeholder-val="{{ true }}"><mark style="background:oklch(0.94 0.04 285);color:inherit;border-radius:6px;padding:1px 4px"><k-tex tex="{{ tx.vec }}"></k-tex></mark></sc-if>.</p>
+          <pre style="margin:0;padding:16px;border-radius:16px;background:#221E2F;color:#F3EEE7;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.65"><code style="display:block"><sc-for list="{{ py }}" as="ln"><span style="display:block;white-space:pre;color:{{ ln.dark }}">{{ ln.t }}</span></sc-for></code></pre>
+        </section>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sCourses }}">
+    <div style="display:grid;gap:28px;max-width:1120px">
+      <header style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px">
+        <h1 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:{{ h1Size }};font-weight:700;letter-spacing:-0.03em;line-height:1.1">Seus cursos</h1>
+        <button style="border:none;background:oklch(0.55 0.2 285);color:#FFFFFF;border-radius:999px;padding:10px 20px;min-height:44px;font-weight:700;cursor:pointer">Novo curso</button>
+      </header>
+      <sc-for list="{{ tracks }}" as="tr" hint-placeholder-count="2"><section style="display:grid;gap:12px">
+        <h2 style="margin:0;font-size:15px;font-weight:700;color:#6E6880">{{ tr.n }}</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:14px">
+          <sc-for list="{{ tr.courses }}" as="c"><a href="#" onClick="{{ go.course }}" style="background:#FFFFFF;border-radius:24px;padding:20px;box-shadow:0 1px 2px rgba(34,30,47,.05),0 6px 20px rgba(34,30,47,.04);display:flex;gap:16px;align-items:center;color:#221E2F;text-decoration:none">
+            <div style="width:64px;height:64px;flex:none;border-radius:999px;background:conic-gradient({{ c.solid }} 0 {{ c.pct }}%, {{ c.tint }} {{ c.pct }}% 100%);display:grid;place-items:center"><span style="width:48px;height:48px;border-radius:999px;background:#FFFFFF;display:grid;place-items:center;font-size:13px;font-weight:700">{{ c.pct }}%</span></div>
+            <div style="display:grid;gap:2px;min-width:0"><span style="font-family:'Bricolage Grotesque',sans-serif;font-size:19px;font-weight:700;letter-spacing:-0.01em">{{ c.n }}</span><span style="font-size:13px;color:#6E6880">{{ c.meta }}</span><span style="font-size:13px;font-weight:700;color:{{ c.deep }}">{{ c.hours }}</span></div>
+          </a></sc-for>
+        </div>
+      </section></sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sCourse }}">
+    <div style="display:grid;gap:20px;max-width:900px">
+      <header style="background:oklch(0.95 0.035 285);border-radius:28px;padding:{{ cardPadL }};display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between">
+        <div style="display:grid;gap:4px"><a href="#" onClick="{{ go.courses }}" style="font-size:13px;font-weight:700;color:oklch(0.42 0.13 285)">Matemática para machine learning</a><h1 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:{{ h1Size }};font-weight:700;letter-spacing:-0.03em;line-height:1.1">Álgebra linear</h1><span style="font-size:15px;color:oklch(0.42 0.13 285)">{{ courseMeta }} · 18h estudadas</span></div>
+        <button onClick="{{ addModule }}" style="border:none;background:oklch(0.55 0.2 285);color:#FFFFFF;border-radius:999px;padding:10px 20px;min-height:44px;font-weight:700;cursor:pointer">Novo módulo</button>
+      </header>
+      <ol style="list-style:none;margin:0;padding:0;display:grid;gap:10px">
+        <sc-for list="{{ mods }}" as="m" hint-placeholder-count="5"><li style="background:#FFFFFF;border-radius:22px;box-shadow:0 1px 2px rgba(34,30,47,.05);overflow:hidden">
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 14px 10px 10px">
+            <button onClick="{{ m.onToggle }}" aria-expanded="{{ m.open }}" style="flex:1 1 260px;display:flex;align-items:center;gap:14px;text-align:left;background:none;border:none;padding:6px;cursor:pointer;min-height:48px">
+              <span style="width:40px;height:40px;flex:none;border-radius:14px;background:{{ m.badgeBg }};color:{{ m.badgeFg }};display:grid;place-items:center;font-weight:800">{{ m.num }}</span>
+              <span style="display:grid;gap:2px;flex:1;min-width:0"><span style="font-size:17px;font-weight:700">{{ m.n }}</span><span style="height:6px;border-radius:999px;background:#F3EEE7;max-width:220px"><span style="display:block;height:100%;width:{{ m.pct }}%;border-radius:999px;background:oklch(0.7 0.14 285)"></span></span></span>
+              <span style="font-size:13px;color:#6E6880;white-space:nowrap">{{ m.count }}</span>
+              <span aria-hidden="true" style="color:#6E6880">{{ m.arrow }}</span>
+            </button>
+            <div role="group" aria-label="Ações do módulo" style="display:flex;gap:4px">
+              <button onClick="{{ m.onAdd }}" style="border:1px solid #E3DCD1;background:#FFFFFF;border-radius:999px;padding:4px 12px;min-height:32px;font-size:12px;font-weight:700;cursor:pointer">Nova aula</button>
+              <button onClick="{{ m.onUp }}" disabled="{{ m.first }}" aria-label="Mover para cima" style="border:1px solid #E3DCD1;background:#FFFFFF;border-radius:999px;width:32px;min-height:32px;font-size:12px;cursor:pointer;color:{{ m.upColor }}">↑</button>
+              <button onClick="{{ m.onDown }}" disabled="{{ m.last }}" aria-label="Mover para baixo" style="border:1px solid #E3DCD1;background:#FFFFFF;border-radius:999px;width:32px;min-height:32px;font-size:12px;cursor:pointer;color:{{ m.downColor }}">↓</button>
+              <button onClick="{{ m.onArchive }}" style="border:1px solid #E3DCD1;background:#FFFFFF;border-radius:999px;padding:4px 12px;min-height:32px;font-size:12px;font-weight:700;cursor:pointer">Arquivar</button>
+            </div>
+          </div>
+          <sc-if value="{{ m.open }}"><ul style="list-style:none;margin:0;padding:0 14px 12px 64px;display:grid;gap:2px">
+            <sc-for list="{{ m.lessons }}" as="l"><li style="display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:14px;background:{{ l.rowBg }}">
+              <input type="checkbox" checked="{{ l.done }}" onChange="{{ l.onCheck }}" aria-label="Aula estudada: {{ l.n }}" style="width:20px;height:20px;margin:0;accent-color:oklch(0.55 0.2 285);cursor:pointer">
+              <a href="#" onClick="{{ go.note }}" style="flex:1;min-width:0;color:#221E2F;font-weight:600;text-decoration:{{ l.deco }}">{{ l.n }}</a>
+              <span style="font-size:12px;color:#6E6880">{{ l.notesLabel }}</span>
+            </li></sc-for>
+            <sc-if value="{{ m.empty }}"><li style="padding:8px 10px;font-size:15px;color:#6E6880">Nenhuma aula ainda. <button onClick="{{ m.onAdd }}" style="background:none;border:none;padding:0;color:oklch(0.5 0.2 285);font-weight:700;cursor:pointer">Criar a primeira</button></li></sc-if>
+          </ul></sc-if>
+        </li></sc-for>
+      </ol>
+      <sc-if value="{{ hasArchived }}"><section style="display:grid;gap:6px"><h2 style="margin:0;font-size:13px;font-weight:700;color:#6E6880">Arquivados</h2><sc-for list="{{ archivedV }}" as="a"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:#FFFFFF;border-radius:16px;padding:8px 8px 8px 16px;color:#6E6880"><span>{{ a.label }}</span><button onClick="{{ a.onRestore }}" style="border:1px solid #E3DCD1;background:#FFFFFF;border-radius:999px;padding:4px 12px;min-height:32px;font-size:12px;font-weight:700;cursor:pointer">Restaurar</button></div></sc-for></section></sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sSearch }}">
+    <div style="display:grid;gap:16px;max-width:820px">
+      <h1 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:{{ h1Size }};font-weight:700;letter-spacing:-0.03em;line-height:1.1">Buscar</h1>
+      <div role="search"><input type="search" aria-label="Buscar em notas e cards" value="{{ q }}" onChange="{{ onQ }}" placeholder="Busque por conceito, fórmula ou código" style="width:100%;font-size:17px;padding:14px 20px;min-height:56px;border:2px solid oklch(0.85 0.06 285);background:#FFFFFF;border-radius:999px;color:#221E2F"></div>
+      <div role="tablist" aria-label="Filtro" style="display:flex;gap:6px;flex-wrap:wrap">
+        <sc-for list="{{ filters }}" as="f" hint-placeholder-count="3"><button role="tab" aria-selected="{{ f.act }}" onClick="{{ f.on }}" style="border:none;border-radius:999px;padding:6px 14px;min-height:36px;background:{{ f.bg }};color:{{ f.fg }};font-weight:700;font-size:13px;cursor:pointer">{{ f.l }}</button></sc-for>
+      </div>
+      <p role="status" style="margin:0;font-size:13px;color:#6E6880;font-weight:600">{{ resultsLabel }}</p>
+      <div style="display:grid;gap:10px">
+        <sc-for list="{{ results }}" as="r" hint-placeholder-count="5"><a href="#" onClick="{{ go.note }}" style="background:#FFFFFF;border-radius:20px;padding:16px 18px;box-shadow:0 1px 2px rgba(34,30,47,.05);display:grid;gap:4px;color:#221E2F;text-decoration:none">
+          <span style="display:flex;gap:8px;align-items:center;font-size:12px;font-weight:700;color:#6E6880"><span style="background:{{ r.typeBg }};color:{{ r.typeFg }};border-radius:999px;padding:2px 8px">{{ r.type }}</span>{{ r.path }}</span>
+          <span style="font-size:17px;font-weight:700"><sc-for list="{{ r.tp }}" as="p"><sc-if value="{{ p.h }}"><mark style="background:oklch(0.92 0.09 90);color:inherit;border-radius:4px;padding:0 2px">{{ p.t }}</mark></sc-if><sc-if value="{{ p.n }}"><span>{{ p.t }}</span></sc-if></sc-for></span>
+          <span style="font-size:15px;color:#4E4860;line-height:1.55"><sc-for list="{{ r.xp }}" as="p"><sc-if value="{{ p.h }}"><mark style="background:oklch(0.92 0.09 90);color:#221E2F;border-radius:4px;padding:0 2px;font-weight:700">{{ p.t }}</mark></sc-if><sc-if value="{{ p.n }}"><span>{{ p.t }}</span></sc-if></sc-for></span>
+        </a></sc-for>
+      </div>
+      <sc-if value="{{ noResults }}"><div style="background:#FFFFFF;border-radius:20px;padding:24px;text-align:center;display:grid;gap:6px"><strong style="font-size:17px">Nada por aqui com “{{ q }}”.</strong><span style="color:#6E6880">Tente um termo mais curto ou explore o conceito <a href="#" onClick="{{ go.tag }}" style="font-weight:700">#projecao-vetorial</a>.</span></div></sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sTag }}">
+    <div style="display:grid;gap:20px;max-width:900px">
+      <header style="background:oklch(0.95 0.035 285);border-radius:28px;padding:{{ cardPadL }};display:grid;gap:6px">
+        <span style="font-size:13px;font-weight:700;color:oklch(0.42 0.13 285)">Conceito</span>
+        <h1 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:{{ h1Size }};font-weight:700;letter-spacing:-0.03em;line-height:1.1">#projecao-vetorial</h1>
+        <span style="font-size:15px;color:oklch(0.42 0.13 285)">Aparece em 3 notas e 5 cards · 82% de acerto nos cards</span>
+      </header>
+      <section style="display:grid;gap:10px">
+        <h2 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700">Notas</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:10px">
+          <sc-for list="{{ tagNotes }}" as="n" hint-placeholder-count="3"><a href="#" onClick="{{ go.note }}" style="background:#FFFFFF;border-radius:20px;padding:16px;box-shadow:0 1px 2px rgba(34,30,47,.05);display:grid;gap:4px;color:#221E2F;text-decoration:none"><span style="font-size:12px;font-weight:700;color:#6E6880">{{ n.kind }}</span><span style="font-weight:700;font-size:17px">{{ n.title }}</span><span style="font-size:13px;color:#6E6880">{{ n.path }}</span></a></sc-for>
+        </div>
+      </section>
+      <section style="display:grid;gap:10px">
+        <h2 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:700">Cards</h2>
+        <sc-for list="{{ tagCards }}" as="c" hint-placeholder-count="5"><div style="background:#FFFFFF;border-radius:20px;padding:14px 16px;box-shadow:0 1px 2px rgba(34,30,47,.05);display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 16px">
+          <span style="flex:1 1 300px;min-width:0;font-weight:600;line-height:1.5"><sc-for list="{{ c.face }}" as="p"><sc-if value="{{ p.isT }}"><span>{{ p.t }}</span></sc-if><sc-if value="{{ p.isM }}"><k-tex tex="{{ p.m }}"></k-tex></sc-if><sc-if value="{{ p.isB }}"><span style="background:oklch(0.94 0.03 285);color:oklch(0.5 0.2 285);border-radius:6px;padding:0 8px">?</span></sc-if></sc-for></span>
+          <span style="display:flex;gap:10px;align-items:center;font-size:13px"><span style="background:{{ c.stTint }};color:{{ c.stDeep }};border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700">{{ c.state }}</span><a href="#" onClick="{{ go.note }}" style="font-weight:600">{{ c.from }}</a></span>
+        </div></sc-for>
+      </section>
+    </div>
+  </sc-if>
+
+  </main>
+
+  <sc-if value="{{ showTabs }}">
+    <nav aria-label="Principal" style="flex:none;background:#FFFFFF;border-top:1px solid #EEE8E0;padding:8px 10px 18px;display:grid;grid-template-columns:repeat(5,1fr);align-items:end;gap:4px">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5"><a href="#" onClick="{{ t.on }}" aria-current="{{ t.cur }}" style="display:grid;justify-items:center;gap:4px;min-height:48px;padding-top:4px;color:{{ t.fg }};text-decoration:none;font-size:12px;font-weight:700">
+        <span aria-hidden="true" style="width:{{ t.size }}px;height:{{ t.size }}px;border-radius:{{ t.radius }};background:{{ t.bg }};display:grid;place-items:center;color:{{ t.iconFg }};font-size:12px;font-weight:800;margin-top:{{ t.lift }}px;box-shadow:{{ t.shadow }}">{{ t.glyph }}</span>
+        <span>{{ t.l }}</span>
+      </a></sc-for>
+    </nav>
+  </sc-if>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const C = h => ({ solid: `oklch(0.72 0.14 ${h})`, tint: `oklch(0.95 0.035 ${h})`, deep: `oklch(0.42 0.13 ${h})` });
+const SUBJ = {
+  alg: { n: 'Álgebra linear', ...C(285) }, calc: { n: 'Cálculo multivariado', ...C(25) },
+  py: { n: 'Python', ...C(75) }, pca: { n: 'PCA', ...C(175) }, web: { n: 'Dados da web', ...C(230) }
+};
+const BRAND = 'oklch(0.55 0.2 285)';
+const TX = {
+  r: String.raw`\mathbf{r}`, s: String.raw`\mathbf{s}`, nr: String.raw`|\mathbf{r}|`,
+  dot: String.raw`\mathbf{r}\cdot\mathbf{s} = |\mathbf{r}|\,|\mathbf{s}|\cos\theta`,
+  sc: String.raw`\frac{\mathbf{r}\cdot\mathbf{s}}{|\mathbf{r}|}`,
+  scD: String.raw`\operatorname{comp}_{\mathbf{r}}\mathbf{s} = \frac{\mathbf{r}\cdot\mathbf{s}}{|\mathbf{r}|} = |\mathbf{s}|\cos\theta`,
+  unit: String.raw`\mathbf{r}/|\mathbf{r}|`,
+  vec: String.raw`\frac{\mathbf{r}\cdot\mathbf{s}}{\mathbf{r}\cdot\mathbf{r}}\,\mathbf{r}`,
+  vecD: String.raw`\operatorname{proj}_{\mathbf{r}}\mathbf{s} = \frac{\mathbf{r}\cdot\mathbf{s}}{\mathbf{r}\cdot\mathbf{r}}\,\mathbf{r}`,
+  ortho: String.raw`\mathbf{r}\cdot\mathbf{s} = 0`
+};
+const P = (...xs) => xs.map(x => typeof x === 'string' ? { isT: true, t: x } : x.m ? { isM: true, m: x.m } : x.c ? { isC: true, c: x.c } : x.a ? { isA: true, m: x.a } : { isB: true });
+const PYSRC = ['import numpy as np', '', 'r = np.array([3.0, 4.0])', 's = np.array([2.0, 1.0])', '', '# projeção escalar: 2.0', 'escalar = np.dot(r, s) / np.linalg.norm(r)', '', '# projeção vetorial: [1.2 1.6]', 'vetorial = (np.dot(r, s) / np.dot(r, r)) * r'];
+const PY = PYSRC.map(t => ({ t: t || '\u00a0', dark: t.startsWith('#') ? '#A59DB6' : '#F3EEE7' }));
+const VEC = String.raw`{{$\frac{\mathbf{r}\cdot\mathbf{s}}{\mathbf{r}\cdot\mathbf{r}}\,\mathbf{r}$::escalar vezes unitário}}`;
+const SRC = String.raw`# Projeção escalar e vetorial
+
+#projecao-vetorial #produto-escalar
+
+Pela definição de produto escalar, $\mathbf{r}\cdot\mathbf{s} = |\mathbf{r}|\,|\mathbf{s}|\cos\theta$. A projeção escalar é {{$\frac{\mathbf{r}\cdot\mathbf{s}}{|\mathbf{r}|}$}}.
+
+$$
+\operatorname{comp}_{\mathbf{r}}\mathbf{s} = \frac{\mathbf{r}\cdot\mathbf{s}}{|\mathbf{r}|}
+$$
+
+A projeção vetorial é ${VEC}.
+
+Q:: Quando a projeção escalar é zero?
+A:: Quando os vetores são ortogonais.
+
+FENCEpython
+${PYSRC.join('\n')}
+FENCE
+`.split('FENCE').join('```');
+const SRC_ERR = SRC.split(VEC).join('{{}}');
+
+const DECK = [
+  { s: 'alg', kind: 'Lacuna', cloze: true, q: P('A projeção escalar de ', { m: TX.s }, ' sobre ', { m: TX.r }, ' é ', { b: 1 }, '.'), a: P('A projeção escalar de ', { m: TX.s }, ' sobre ', { m: TX.r }, ' é ', { a: TX.sc }, '.') },
+  { s: 'alg', kind: 'Pergunta', q: P('Quando a projeção escalar de ', { m: TX.s }, ' sobre ', { m: TX.r }, ' é zero?'), a: P('Quando os vetores são ortogonais: ', { m: TX.ortho }, '.') },
+  { s: 'py', kind: 'Pergunta', q: P('Que expressão devolve ', { c: 'xs' }, ' invertida sem modificá-la?'), a: P({ c: 'xs[::-1]' }) }
+];
+const ST = { 'novo': 230, 'aprendendo': 75, 'revisão': 150, 'suspenso': null };
+const stColors = st => ST[st] == null ? { stTint: '#F1ECE4', stDeep: '#6E6880' } : { stTint: `oklch(0.94 0.05 ${ST[st]})`, stDeep: `oklch(0.4 0.11 ${ST[st]})` };
+const NCARDS = [
+  { id: 'c1', ref: '1', kind: 'Lacuna', face: P('A projeção escalar de ', { m: TX.s }, ' sobre ', { m: TX.r }, ' é ', { b: 1 }, '.'), due: 'Volta em 3 dias' },
+  { id: 'c2', ref: '2', kind: 'Lacuna', face: P('A projeção vetorial de ', { m: TX.s }, ' sobre ', { m: TX.r }, ' é ', { b: 1 }, '.'), due: 'Vence hoje' },
+  { id: 'c3', ref: '3', kind: 'Pergunta', face: P('Quando a projeção escalar de ', { m: TX.s }, ' sobre ', { m: TX.r }, ' é zero?'), due: 'Ainda não revisado' },
+  { id: 'c4', ref: '4', kind: 'Pergunta', face: P('Que expressão NumPy dá a projeção vetorial de ', { c: 's' }, ' sobre ', { c: 'r' }, '?'), due: 'Pausado desde 12 out.' }
+];
+const CORPUS = [
+  { type: 'Nota', title: 'Projeção escalar e vetorial', path: 'Álgebra linear · Projeções', text: 'Dados dois vetores r e s, a projeção de s sobre r responde a uma pergunta geométrica: quanto de s aponta na direção de r?' },
+  { type: 'Nota', title: 'Projeções em uma página', path: 'Álgebra linear · Projeções', text: 'Resumo: a projeção escalar é um número; a projeção vetorial é esse número vezes o vetor unitário de r.' },
+  { type: 'Card', title: 'A projeção escalar de s sobre r é […].', path: 'revisão · Projeção escalar e vetorial', text: 'Resposta: (r · s) / |r|.' },
+  { type: 'Card', title: 'Quando a projeção escalar de s sobre r é zero?', path: 'novo · Projeção escalar e vetorial', text: 'Resposta: quando os vetores são ortogonais, r · s = 0.' },
+  { type: 'Nota', title: 'Exercícios do quiz 2', path: 'Álgebra linear · Projeções', text: 'Questão 3: projeção vetorial de s = (2, 1) sobre r = (3, 4) com NumPy; resultado (1.2, 1.6).' },
+  { type: 'Nota', title: 'Mudança de base com projeções', path: 'Álgebra linear · Mudança de base', text: 'Se a nova base é ortogonal, cada coordenada é a projeção escalar do vetor sobre um vetor da base.' },
+  { type: 'Nota', title: 'Fatiamento de listas', path: 'Python · Listas', text: 'xs[::-1] devolve uma cópia invertida; xs.reverse() altera a lista no lugar.' }
+];
+const TAG_NOTES = [
+  { kind: 'Anotação de aula', path: 'Álgebra linear · Projeções', title: 'Projeção escalar e vetorial' },
+  { kind: 'Resumo', path: 'Álgebra linear · Projeções', title: 'Projeções em uma página' },
+  { kind: 'Anotação de aula', path: 'Álgebra linear · Mudança de base', title: 'Mudança de base com projeções' }
+];
+const TAG_CARDS = [
+  { face: P('A projeção escalar de ', { m: TX.s }, ' sobre ', { m: TX.r }, ' é ', { b: 1 }, '.'), state: 'revisão', from: 'Projeção escalar e vetorial' },
+  { face: P('A projeção vetorial de ', { m: TX.s }, ' sobre ', { m: TX.r }, ' é ', { b: 1 }, '.'), state: 'aprendendo', from: 'Projeção escalar e vetorial' },
+  { face: P('Quando a projeção escalar de ', { m: TX.s }, ' sobre ', { m: TX.r }, ' é zero?'), state: 'novo', from: 'Projeção escalar e vetorial' },
+  { face: P('Projeção vetorial de ', { m: '(2, 1)' }, ' sobre ', { m: '(3, 4)' }, '?'), state: 'revisão', from: 'Exercícios do quiz 2' },
+  { face: P('Numa base ortogonal, cada coordenada é ', { b: 1 }, ' do vetor sobre o vetor da base.'), state: 'novo', from: 'Mudança de base com projeções' }
+].map(c => ({ ...c, ...stColors(c.state) }));
+const L = (id, n, done, notes) => ({ id, n, done, notes });
+const MODS = [
+  { id: 'm1', n: 'Introdução à álgebra linear', lessons: [L('l1', 'Motivação: ajuste de dados', true, 2), L('l2', 'Vetores e operações', true, 3)] },
+  { id: 'm2', n: 'Vetores', lessons: [L('l3', 'Módulo e produto escalar', true, 3), L('l4', 'Lei dos cossenos', true, 1), L('l5', 'Projeções', false, 3), L('l6', 'Mudança de base', false, 1), L('l7', 'Base e independência linear', false, 0)] },
+  { id: 'm3', n: 'Matrizes em álgebra linear', lessons: [L('l8', 'Matrizes que transformam vetores', false, 0), L('l9', 'Eliminação gaussiana', false, 0)] },
+  { id: 'm4', n: 'Matrizes como objetos', lessons: [L('l10', 'Composição de transformações', false, 0), L('l11', 'Mudança de base matricial', false, 0)] },
+  { id: 'm5', n: 'Autovalores e autovetores', lessons: [L('l12', 'A ideia geométrica', false, 0), L('l13', 'PageRank', false, 0)] }
+];
+const TRACKS = [
+  { n: 'Matemática para machine learning', courses: [['Álgebra linear', 'alg', 50, '5 módulos · 13 aulas', '18h estudadas'], ['Cálculo multivariado', 'calc', 14, '6 módulos · 22 aulas', '6h estudadas'], ['PCA', 'pca', 0, '4 módulos · 15 aulas', 'Comece quando quiser']] },
+  { n: 'Python para todos', courses: [['Estruturas de dados em Python', 'py', 58, '7 módulos · 19 aulas', '15h estudadas'], ['Dados da web', 'web', 0, '6 módulos · 16 aulas', 'Comece quando quiser']] }
+];
+const WEEK = [['qua', [['alg', 1.0], ['py', 0.8]]], ['qui', [['alg', 1.2], ['calc', 0.8], ['py', 0.5]]], ['sex', [['py', 1.2]]], ['sáb', [['alg', 1.5], ['calc', 0.8], ['py', 0.8]]], ['dom', [['pca', 0.3], ['alg', 0.5]]], ['seg', [['alg', 1.0], ['py', 0.8], ['calc', 0.5]]], ['ter', [['py', 0.75], ['alg', 0.58]]]];
+const CYCLE = [['alg', 60, 'done'], ['py', 45, 'done'], ['calc', 50, 'done'], ['alg', 50, 'now'], ['py', 45], ['pca', 40], ['calc', 50], ['alg', 60], ['py', 45], ['calc', 50], ['alg', 50], ['py', 60], ['pca', 40], ['alg', 60], ['calc', 35]];
+const PLAN = [
+  ['seg', 'Segunda', 19, [[0], [1], [2]]], ['ter', 'Terça', 20, [[3], [4]]], ['qua', 'Quarta', 21, [[5], [6]]], ['qui', 'Quinta', 22, [[7], [8]]],
+  ['sex', 'Sexta', 23, [[9], [10]]], ['sáb', 'Sábado', 24, [[11], [12], [13]]], ['dom', 'Domingo', 25, []]
+];
+const hhmm = () => { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+const fold = s => [...s].map(ch => (ch.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()[0]) || ch).join('');
+function hl(text, q) {
+  if (!q) return [{ n: true, t: text }];
+  const f = fold(text), fq = fold(q), out = []; let i = 0, j;
+  while ((j = f.indexOf(fq, i)) >= 0) { if (j > i) out.push({ n: true, t: text.slice(i, j) }); out.push({ h: true, t: text.slice(j, j + q.length) }); i = j + q.length; }
+  if (i < text.length) out.push({ n: true, t: text.slice(i) });
+  return out;
+}
+const rnd = i => { const x = Math.sin(i * 12.9898) * 43758.5453; return x - Math.floor(x); };
+const fmtClock = s => { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60; return (h ? h + ':' : '') + String(m).padStart(2, '0') + ':' + String(ss).padStart(2, '0'); };
+const SCREENS = [['dash', 'Início'], ['timer', 'Cronômetro'], ['plan', 'Plano'], ['stats', 'Números'], ['review', 'Revisão'], ['note', 'Nota'], ['edit', 'Editor'], ['courses', 'Cursos'], ['course', 'Curso'], ['search', 'Busca'], ['tag', 'Tag']];
+
+class Component extends DCLogic {
+  stageRef = React.createRef();
+  state = (() => {
+    let s = {}; try { s = JSON.parse(localStorage.getItem('estudos-v2-viewer') || '{}'); } catch (e) {}
+    return {
+      screen: s.screen || 'dash', device: s.device || 'desktop',
+      rev: 'q', idx: 0, done: 11, hist: [], toast: '',
+      running: true, elapsed: 1934, subj: 'alg', kind: 'Teoria', saved: false,
+      selDay: 1, period: 'Mês', filter: 'Tudo',
+      cardSt: { c1: 'revisão', c2: 'aprendendo', c3: 'novo', c4: 'suspenso' }, prevSt: { c4: 'revisão' },
+      src: SRC, saving: false, savedAt: '18:42',
+      mods: MODS, open: { m2: true }, archived: [],
+      q: 'projeção', limNew: 20, limRev: 200, stageW: 1200
+    };
+  })();
+  componentDidMount() {
+    window.addEventListener('keydown', this.onKey);
+    this.tick = setInterval(() => { if (this.state.running) this.setState(s => ({ elapsed: s.elapsed + 1 })); }, 1000);
+    if (this.stageRef.current) { this.ro = new ResizeObserver(([e]) => this.setState({ stageW: e.contentRect.width })); this.ro.observe(this.stageRef.current); }
+  }
+  componentWillUnmount() { window.removeEventListener('keydown', this.onKey); clearInterval(this.tick); this.ro && this.ro.disconnect(); }
+  componentDidUpdate() { const { screen, device } = this.state; try { localStorage.setItem('estudos-v2-viewer', JSON.stringify({ screen, device })); } catch (e) {} }
+  go = s => e => { e && e.preventDefault && e.preventDefault(); this.setState(st => ({ screen: s, rev: s === 'review' && st.rev !== 'empty' ? 'q' : st.rev })); };
+  onKey = e => {
+    const s = this.state; if (s.screen !== 'review') return;
+    const tag = (e.target.tagName || '').toLowerCase(); if (tag === 'input' || tag === 'textarea') return;
+    if (e.key === 'Escape') { this.go('dash')(); return; }
+    if (s.rev === 'empty') return;
+    if (e.key === ' ' && s.rev === 'q') { e.preventDefault(); this.reveal(); return; }
+    if (s.rev === 'a' && '1234'.includes(e.key) && e.key.length === 1) { e.preventDefault(); this.rate(); return; }
+    if (e.key === 'u' || e.key === 'U') this.undo();
+  };
+  reveal = () => this.setState({ rev: 'a', toast: '' });
+  rate = () => this.setState(s => ({ hist: s.hist.concat({ idx: s.idx, done: s.done }), idx: s.idx + 1, done: s.done + 1, rev: s.done + 1 >= 46 ? 'empty' : 'q', toast: '' }));
+  undo = () => {
+    const h = this.state.hist; if (!h.length) return; const l = h[h.length - 1];
+    this.setState({ hist: h.slice(0, -1), idx: l.idx, done: l.done, rev: 'a', toast: 'Desfeito. Avalie de novo.' });
+    clearTimeout(this._t); this._t = setTimeout(() => this.setState({ toast: '' }), 2500);
+  };
+  mut(fn) { this.setState(s => { const mods = s.mods.map(m => ({ ...m, lessons: m.lessons.slice() })), archived = s.archived.slice(); const x = fn(mods, archived, s) || {}; return { mods, archived, ...x }; }); }
+  swap(a, i, j) { if (j < 0 || j >= a.length) return; const t = a[i]; a[i] = a[j]; a[j] = t; }
+
+  renderVals() {
+    const s = this.state, mob = s.device === 'mobile', scr = s.screen;
+    const fw = mob ? 390 : 1440;
+    const zoom = Math.min(1, Math.max(0.2, (s.stageW - 8) / fw));
+    const pill = (act, on, l) => ({ l, on, act, bg: act ? '#221E2F' : '#FFFFFF', fg: act ? '#FFFFFF' : '#221E2F' });
+    const goMap = Object.fromEntries(SCREENS.map(([k]) => [k, this.go(k)]));
+
+    const navDef = [['dash', 'Início', 285], ['plan', 'Plano da semana', 175], ['timer', 'Cronômetro', 25], ['review', 'Revisão', 150, '34'], ['courses', 'Cursos', 75], ['stats', 'Números', 230], ['search', 'Busca', 0]];
+    const sec = { course: 'courses', note: 'courses', edit: 'courses', tag: 'search' }[scr] || scr;
+    const nav = navDef.map(([id, l, h, count]) => ({ l, on: this.go(id), count: count || '', cur: sec === id ? 'page' : undefined,
+      bg: sec === id ? 'oklch(0.95 0.035 285)' : 'transparent', fg: sec === id ? 'oklch(0.38 0.15 285)' : '#4E4860',
+      dot: h ? `oklch(0.72 0.14 ${h})` : '#C9C1B5' }));
+    const tabDef = [['dash', 'Início', 'In'], ['plan', 'Plano', 'Pl'], ['timer', 'Estudar', '▶'], ['review', 'Revisar', '34'], ['courses', 'Cursos', 'Cu']];
+    const tabs = tabDef.map(([id, l, g]) => { const act = sec === id, big = id === 'timer';
+      return { l, glyph: g, on: this.go(id), cur: act ? 'page' : undefined, fg: act ? 'oklch(0.45 0.2 285)' : '#6E6880',
+        size: big ? 52 : 28, radius: big ? '999px' : '9px', lift: big ? -22 : 0,
+        bg: big ? BRAND : act ? 'oklch(0.93 0.05 285)' : '#F3EEE7', iconFg: big ? '#FFFFFF' : act ? 'oklch(0.42 0.17 285)' : '#6E6880',
+        shadow: big ? '0 6px 16px oklch(0.55 0.2 285 / .35)' : 'none' }; });
+
+    let vStates = [];
+    if (scr === 'review') vStates = [['q', 'Pergunta'], ['a', 'Resposta'], ['empty', 'Fila zerada']].map(([k, l]) => pill(s.rev === k, () => this.setState({ rev: k, done: k === 'empty' ? 46 : Math.min(s.done, 45) }), l));
+    const hasErr = s.src.includes('{{}}');
+    if (scr === 'edit') vStates = [pill(!hasErr, () => this.setState({ src: SRC }), 'Sem erro'), pill(hasErr, () => this.setState({ src: SRC_ERR }), 'Erro de lacuna')];
+    if (scr === 'timer') vStates = [pill(s.running, () => this.setState({ running: true, saved: false }), 'Rodando'), pill(!s.running && !s.saved, () => this.setState({ running: false, saved: false }), 'Pausado'), pill(s.saved, () => this.setState({ running: false, saved: true }), 'Registrado')];
+
+    const rc0 = DECK[s.idx % DECK.length], rsub = SUBJ[rc0.s];
+    const rc = { ...rc0, path: rsub.n + (rc0.s === 'alg' ? ' · Projeções' : ' · Listas'), tint: rsub.tint, deep: rsub.deep };
+    const revealed = s.rev === 'a';
+
+    const cur = SUBJ[s.subj];
+    const pct = Math.min(100, Math.round(s.elapsed / 3000 * 100));
+    const maxW = 3.5;
+    const week = WEEK.map(([d, segs], i) => { const tot = segs.reduce((a, x) => a + x[1], 0);
+      return { d, label: tot >= 1 ? Math.floor(tot) + 'h' + (Math.round(tot % 1 * 60) ? String(Math.round(tot % 1 * 60)).padStart(2, '0') : '') : Math.round(tot * 60) + 'min',
+        px: Math.round(tot / maxW * 130), segs: segs.map(([k, h]) => ({ pct: h / tot * 100, c: SUBJ[k].solid })),
+        dayColor: i === 6 ? 'oklch(0.45 0.2 285)' : '#6E6880', dayWeight: i === 6 ? 800 : 600 }; });
+    const streak = ['q', 'q', 's', 's', 'd', 's', 't'].map((l, i) => ({ l: ['qua', 'qui', 'sex', 'sáb', 'dom', 'seg', 'ter'][i], mark: i < 6 ? '✓' : '', bg: i < 6 ? 'oklch(0.72 0.15 150)' : 'oklch(0.95 0.035 285)', border: i === 6 ? '2px dashed oklch(0.7 0.14 285)' : 'none' }));
+
+    const cycle = CYCLE.map(([k, min, st]) => ({ n: SUBJ[k].n, min, bg: st === 'done' ? SUBJ[k].solid : st === 'now' ? `linear-gradient(90deg, ${SUBJ[k].solid} 64%, ${SUBJ[k].tint} 64%)` : SUBJ[k].tint, border: st === 'now' ? `2px solid ${SUBJ[k].deep}` : 'none', op: 1 }));
+    const cycleLegend = ['alg', 'py', 'calc', 'pca'].map(k => { const m = CYCLE.filter(c => c[0] === k).reduce((a, c) => a + c[1], 0); return { n: SUBJ[k].n, solid: SUBJ[k].solid, h: Math.floor(m / 60) + 'h' + (m % 60 ? String(m % 60).padStart(2, '0') : '') }; });
+    const dayV = PLAN.map(([d, full, n, bl], i) => {
+      const blocks = bl.map(([ci]) => { const [k, min, st] = CYCLE[ci]; return { n: SUBJ[k].n, min, tint: SUBJ[k].tint, deep: SUBJ[k].deep, state: st === 'done' ? 'feito' : st === 'now' ? 'agora · 32 min' : 'a fazer', op: st === 'done' ? 0.7 : 1 }; });
+      const tm = bl.reduce((a, [ci]) => a + CYCLE[ci][1], 0);
+      return { d, n, full, blocks, rest: !blocks.length, total: tm ? Math.floor(tm / 60) + 'h' + (tm % 60 ? String(tm % 60).padStart(2, '0') : '') : '',
+        colBg: i === 1 ? '#FFFFFF' : 'rgba(255,255,255,.55)', colBorder: i === 1 ? '2px solid oklch(0.8 0.1 285)' : '2px solid transparent',
+        act: s.selDay === i, on: () => this.setState({ selDay: i }), bg: s.selDay === i ? '#221E2F' : '#FFFFFF', fg: s.selDay === i ? '#FFFFFF' : '#221E2F' };
+    });
+
+    const nBars = s.period === 'Semana' ? 7 : 30;
+    const bars = Array.from({ length: nBars }, (_, i) => { const h = i === nBars - 1 ? 1.33 : (rnd(i + 3) < 0.12 ? 0 : 0.5 + rnd(i) * 2.6); return { px: Math.max(3, Math.round(h / 3 * 180)), c: h >= 2 ? BRAND : 'oklch(0.82 0.09 285)' }; });
+    const kpiSets = { Semana: ['13h', '86', '82%', '7/7'], Mês: ['46h', '312', '81%', '27/30'], Total: ['212h', '1.480', '79%', '86%'] };
+    const kv = kpiSets[s.period];
+    const kpis = [['Horas estudadas', kv[0], '+12% que o período anterior', 285], ['Questões feitas', kv[1], 'registradas nas sessões', 75], ['Acerto', kv[2], 'em questões', 150], ['Dias com estudo', kv[3], 'constância', 230]].map(([l, v, sub, h]) => ({ l, v, sub, bg: `oklch(0.95 0.035 ${h})`, deep: `oklch(0.42 0.13 ${h})` }));
+    const dist = [['alg', 19], ['py', 15], ['calc', 9], ['pca', 3]].map(([k, h]) => ({ n: SUBJ[k].n, solid: SUBJ[k].solid, h, label: `${h}h · ${Math.round(h / 46 * 100)}%` }));
+    const accuracy = [['alg', 84, 120], ['py', 88, 104], ['calc', 69, 64], ['pca', 75, 24]].map(([k, p, q]) => ({ n: SUBJ[k].n, pct: p, q, solid: SUBJ[k].solid, tint: SUBJ[k].tint }));
+    const scale = ['#F1ECE4', 'oklch(0.9 0.06 285)', 'oklch(0.8 0.11 285)', 'oklch(0.68 0.16 285)', 'oklch(0.52 0.2 285)'];
+    const heat = Array.from({ length: 84 }, (_, i) => { const r = rnd(i + 40); const lv = i > 82 ? 0 : i > 74 ? 2 + Math.floor(r * 3) : r < 0.14 ? 0 : 1 + Math.floor(r * 4); return { c: scale[Math.min(4, lv)] }; });
+
+    const cards = NCARDS.map(c => { const st = s.cardSt[c.id], sus = st === 'suspenso';
+      return { ...c, state: sus ? 'pausado' : st, ...stColors(st), op: sus ? 0.6 : 1, action: sus ? 'Retomar' : 'Pausar',
+        onToggle: () => this.setState(x => sus ? { cardSt: { ...x.cardSt, [c.id]: x.prevSt[c.id] || 'revisão' } } : { cardSt: { ...x.cardSt, [c.id]: 'suspenso' }, prevSt: { ...x.prevSt, [c.id]: st } }) }; });
+
+    const errIdx = s.src.split('\n').findIndex(l => l.includes('{{}}'));
+    const total = s.mods.reduce((a, m) => a + m.lessons.length, 0), done = s.mods.reduce((a, m) => a + m.lessons.filter(l => l.done).length, 0);
+    const mods = s.mods.map((m, i) => { const d = m.lessons.filter(l => l.done).length, n = m.lessons.length, full = n && d === n;
+      return { ...m, num: i + 1, open: !!s.open[m.id], arrow: s.open[m.id] ? '▾' : '▸', count: n ? `${d}/${n}` : 'vazio', pct: n ? Math.round(d / n * 100) : 0,
+        badgeBg: full ? 'oklch(0.72 0.15 150)' : 'oklch(0.95 0.035 285)', badgeFg: full ? '#FFFFFF' : 'oklch(0.42 0.13 285)',
+        first: i === 0, last: i === s.mods.length - 1, upColor: i === 0 ? '#D9D2C7' : '#221E2F', downColor: i === s.mods.length - 1 ? '#D9D2C7' : '#221E2F', empty: !n,
+        onToggle: () => this.setState(x => ({ open: { ...x.open, [m.id]: !x.open[m.id] } })),
+        onUp: () => this.mut(ms => { this.swap(ms, i, i - 1); }), onDown: () => this.mut(ms => { this.swap(ms, i, i + 1); }),
+        onArchive: () => this.mut((ms, ar) => { const [x] = ms.splice(i, 1); ar.push({ item: x, pos: i }); }),
+        onAdd: () => this.mut((ms, ar, st) => { ms[i].lessons.push(L('n' + Date.now(), 'Nova aula', false, 0)); return { open: { ...st.open, [m.id]: true } }; }),
+        lessons: m.lessons.map((l, j) => ({ ...l, notesLabel: l.notes === 1 ? '1 nota' : l.notes ? `${l.notes} notas` : '—', rowBg: l.done ? 'oklch(0.97 0.025 150)' : 'transparent', deco: 'none',
+          onCheck: () => this.mut(ms => { ms[i].lessons[j] = { ...l, done: !l.done }; }) })) }; });
+
+    const q = s.q.trim();
+    const results = q ? CORPUS.filter(r => (s.filter === 'Tudo' || r.type + 's' === s.filter) && fold(r.title + ' ' + r.text).includes(fold(q))).map(r => ({ ...r, tp: hl(r.title, q), xp: hl(r.text, q), typeBg: r.type === 'Card' ? 'oklch(0.94 0.05 150)' : 'oklch(0.95 0.035 285)', typeFg: r.type === 'Card' ? 'oklch(0.4 0.11 150)' : 'oklch(0.42 0.13 285)' })) : [];
+
+    return {
+      vScreens: SCREENS.map(([id, l]) => pill(scr === id, () => this.setState(x => ({ screen: id })), l)),
+      vStates, vDevices: [['desktop', 'Desktop 1440'], ['mobile', 'Celular 390']].map(([k, l]) => pill(s.device === k, () => this.setState({ device: k }), l)),
+      zoomLabel: zoom < 1 ? `exibido a ${Math.round(zoom * 100)}%` : '', stageRef: this.stageRef,
+      fw, zoom, frameRadius: mob ? '44px' : '18px', frameBorder: mob ? '10px solid #221E2F' : 'none',
+      frameH: mob ? '864px' : 'auto', frameMinH: mob ? '0' : '900px', shellDir: 'row',
+      showSide: !mob && scr !== 'review', showTabs: mob && scr !== 'review', showMobileHead: mob && scr !== 'review',
+      mobileTitle: { dash: 'estudos', timer: 'Cronômetro', plan: 'Plano', stats: 'Números', note: 'Nota', edit: 'Editor', courses: 'Cursos', course: 'Curso', search: 'Busca', tag: 'Conceito' }[scr] || '',
+      mainOverflow: mob ? 'auto' : 'visible', mainPad: mob ? (scr === 'review' ? '20px 16px' : '4px 16px 24px') : (scr === 'review' ? '32px 40px' : '36px 40px 64px'),
+      h1Size: mob ? '28px' : '40px', cardPadL: mob ? '20px' : '32px', faceSize: mob ? '22px' : '30px',
+      go: goMap, nav, tabs,
+      sDash: scr === 'dash', sTimer: scr === 'timer', sPlan: scr === 'plan', sStats: scr === 'stats', sReview: scr === 'review', sNote: scr === 'note', sEdit: scr === 'edit', sCourses: scr === 'courses', sCourse: scr === 'course', sSearch: scr === 'search', sTag: scr === 'tag',
+      isMobile: mob,
+      clock: fmtClock(s.elapsed), timerStatus: s.saved ? 'Registrado' : s.running ? 'Estudando agora' : 'Pausado', liveDot: s.running ? 'oklch(0.68 0.17 25)' : '#B7AFC6',
+      limNew: s.limNew, limRev: s.limRev, onLimNew: e => this.setState({ limNew: e.target.value }), onLimRev: e => this.setState({ limRev: e.target.value }),
+      streak, week, legend: ['alg', 'py', 'calc', 'pca'].map(k => SUBJ[k]),
+      progress: [['alg', 6, 13], ['py', 11, 19], ['calc', 3, 22], ['pca', 0, 15]].map(([k, d, t]) => ({ n: SUBJ[k].n, done: d, total: t, pct: Math.round(d / t * 100), solid: SUBJ[k].solid, tint: SUBJ[k].tint })),
+      nextBlocks: [['alg', 18, 'Vetores · Projeções', 'agora'], ['py', 45, 'Dicionários · exercícios', 'hoje'], ['pca', 40, 'Média e variância', 'amanhã']].map(([k, min, what, tag]) => ({ ...SUBJ[k], min, what, tag })),
+      recent: [['alg', 'Projeção escalar e vetorial', 'Álgebra linear · Projeções', 'há 2 h'], ['alg', 'Exercícios do quiz 2', 'Álgebra linear · Projeções', 'ontem'], ['py', 'Fatiamento de listas', 'Python · Listas', 'ontem'], ['py', 'Dicionários e contagem', 'Python · Dicionários', 'qui.']].map(([k, title, path, when]) => ({ solid: SUBJ[k].solid, title, path, when })),
+      subjChips: ['alg', 'py', 'calc', 'pca'].map(k => ({ n: SUBJ[k].n, act: s.subj === k, on: () => this.setState({ subj: k }), bg: s.subj === k ? SUBJ[k].tint : '#FFFFFF', border: s.subj === k ? SUBJ[k].solid : '#EEE8E0' })),
+      cur, ringPct: pct, ringSize: mob ? 260 : 320, clockSize: mob ? '48px' : '60px', leftMin: Math.max(0, 50 - Math.floor(s.elapsed / 60)),
+      runLabel: s.running ? 'Pausar' : 'Continuar', toggleRun: () => this.setState({ running: !s.running, saved: false }),
+      finish: () => this.setState({ running: false, saved: true }), savedMsg: s.saved,
+      kinds: ['Teoria', 'Exercícios', 'Revisão'].map(l => ({ l, act: s.kind === l, on: () => this.setState({ kind: l }), bg: s.kind === l ? '#FFFFFF' : 'transparent', shadow: s.kind === l ? '0 1px 3px rgba(34,30,47,.12)' : 'none' })),
+      sessions: [['py', 'Python · Dicionários', 'Exercícios · 10 de 12 certas', '45 min'], ['alg', 'Álgebra linear · Produto escalar', 'Teoria · 09:10', '35 min']].map(([k, n, meta, dur]) => ({ solid: SUBJ[k].solid, n, meta, dur })),
+      cycle, cycleLegend, days: dayV, daysShown: mob ? [dayV[s.selDay]] : dayV, weekCols: mob ? '1fr' : 'repeat(7,minmax(0,1fr))',
+      periods: ['Semana', 'Mês', 'Total'].map(l => ({ l, act: s.period === l, on: () => this.setState({ period: l }), bg: s.period === l ? '#FFFFFF' : 'transparent', shadow: s.period === l ? '0 1px 3px rgba(34,30,47,.12)' : 'none' })),
+      kpis, bars, barsN: nBars, barGap: nBars > 10 ? (mob ? '2px' : '6px') : '12px', dist, accuracy, heat, heatScale: scale,
+      rc, doneN: s.done, revPct: Math.round(s.done / 46 * 100), revEmpty: s.rev === 'empty', revCard: s.rev !== 'empty', revQ: s.rev === 'q', revA: revealed,
+      face: revealed && rc.cloze ? rc.a : rc.q, hasAnswer: revealed && !rc.cloze, answer: rc.a,
+      revFoot: s.toast || (revealed ? '1–4 avalia · u desfaz · esc sai' : 'espaço mostra · esc sai'),
+      reveal: this.reveal, rate: this.rate,
+      ratings: [['Errei', '1', 25], ['Difícil', '2', 75], ['Bom', '3', 150], ['Fácil', '4', 230]].map(([l, k, h]) => ({ l, k, bg: `oklch(0.8 0.12 ${h})` })),
+      studyAhead: () => this.setState({ rev: 'q', done: 30, idx: 0 }),
+      tx: TX, py: PY, cards, noteCols: mob ? '1fr' : 'minmax(0,1fr) 300px',
+      src: s.src, hasErr: errIdx >= 0, noErr: errIdx < 0, errLine: errIdx + 1, emptyCloze: '{{}}', exampleCloze: '{{resposta}}',
+      saveText: s.saving ? 'Salvando…' : `Salvo ${s.savedAt}`, saveBg: s.saving ? '#F3EEE7' : 'oklch(0.95 0.04 150)', saveFg: s.saving ? '#6E6880' : 'oklch(0.42 0.11 150)',
+      onSrc: e => { this.setState({ src: e.target.value, saving: true }); clearTimeout(this._sv); this._sv = setTimeout(() => this.setState({ saving: false, savedAt: hhmm() }), 900); },
+      editCols: mob ? '1fr' : 'minmax(0,1fr) minmax(0,1fr)', taH: mob ? 380 : 640,
+      tracks: TRACKS.map(t => ({ n: t.n, courses: t.courses.map(([n, k, p, meta, hours]) => ({ n, pct: p, meta, hours, ...SUBJ[k] })) })),
+      courseMeta: `${s.mods.length} módulos · ${done} de ${total} aulas`, mods,
+      addModule: () => this.mut(ms => { ms.push({ id: 'nm' + Date.now(), n: 'Novo módulo', lessons: [] }); }),
+      hasArchived: s.archived.length > 0, archivedV: s.archived.map((a, k) => ({ label: 'Módulo · ' + a.item.n, onRestore: () => this.mut((ms, ar) => { const [x] = ar.splice(k, 1); ms.splice(Math.min(x.pos, ms.length), 0, x.item); }) })),
+      q: s.q, onQ: e => this.setState({ q: e.target.value }), results, noResults: !!q && !results.length,
+      filters: ['Tudo', 'Notas', 'Cards'].map(l => ({ l, act: s.filter === l, on: () => this.setState({ filter: l }), bg: s.filter === l ? '#221E2F' : '#FFFFFF', fg: s.filter === l ? '#FFFFFF' : '#221E2F' })),
+      resultsLabel: q ? `${results.length} ${results.length === 1 ? 'resultado' : 'resultados'} para “${q}”` : 'Digite algo para buscar em todas as notas e cards.',
+      tagNotes: TAG_NOTES, tagCards: TAG_CARDS
+    };
+  }
+}
+</script>
+</body>
+</html>

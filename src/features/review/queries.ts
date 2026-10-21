@@ -31,6 +31,7 @@ import {
 
 import { CORTE_HORAS, FUSO, dayEnd, dayStart, daysUntil, logicalDay, streak } from "./day";
 import { resolveLimits } from "./limits";
+import { panelDateLabel } from "./panel-date";
 import {
   DEFAULT_LIMITS,
   queueFor,
@@ -324,6 +325,11 @@ async function countToday(
     .where(and(gte(reviews.reviewedAt, dayStart(now)), efetiva));
 
   return { novos: linhas[0]?.novos ?? 0, revisoes: linhas[0]?.revisoes ?? 0 };
+}
+
+/** A data que o cabeçalho do painel mostra ao lado de "Hoje". */
+export async function fetchTodayLabel(): Promise<string> {
+  return panelDateLabel(await agora());
 }
 
 export async function fetchPanel(

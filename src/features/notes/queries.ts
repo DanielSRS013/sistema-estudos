@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { connection } from "next/server";
 
 import { db } from "@/db";
@@ -66,6 +66,54 @@ export async function listRecentNotes(limite: number): Promise<RecentNote[]> {
     path: `${row.courseTitle} · ${row.lessonTitle}`,
     lastEdit: lastEditLabel(row.updatedAt, now),
   }));
+}
+
+/* ───────────────────────── aula da próxima nota ──────────────────────── */
+
+export type CaptureLesson = { id: string; title: string };
+
+/**
+ * Onde a próxima nota nasce: a aula da nota editada mais recentemente — é a
+ * "última aula aberta" do handoff, e o app não guarda histórico de navegação.
+ * Sem nota nenhuma, a primeira aula ativa na ordem da árvore; sem aula, `null`,
+ * e o painel convida a criar o primeiro curso.
+ */
+export async function lastCaptureLesson(): Promise<CaptureLesson | null> {
+  const ativa = and(
+    isNull(lessons.archivedAt),
+    isNull(modules.archivedAt),
+    isNull(courses.archivedAt),
+  );
+
+  const [daUltimaNota] = await db
+    .select({ id: lessons.id, title: lessons.title })
+    .from(notes)
+    .innerJoin(lessons, eq(lessons.id, notes.lessonId))
+    .innerJoin(modules, eq(modules.id, lessons.moduleId))
+    .innerJoin(courses, eq(courses.id, modules.courseId))
+    .where(ativa)
+    .orderBy(desc(notes.updatedAt))
+    .limit(1);
+
+  if (daUltimaNota !== undefined) return daUltimaNota;
+
+  const [primeira] = await db
+    .select({ id: lessons.id, title: lessons.title })
+    .from(lessons)
+    .innerJoin(modules, eq(modules.id, lessons.moduleId))
+    .innerJoin(courses, eq(courses.id, modules.courseId))
+    .where(ativa)
+    .orderBy(
+      courses.position,
+      courses.createdAt,
+      modules.position,
+      modules.createdAt,
+      lessons.position,
+      lessons.createdAt,
+    )
+    .limit(1);
+
+  return primeira ?? null;
 }
 
 /* ──────────────────────────── /notes/[noteId] ────────────────────────── */

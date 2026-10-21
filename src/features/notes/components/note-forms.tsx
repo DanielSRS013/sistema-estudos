@@ -1,7 +1,6 @@
 "use client";
 
 import { FolderInput, Plus } from "lucide-react";
-import Link from "next/link";
 import { useActionState } from "react";
 
 import { idleState, type ActionState } from "@/shared/action-state";
@@ -56,67 +55,6 @@ export function CreateNoteForm({
         >
           <Plus aria-hidden />
           Criar nota
-        </button>
-      </div>
-      <Erro state={state} />
-    </form>
-  );
-}
-
-/**
- * Atalho de captura do painel: escolhe a aula, nomeia a nota e cai direto no
- * editor. Mesma action da aula — o que muda é que aqui a aula é escolhida, e
- * não herdada da rota.
- */
-export function CaptureNoteForm({
-  action,
-  options,
-}: {
-  action: Action;
-  options: LessonOption[];
-}) {
-  const [state, formAction, pending] = useActionState(action, idleState);
-
-  if (options.length === 0) {
-    return (
-      <p className="font-serif text-base leading-prose text-ink-soft">
-        Nenhuma aula cadastrada ainda. Uma nota nasce dentro de uma aula:{" "}
-        <Link href="/courses" className="text-accent underline">
-          criar o primeiro curso
-        </Link>
-        .
-      </p>
-    );
-  }
-
-  return (
-    <form action={formAction} className="space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          name="title"
-          placeholder="Título da nota"
-          aria-label="Título da nota"
-          autoComplete="off"
-          className={campo}
-        />
-        <select
-          name="lessonId"
-          aria-label="Aula da nota"
-          className={cn(campo, "sm:max-w-xs")}
-        >
-          {options.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.path}
-            </option>
-          ))}
-        </select>
-        <button
-          type="submit"
-          disabled={pending}
-          className={cn(buttonVariants({ size: "sm" }), "shrink-0")}
-        >
-          <Plus aria-hidden />
-          Criar e escrever
         </button>
       </div>
       <Erro state={state} />

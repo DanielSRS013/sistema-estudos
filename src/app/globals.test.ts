@@ -276,6 +276,22 @@ describe("nenhuma receita de foco nos componentes", () => {
     expect(botao).not.toContain("aria-invalid");
   });
 
+  it("dá ao botão primário o fundo `--ink` do handoff, não o accent", () => {
+    // `bg-primary` é o accent, e o accent é de link, foco e item ativo. O
+    // registry devolve a variante accent toda vez que o componente é regerado,
+    // e o painel é a tela onde isso aparece primeiro.
+    const botao = readFileSync(join(raiz, "shared", "ui", "button.tsx"), "utf8");
+    expect(botao).toContain('default: "bg-ink text-paper"');
+    expect(botao).not.toContain('default: "bg-primary');
+    // `link` continua no accent: ali a variante é link de verdade.
+  });
+
+  it("dá ao botão secundário o filete de 1px `--ink`", () => {
+    const botao = readFileSync(join(raiz, "shared", "ui", "button.tsx"), "utf8");
+    const outline = botao.slice(botao.indexOf("outline:"));
+    expect(outline.slice(0, 120)).toContain("border-ink");
+  });
+
   it("não deixa o botão do registry reintroduzir movimento", () => {
     // SPEC §6: movimento só responde a ação do usuário. O registry devolve
     // `transition-all` e um salto de 1px no `:active` toda vez que o

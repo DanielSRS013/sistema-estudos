@@ -207,6 +207,10 @@ Rail à esquerda colapsável. Coluna central alinhada à esquerda, nunca
 justificada — texto justificado com fórmulas inline abre rios. Margem direita
 mostra os cards gerados pelo trecho visível; some abaixo de 1100px.
 
+Cada tela tem a sua medida de coluna, e ela vem do handoff: 720px em `/review`,
+880px no painel, 68ch no corpo de nota. Onde o handoff dá número e esta seção
+cala, o handoff manda.
+
 **O modo revisão é a exceção deliberada.** Em `/review` o rail e a margem
 desaparecem: um card centrado num campo de papel, pergunta em 28px, nada mais na
 tela além dos quatro botões. É o único momento ousado da interface, e por isso

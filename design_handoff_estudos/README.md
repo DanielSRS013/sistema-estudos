@@ -8,6 +8,8 @@ Os arquivos deste pacote são **referências de design feitas em HTML** — prot
 
 Abra `Estudos.dc.html` num navegador (servido por HTTP local, ex.: `npx serve .`). A barra cinza no topo **não faz parte do app**: troca tela, estado, tema (claro/escuro) e largura (1440 / 900 / 375px). A aba "Decisões" resume escolhas de design.
 
+**`Estudos v2.dc.html`** é um fork em andamento (direção visual mais acolhedora, gráficos, sessões de estudo, planejamento semanal, progresso por matéria). **A direção visual da v2 ainda não foi definida** — trate-a como rascunho; os tokens e regras abaixo valem para a v1 (`Estudos.dc.html`), que é a referência final.
+
 ## Fidelity
 **Alta fidelidade.** Cores, tipografia, espaçamentos, textos e interações são finais. Recrie fielmente.
 
