@@ -154,7 +154,7 @@ export function Editor({
         </p>
       </div>
 
-      <div className="grid gap-4 editor:grid-cols-2">
+      <div className="grid gap-4 rail:grid-cols-2">
         <div className="space-y-1">
           <label
             htmlFor="note-markdown"
@@ -178,7 +178,7 @@ export function Editor({
             placeholder={
               "# Título\n\nInline: $a^2 + b^2 = c^2$.\n\nEm bloco:\n\n$$\nx^2 + y^2 = r^2\n$$"
             }
-            className="min-h-[24rem] w-full resize-y rounded-md border border-rule bg-paper px-3 py-2 font-mono text-sm leading-relaxed text-ink placeholder:text-ink-soft editor:min-h-[60vh]"
+            className="min-h-[24rem] w-full resize-y rounded-md border border-rule bg-paper px-3 py-2 font-mono text-sm leading-relaxed text-ink placeholder:text-ink-soft rail:min-h-[60vh]"
           />
           {cards === null ? null : (
             <div className="space-y-1 px-1 pt-1">
@@ -203,7 +203,7 @@ export function Editor({
           <p className="px-1 font-mono text-xs text-ink-soft">
             pré-visualização
           </p>
-          <div className="min-h-[24rem] overflow-x-auto rounded-md border border-rule px-3 py-2 editor:min-h-[60vh]">
+          <div className="min-h-[24rem] overflow-x-auto rounded-md border border-rule px-3 py-2 rail:min-h-[60vh]">
             {texto.content.trim() === "" ? (
               <p className="font-serif text-base text-ink-soft">
                 O que você escrever à esquerda aparece aqui.

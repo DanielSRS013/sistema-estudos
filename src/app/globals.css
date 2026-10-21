@@ -110,8 +110,10 @@
   --font-serif: var(--font-plex-serif);
   --font-mono: var(--font-plex-mono);
 
-  /* o editor empilha em coluna única abaixo de 900px (SPEC §6) */
-  --breakpoint-editor: 56.25rem;
+  /* 900px: a faixa em que o rail passa a ficar ao lado da coluna, e em que o
+     editor abre em duas colunas (SPEC §6). O nome diz a faixa, não um
+     consumidor: desde a casca do handoff são dois. */
+  --breakpoint-rail: 56.25rem;
 
   /* a margem de cards some abaixo de 1100px (SPEC §6) */
   --breakpoint-cards: 68.75rem;

@@ -1,59 +1,108 @@
 "use client";
 
-import {
-  ChevronDown,
-  ChevronRight,
-  PanelLeftClose,
-  PanelLeftOpen,
-} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
-import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/shared/cn";
 
 import type { RailCourse } from "../queries";
 
 /**
- * Destinos de topo do rail. O painel e a revisão moram aqui porque de dentro
- * de uma nota não havia caminho de volta — SPEC §5 põe as duas na raiz do app.
+ * Destinos de topo do rail, na ordem do handoff. O painel e a revisão moram
+ * aqui porque de dentro de uma nota não havia caminho de volta — SPEC §5 põe
+ * as duas na raiz do app.
  */
-const ATALHOS = [
-  { href: "/", rotulo: "painel" },
-  { href: "/review", rotulo: "revisão" },
-  { href: "/courses", rotulo: "cursos" },
-  { href: "/search", rotulo: "buscar" },
+const NAV = [
+  { href: "/", rotulo: "Painel", secao: "painel" },
+  { href: "/courses", rotulo: "Cursos", secao: "cursos" },
+  { href: "/review", rotulo: "Revisão", secao: "revisao" },
+  { href: "/search", rotulo: "Busca", secao: "busca" },
 ] as const;
 
-const CLASSE_ATALHO =
-  "rounded-sm px-1 font-mono text-xs tracking-wide text-ink-soft hover:text-ink";
+const CLASSE_NAV =
+  "flex min-h-11 items-center gap-1.5 text-sm rail:min-h-0 rail:justify-between rail:py-1.5";
 
 const CHAVE_COLAPSADO = "rail.collapsed";
 const CHAVE_EXPANDIDO = "rail.expanded";
 
-/** Ids que precisam estar abertos para a rota atual ficar visível. */
-function ancestrais(courses: RailCourse[], pathname: string): string[] {
-  const curso = /^\/courses\/([^/]+)/.exec(pathname)?.[1];
+/**
+ * As duas medidas da casca, espelhadas de `--breakpoint-rail` e
+ * `--breakpoint-cards` em `globals.css`. Só o default do rail no editor
+ * depende da faixa em JS; todo o resto é variante `rail:` / `cards:`.
+ * `globals.test.ts` compara estas duas strings com os tokens do CSS.
+ */
+const CONSULTA_RAIL = "(min-width: 56.25rem)";
+const CONSULTA_LARGO = "(min-width: 68.75rem)";
 
-  if (curso) {
-    const encontrado = courses.find((c) => c.slug === curso);
-    return encontrado ? [encontrado.id] : [];
+/**
+ * Qual item do nav acende. Por seção, não por igualdade: `/courses/<slug>`,
+ * `/lessons/<id>` e `/notes/<id>` são todos "Cursos".
+ */
+function secaoDaRota(pathname: string): string {
+  if (pathname === "/") return "painel";
+  if (pathname.startsWith("/review")) return "revisao";
+  if (pathname.startsWith("/search") || pathname.startsWith("/tags")) {
+    return "busca";
+  }
+  if (
+    pathname.startsWith("/courses") ||
+    pathname.startsWith("/lessons") ||
+    pathname.startsWith("/notes")
+  ) {
+    return "cursos";
+  }
+
+  return "";
+}
+
+type Local = {
+  /** O curso da rota atual — a árvore mostra só ele. */
+  curso: RailCourse | null;
+  /** Módulo que precisa estar aberto para a rota ficar visível. */
+  moduloId: string | null;
+  lessonId: string | null;
+};
+
+const FORA: Local = { curso: null, moduloId: null, lessonId: null };
+
+/** Onde a rota atual cai na árvore. A nota chega pelo id das notas da aula. */
+function localizar(courses: RailCourse[], pathname: string): Local {
+  const slug = /^\/courses\/([^/]+)/.exec(pathname)?.[1];
+
+  if (slug) {
+    return {
+      ...FORA,
+      curso: courses.find((curso) => curso.slug === slug) ?? null,
+    };
   }
 
   const aula = /^\/lessons\/([^/]+)/.exec(pathname)?.[1];
+  const nota = /^\/notes\/([^/]+)/.exec(pathname)?.[1];
 
-  if (!aula) return [];
+  if (!aula && !nota) return FORA;
 
-  for (const course of courses) {
-    for (const modulo of course.modules) {
-      if (modulo.lessons.some((lesson) => lesson.id === aula)) {
-        return [course.id, modulo.id];
+  for (const curso of courses) {
+    for (const modulo of curso.modules) {
+      for (const lesson of modulo.lessons) {
+        const bate = aula
+          ? lesson.id === aula
+          : lesson.notes.some((note) => note.id === nota);
+
+        if (bate) {
+          return { curso, moduloId: modulo.id, lessonId: lesson.id };
+        }
       }
     }
   }
 
-  return [];
+  return FORA;
 }
 
 function ler<T>(chave: string, fallback: T): T {
@@ -65,238 +114,279 @@ function ler<T>(chave: string, fallback: T): T {
   }
 }
 
+function gravar(chave: string, valor: unknown): void {
+  try {
+    window.localStorage.setItem(chave, JSON.stringify(valor));
+  } catch {
+    // Navegação privada ou armazenamento bloqueado: o rail funciona igual,
+    // só não lembra do estado.
+  }
+}
+
+function assinarFaixa(avisar: () => void): () => void {
+  const consultas = [
+    window.matchMedia(CONSULTA_RAIL),
+    window.matchMedia(CONSULTA_LARGO),
+  ];
+
+  for (const consulta of consultas) consulta.addEventListener("change", avisar);
+
+  return () => {
+    for (const consulta of consultas) {
+      consulta.removeEventListener("change", avisar);
+    }
+  };
+}
+
+/** Entre 900 e 1099px: a faixa em que o editor abre com o rail recolhido. */
+function faixaMedia(): boolean {
+  return (
+    window.matchMedia(CONSULTA_RAIL).matches &&
+    !window.matchMedia(CONSULTA_LARGO).matches
+  );
+}
+
+/** No servidor não há viewport: o rail nasce expandido e a faixa chega depois. */
+function faixaMediaNoServidor(): boolean {
+  return false;
+}
+
 export function Rail({
   courses,
+  contagemRevisao,
   rodape,
 }: {
   courses: RailCourse[];
-  /** Pé do rail, montado no servidor — hoje, o botão de sair. */
+  /** Cards que ainda cabem hoje — o mesmo número que o painel mostra. */
+  contagemRevisao: number;
+  /** Pé do rail, montado no servidor: tema e sair, empilhados. */
   rodape: React.ReactNode;
 }) {
   const pathname = usePathname();
   const montado = useRef(false);
-  const [hidratado, setHidratado] = useState(false);
-  const [colapsado, setColapsado] = useState(false);
+  // `null` é "o usuário nunca escolheu": é o que deixa o editor abrir
+  // recolhido entre 900 e 1099px sem atropelar quem já escolheu.
+  const [preferencia, setPreferencia] = useState<boolean | null>(null);
   const [expandido, setExpandido] = useState<string[]>([]);
   const [rotaVista, setRotaVista] = useState(pathname);
+
+  const meio = useSyncExternalStore(
+    assinarFaixa,
+    faixaMedia,
+    faixaMediaNoServidor,
+  );
+
+  const local = localizar(courses, pathname);
+  const noEditor = /^\/notes\/[^/]+\/edit/.test(pathname);
+  const colapsado = preferencia ?? (meio && noEditor);
+  const secao = secaoDaRota(pathname);
 
   // O estado de expansão vive no localStorage, não no servidor: ler dentro do
   // primeiro efeito evita divergência de hidratação.
   useEffect(() => {
     if (montado.current) return;
     montado.current = true;
-    setColapsado(ler(CHAVE_COLAPSADO, false));
-    setExpandido(ler(CHAVE_EXPANDIDO, ancestrais(courses, pathname)));
-    setHidratado(true);
-  }, [courses, pathname]);
-
-  useEffect(() => {
-    if (!hidratado) return;
-    try {
-      window.localStorage.setItem(CHAVE_COLAPSADO, JSON.stringify(colapsado));
-      window.localStorage.setItem(CHAVE_EXPANDIDO, JSON.stringify(expandido));
-    } catch {
-      // Navegação privada ou armazenamento bloqueado: o rail funciona igual,
-      // só não lembra do estado.
-    }
-  }, [hidratado, colapsado, expandido]);
+    setPreferencia(ler<boolean | null>(CHAVE_COLAPSADO, null));
+    setExpandido(ler(CHAVE_EXPANDIDO, local.moduloId ? [local.moduloId] : []));
+  }, [local.moduloId]);
 
   // Navegar para uma aula abre o caminho até ela. Ajuste em render, porque a
   // rota é a entrada e não um sistema externo a sincronizar.
+  const moduloDaRota = local.moduloId;
+
   if (rotaVista !== pathname) {
     setRotaVista(pathname);
-    const abrir = ancestrais(courses, pathname);
-    if (abrir.length > 0) {
-      setExpandido((atual) => [...new Set([...atual, ...abrir])]);
+    if (moduloDaRota !== null && !expandido.includes(moduloDaRota)) {
+      setExpandido((atual) => [...atual, moduloDaRota]);
     }
   }
 
-  const alternar = useCallback((id: string) => {
-    setExpandido((atual) =>
-      atual.includes(id) ? atual.filter((item) => item !== id) : [...atual, id],
-    );
+  const alternarModulo = useCallback((id: string) => {
+    setExpandido((atual) => {
+      const proximo = atual.includes(id)
+        ? atual.filter((item) => item !== id)
+        : [...atual, id];
+      gravar(CHAVE_EXPANDIDO, proximo);
+
+      return proximo;
+    });
   }, []);
 
-  if (colapsado) {
-    return (
-      <div className="border-b border-rule px-3 py-2 md:w-12 md:border-r md:border-b-0">
-        <button
-          type="button"
-          onClick={() => setColapsado(false)}
-          aria-label="Mostrar navegação"
-          className={cn(
-            buttonVariants({ variant: "ghost", size: "icon-sm" }),
-            "text-ink-soft",
-          )}
-        >
-          <PanelLeftOpen aria-hidden />
-        </button>
-      </div>
-    );
-  }
+  const alternarRail = useCallback(() => {
+    setPreferencia((atual) => {
+      // O estado de partida é o que está na tela: inverter o que se vê.
+      const proximo = !(atual ?? (faixaMedia() && noEditor));
+      gravar(CHAVE_COLAPSADO, proximo);
+
+      return proximo;
+    });
+  }, [noEditor]);
+
+  // Recolhido é decisão de ≥900px. Abaixo disso o rail é a barra do topo e
+  // continua inteira, mesmo com a preferência gravada — senão, no telefone, a
+  // navegação virava um botão só.
+  const somenteAberto = colapsado ? "rail:hidden" : "";
 
   return (
     <nav
       aria-label="Navegação"
-      className="border-b border-rule px-3 py-3 text-sm md:w-64 md:shrink-0 md:border-r md:border-b-0"
+      className={cn(
+        "flex flex-wrap items-center gap-x-4 border-b border-rule px-4 py-1",
+        "rail:flex-col rail:shrink-0 rail:items-stretch rail:gap-7 rail:border-r rail:border-b-0",
+        colapsado
+          ? "rail:w-12 rail:px-2 rail:py-5"
+          : "rail:w-50 rail:px-5 rail:py-6 cards:w-60",
+      )}
     >
-      <div className="mb-2 flex items-start justify-between gap-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-          {ATALHOS.map((atalho) => {
-            const ativo = pathname === atalho.href;
-
-            return (
-              <Link
-                key={atalho.href}
-                href={atalho.href}
-                aria-current={ativo ? "page" : undefined}
-                className={cn(CLASSE_ATALHO, ativo && "text-accent")}
-              >
-                {atalho.rotulo}
-              </Link>
-            );
-          })}
-        </div>
+      {colapsado ? (
         <button
           type="button"
-          onClick={() => setColapsado(true)}
-          aria-label="Esconder navegação"
-          className={cn(
-            buttonVariants({ variant: "ghost", size: "icon-xs" }),
-            "text-ink-soft",
-          )}
+          onClick={alternarRail}
+          aria-label="Expandir menu"
+          aria-expanded={false}
+          className="hidden size-8 items-center justify-center rounded-sm border border-rule text-sm rail:flex"
         >
-          <PanelLeftClose aria-hidden />
+          <span aria-hidden>»</span>
+        </button>
+      ) : null}
+
+      <div
+        className={cn(
+          "mr-auto flex items-center gap-2",
+          "rail:mr-0 rail:w-full rail:justify-between",
+          somenteAberto,
+        )}
+      >
+        <span className="text-sm font-semibold">Estudos</span>
+        <button
+          type="button"
+          onClick={alternarRail}
+          aria-expanded
+          className="hidden text-xs text-ink-soft hover:text-ink rail:block rail:py-1"
+        >
+          Recolher
         </button>
       </div>
 
-      {courses.length === 0 ? (
-        <p className="px-1 text-xs text-ink-soft">
-          Nenhum curso ainda.{" "}
-          <Link href="/courses" className="text-accent underline">
-            Criar o primeiro
-          </Link>
-          .
-        </p>
-      ) : (
-        <ul className="space-y-0.5">
-          {courses.map((course) => {
-            const aberto = expandido.includes(course.id);
-            const ativo = pathname === `/courses/${course.slug}`;
+      <div
+        className={cn(
+          "flex items-center gap-x-4",
+          "rail:order-4 rail:mt-auto rail:grid rail:gap-0.5",
+          somenteAberto,
+        )}
+      >
+        {rodape}
+      </div>
 
-            return (
-              <li key={course.id}>
-                <div className="flex items-center gap-0.5">
-                  <button
-                    type="button"
-                    onClick={() => alternar(course.id)}
-                    aria-expanded={aberto}
-                    aria-label={`${aberto ? "Recolher" : "Expandir"} ${course.title}`}
-                    className={cn(
-                      buttonVariants({ variant: "ghost", size: "icon-xs" }),
-                      "text-ink-soft",
-                    )}
-                  >
-                    {aberto ? (
-                      <ChevronDown aria-hidden />
-                    ) : (
-                      <ChevronRight aria-hidden />
-                    )}
-                  </button>
-                  <Link
-                    href={`/courses/${course.slug}`}
-                    aria-current={ativo ? "page" : undefined}
-                    className={cn(
-                      "min-w-0 flex-1 truncate rounded-sm px-1 py-0.5 hover:bg-muted",
-                      ativo && "font-medium text-accent",
-                    )}
-                  >
-                    {course.title}
-                  </Link>
-                </div>
+      <ul
+        className={cn(
+          "flex w-full flex-wrap gap-x-5",
+          "rail:order-2 rail:grid rail:w-auto rail:gap-0.5",
+          somenteAberto,
+        )}
+      >
+        {NAV.map((item) => {
+          const ativo = secao === item.secao;
+          const contagem = item.secao === "revisao" ? contagemRevisao : 0;
 
-                {aberto ? (
-                  <ul className="ml-4 space-y-0.5 border-l border-rule pl-1">
-                    {course.modules.length === 0 ? (
-                      <li className="px-2 py-0.5 text-xs text-ink-soft">
-                        Sem módulos.
-                      </li>
-                    ) : (
-                      course.modules.map((modulo) => {
-                        const moduloAberto = expandido.includes(modulo.id);
-
-                        return (
-                          <li key={modulo.id}>
-                            <div className="flex items-center gap-0.5">
-                              <button
-                                type="button"
-                                onClick={() => alternar(modulo.id)}
-                                aria-expanded={moduloAberto}
-                                aria-label={`${moduloAberto ? "Recolher" : "Expandir"} ${modulo.title}`}
-                                className={cn(
-                                  buttonVariants({
-                                    variant: "ghost",
-                                    size: "icon-xs",
-                                  }),
-                                  "text-ink-soft",
-                                )}
-                              >
-                                {moduloAberto ? (
-                                  <ChevronDown aria-hidden />
-                                ) : (
-                                  <ChevronRight aria-hidden />
-                                )}
-                              </button>
-                              <span className="min-w-0 flex-1 truncate px-1 py-0.5 text-ink-soft">
-                                {modulo.title}
-                              </span>
-                            </div>
-
-                            {moduloAberto ? (
-                              <ul className="ml-4 space-y-0.5 border-l border-rule pl-1">
-                                {modulo.lessons.length === 0 ? (
-                                  <li className="px-2 py-0.5 text-xs text-ink-soft">
-                                    Sem aulas.
-                                  </li>
-                                ) : (
-                                  modulo.lessons.map((lesson) => {
-                                    const aulaAtiva =
-                                      pathname === `/lessons/${lesson.id}`;
-
-                                    return (
-                                      <li key={lesson.id}>
-                                        <Link
-                                          href={`/lessons/${lesson.id}`}
-                                          aria-current={
-                                            aulaAtiva ? "page" : undefined
-                                          }
-                                          className={cn(
-                                            "block truncate rounded-sm px-2 py-0.5 hover:bg-muted",
-                                            aulaAtiva &&
-                                              "font-medium text-accent",
-                                          )}
-                                        >
-                                          {lesson.title}
-                                        </Link>
-                                      </li>
-                                    );
-                                  })
-                                )}
-                              </ul>
-                            ) : null}
-                          </li>
-                        );
-                      })
-                    )}
-                  </ul>
+          return (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                aria-current={ativo ? "page" : undefined}
+                className={cn(CLASSE_NAV, ativo && "font-medium text-accent")}
+              >
+                <span>{item.rotulo}</span>
+                {contagem > 0 ? (
+                  <span className="text-xs font-normal text-ink-soft">
+                    {contagem}
+                  </span>
                 ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
 
-      <div className="mt-3 border-t border-rule pt-2">{rodape}</div>
+      {/* A árvore só existe nas telas de curso, nota, aula e editor, e só do
+          curso atual. Abaixo de 900px a barra do topo não a mostra. */}
+      {local.curso === null ? null : (
+        <div
+          className={cn(
+            "hidden text-xs",
+            !colapsado && "rail:order-3 rail:grid rail:gap-1.5",
+          )}
+        >
+          <Link
+            href={`/courses/${local.curso.slug}`}
+            aria-current={
+              pathname === `/courses/${local.curso.slug}` ? "page" : undefined
+            }
+            className={cn(
+              "truncate text-ink-soft hover:text-ink",
+              pathname === `/courses/${local.curso.slug}` &&
+                "font-medium text-accent",
+            )}
+          >
+            {local.curso.title}
+          </Link>
+
+          {local.curso.modules.length === 0 ? (
+            <p className="text-ink-soft">Sem módulos.</p>
+          ) : (
+            <ul>
+              {local.curso.modules.map((modulo) => {
+                const aberto = expandido.includes(modulo.id);
+
+                return (
+                  <li key={modulo.id}>
+                    <button
+                      type="button"
+                      onClick={() => alternarModulo(modulo.id)}
+                      aria-expanded={aberto}
+                      className="flex w-full items-start gap-1.5 py-1 text-left"
+                    >
+                      <span aria-hidden className="w-2.5 shrink-0 text-ink-soft">
+                        {aberto ? "▾" : "▸"}
+                      </span>
+                      <span className="min-w-0">{modulo.title}</span>
+                    </button>
+
+                    {aberto ? (
+                      <ul className="grid pb-1.5 pl-4">
+                        {modulo.lessons.length === 0 ? (
+                          <li className="py-0.5 text-ink-soft">Sem aulas.</li>
+                        ) : (
+                          modulo.lessons.map((lesson) => {
+                            const ativa = local.lessonId === lesson.id;
+
+                            return (
+                              <li key={lesson.id}>
+                                <Link
+                                  href={`/lessons/${lesson.id}`}
+                                  aria-current={ativa ? "page" : undefined}
+                                  className={cn(
+                                    "block truncate py-0.5",
+                                    ativa
+                                      ? "font-medium text-accent"
+                                      : "text-ink-soft hover:text-ink",
+                                  )}
+                                >
+                                  {lesson.title}
+                                </Link>
+                              </li>
+                            );
+                          })
+                        )}
+                      </ul>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
     </nav>
   );
 }

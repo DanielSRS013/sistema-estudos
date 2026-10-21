@@ -192,7 +192,9 @@ describe("corpo da nota de SPEC.md §6", () => {
   });
 
   it("empilha o editor em coluna única abaixo de 900px", () => {
-    expect(css).toContain("--breakpoint-editor: 56.25rem;");
+    // O token tem nome de faixa, não de consumidor: desde a casca do handoff
+    // os mesmos 900px decidem o rail e as duas colunas do editor.
+    expect(css).toContain("--breakpoint-rail: 56.25rem;");
   });
 });
 
@@ -309,5 +311,62 @@ describe("entrelinha com nome", () => {
   it("fixa a face do card em 1,45, como SPEC §6", () => {
     const face = css.slice(css.indexOf(".card-face {"));
     expect(face.slice(0, face.indexOf("}"))).toContain("line-height: 1.45;");
+  });
+});
+
+describe("a casca do handoff", () => {
+  const shell = readFileSync(join(raiz, "shared", "shell.tsx"), "utf8");
+  const rail = readFileSync(
+    join(raiz, "features", "courses", "components", "rail.tsx"),
+    "utf8",
+  );
+
+  it("decide layout nos 900px do handoff, não no `md:` do Tailwind", () => {
+    // Entre 768 e 900 havia rail de 256px ao lado da coluna — faixa que a
+    // §6 não pede.
+    for (const arquivo of [shell, rail]) {
+      expect(arquivo).not.toMatch(/\bmd:/);
+      expect(arquivo).not.toMatch(/\b(sm|lg|xl):/);
+    }
+  });
+
+  it("dá ao rail as três larguras do handoff", () => {
+    // 240px em ≥1100, 200px entre 900 e 1099, 48px recolhido.
+    expect(rail).toContain("rail:w-50");
+    expect(rail).toContain("cards:w-60");
+    expect(rail).toContain("rail:w-12");
+  });
+
+  it("mantém o fallback do Suspense na largura do rail", () => {
+    // O fallback é o que o servidor pinta antes da árvore chegar: numa
+    // largura diferente, a coluna salta quando o rail aparece.
+    expect(shell).toContain("rail:w-50");
+    expect(shell).toContain("cards:w-60");
+  });
+
+  it.each([
+    ["px-4 pt-5 pb-14", "20/16/56 abaixo de 900"],
+    ["rail:px-8 rail:pt-8 rail:pb-16", "32/32/64 entre 900 e 1099"],
+    ["cards:px-14 cards:pt-10 cards:pb-20", "40/56/80 em ≥1100"],
+  ])("dá ao conteúdo o degrau %s (%s)", (degrau) => {
+    expect(shell).toContain(degrau);
+  });
+
+  it("não deixa ícone de biblioteca no rail", () => {
+    // O handoff proíbe ícone decorativo: os glifos » ▾ ▸ são texto.
+    expect(rail).not.toContain("lucide-react");
+    for (const glifo of ["»", "▾", "▸"]) {
+      expect(rail).toContain(glifo);
+    }
+  });
+
+  it("espelha no rail as duas medidas de breakpoint do CSS", () => {
+    // Só o default do rail no editor entre 900 e 1099px precisa da faixa em
+    // JS. As duas strings de `matchMedia` não podem derivar dos tokens.
+    for (const token of ["--breakpoint-rail", "--breakpoint-cards"]) {
+      const valor = new RegExp(`${token}: ([0-9.]+rem);`).exec(css)?.[1];
+      expect(valor).toBeDefined();
+      expect(rail).toContain(`(min-width: ${valor})`);
+    }
   });
 });

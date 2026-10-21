@@ -7,8 +7,9 @@ import { listLessonOptions, listRecentNotes } from "@/features/notes/queries";
 import { saveLimits } from "@/features/review/actions";
 import { LimitsForm } from "@/features/review/components/limits-form";
 import { durationLabel } from "@/features/review/duration";
+import { CourseRail } from "@/features/courses/components/course-rail";
 import { fetchLimits, fetchPanel } from "@/features/review/queries";
-import { Carregando } from "@/shared/shell";
+import { Carregando, Shell } from "@/shared/shell";
 
 /** Quantas notas recentes o painel lista — SPEC §5. */
 const RECENTES = 8;
@@ -135,37 +136,39 @@ async function Recentes() {
 
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full flex-1 flex-col justify-center gap-10 px-6 py-16 sm:px-10">
-      <header className="measure space-y-2">
-        <p className="font-mono text-xs tracking-wide text-ink-soft">painel</p>
-        <h1 className="text-2xl font-semibold tracking-tight">Hoje</h1>
-      </header>
+    <Shell rail={<CourseRail />}>
+      <div className="flex flex-col gap-10">
+        <header className="measure space-y-2">
+          <p className="font-mono text-xs tracking-wide text-ink-soft">painel</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Hoje</h1>
+        </header>
 
-      <Suspense
-        fallback={<p className="font-mono text-xs text-ink-soft">contando…</p>}
-      >
-        <Painel />
-      </Suspense>
-
-      <section className="measure space-y-3 border-t border-rule pt-6">
-        <h2 className="text-sm font-medium text-ink-soft">Nota nova</h2>
-        <Suspense fallback={<Carregando>Carregando as aulas.</Carregando>}>
-          <Captura />
+        <Suspense
+          fallback={<p className="font-mono text-xs text-ink-soft">contando…</p>}
+        >
+          <Painel />
         </Suspense>
-      </section>
 
-      <section className="measure space-y-3 border-t border-rule pt-6">
-        <h2 className="text-sm font-medium text-ink-soft">Últimas notas</h2>
-        <Suspense fallback={<Carregando>Carregando as notas.</Carregando>}>
-          <Recentes />
-        </Suspense>
-      </section>
+        <section className="measure space-y-3 border-t border-rule pt-6">
+          <h2 className="text-sm font-medium text-ink-soft">Nota nova</h2>
+          <Suspense fallback={<Carregando>Carregando as aulas.</Carregando>}>
+            <Captura />
+          </Suspense>
+        </section>
 
-      <section className="measure border-t border-rule pt-6">
-        <Suspense fallback={<Carregando>Carregando os limites.</Carregando>}>
-          <Limites />
-        </Suspense>
-      </section>
-    </main>
+        <section className="measure space-y-3 border-t border-rule pt-6">
+          <h2 className="text-sm font-medium text-ink-soft">Últimas notas</h2>
+          <Suspense fallback={<Carregando>Carregando as notas.</Carregando>}>
+            <Recentes />
+          </Suspense>
+        </section>
+
+        <section className="measure border-t border-rule pt-6">
+          <Suspense fallback={<Carregando>Carregando os limites.</Carregando>}>
+            <Limites />
+          </Suspense>
+        </section>
+      </div>
+    </Shell>
   );
 }

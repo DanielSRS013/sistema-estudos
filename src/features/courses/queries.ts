@@ -2,7 +2,8 @@ import { db } from "@/db";
 
 /* ──────────────────────────────── rail ───────────────────────────────── */
 
-export type RailLesson = { id: string; title: string };
+export type RailNote = { id: string };
+export type RailLesson = { id: string; title: string; notes: RailNote[] };
 export type RailModule = { id: string; title: string; lessons: RailLesson[] };
 export type RailCourse = {
   id: string;
@@ -33,6 +34,9 @@ export async function fetchRail(): Promise<RailCourse[]> {
               asc(lesson.createdAt),
             ],
             columns: { id: true, title: true },
+            // O id das notas resolve `/notes/<id>` no rail: a casca monta a
+            // árvore antes de a página saber de que curso a nota é.
+            with: { notes: { columns: { id: true } } },
           },
         },
       },
