@@ -43,9 +43,13 @@ export default function ReviewPage({ searchParams }: PageProps<"/review">) {
   return (
     <Suspense
       fallback={
-        <p className="mx-auto px-6 py-6 font-mono text-xs text-ink-soft">
-          montando a fila…
-        </p>
+        // A mesma caixa da sessão — padding e coluna de 720px —, para a troca
+        // do fallback pela fila não mexer o card de lugar.
+        <main className="flex min-h-dvh flex-col px-4 pt-4 pb-5 rail:px-14 rail:pt-7 rail:pb-10">
+          <p className="mx-auto w-full max-w-180 text-xs text-ink-soft">
+            montando a fila…
+          </p>
+        </main>
       }
     >
       <Fila searchParams={searchParams} />

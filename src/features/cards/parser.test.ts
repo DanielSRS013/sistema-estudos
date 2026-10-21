@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { LACUNA } from "@/shared/markdown-cloze";
+
 import { parse } from "./parser";
 
 describe("cloze", () => {
@@ -192,5 +194,17 @@ describe("a nota inteira", () => {
       cards: [],
       issues: [],
     });
+  });
+});
+
+describe("a marca da lacuna", () => {
+  it("é a mesma que o render envolve", () => {
+    // A frente sai daqui e o filete de 2px é aplicado no render, por um
+    // `span` que o `markdown-cloze` monta em volta desta marca. Com duas
+    // cópias da string, uma letra de diferença apagaria o filete sem quebrar
+    // teste nenhum — e o cloze apareceria na revisão sem lacuna visível.
+    const { cards } = parse("A capital é {{Brasília}}.");
+
+    expect(cards[0]?.prompt).toBe(`A capital é ${LACUNA}.`);
   });
 });

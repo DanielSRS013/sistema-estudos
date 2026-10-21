@@ -409,3 +409,18 @@
   overflow-y: hidden;
   padding: 0.25rem 0;
 }
+
+/* A lacuna da vez, nos dois estados do handoff. O `span` vem do render
+   (`shared/markdown-cloze.ts`), porque o parser entrega `[…]` como texto. */
+
+.card-face .cloze-oculta {
+  border-bottom: 2px solid var(--ink);
+  padding: 0 0.5rem;
+  color: var(--ink-soft);
+}
+
+.card-face .cloze-revelada {
+  background-color: var(--rule);
+  border-radius: var(--radius);
+  padding: 0.125rem 0.375rem;
+}

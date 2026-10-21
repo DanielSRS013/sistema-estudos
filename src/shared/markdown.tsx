@@ -3,6 +3,7 @@ import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 
+import { envolverLacuna, type Estado } from "./markdown-cloze";
 import { anotarLinhas } from "./markdown-lines";
 
 // Fora do componente: as listas são estáveis entre renders, e o editor
@@ -10,6 +11,16 @@ import { anotarLinhas } from "./markdown-lines";
 const remarkPlugins = [remarkGfm, remarkMath];
 const rehypePlugins = [rehypeKatex];
 const rehypeComLinhas = [rehypeKatex, anotarLinhas];
+const rehypeComLacuna = {
+  oculta: [rehypeKatex, envolverLacuna("oculta")],
+  revelada: [rehypeKatex, envolverLacuna("revelada")],
+};
+
+function rehypeDe(lacuna: Estado | undefined, marcarLinhas: boolean) {
+  if (lacuna !== undefined) return rehypeComLacuna[lacuna];
+
+  return marcarLinhas ? rehypeComLinhas : rehypePlugins;
+}
 
 /**
  * Markdown com matemática. Serve ao corpo da nota (leitura e pré-visualização
@@ -22,6 +33,7 @@ export function MathMarkdown({
   content,
   className = "note-prose",
   marcarLinhas = false,
+  lacuna,
 }: {
   content: string;
   className?: string;
@@ -31,12 +43,18 @@ export function MathMarkdown({
    * face do card na revisão e a pré-visualização do editor saem sem marca.
    */
   marcarLinhas?: boolean;
+  /**
+   * Envolve a lacuna do cloze num `span`, para o filete do estado pergunta e
+   * o fundo do estado resposta. Exige que `content` tenha passado por
+   * `marcarLacuna`.
+   */
+  lacuna?: Estado;
 }) {
   return (
     <div className={className}>
       <Markdown
         remarkPlugins={remarkPlugins}
-        rehypePlugins={marcarLinhas ? rehypeComLinhas : rehypePlugins}
+        rehypePlugins={rehypeDe(lacuna, marcarLinhas)}
       >
         {content}
       </Markdown>

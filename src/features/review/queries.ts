@@ -18,7 +18,16 @@ import { alias } from "drizzle-orm/pg-core";
 import { connection } from "next/server";
 
 import { db } from "@/db";
-import { SETTINGS_ID, cards, notes, reviews, settings } from "@/db/schema";
+import {
+  SETTINGS_ID,
+  cards,
+  courses,
+  lessons,
+  modules,
+  notes,
+  reviews,
+  settings,
+} from "@/db/schema";
 
 import { CORTE_HORAS, FUSO, dayEnd, dayStart, daysUntil, logicalDay, streak } from "./day";
 import { resolveLimits } from "./limits";
@@ -83,8 +92,27 @@ export type QueueCard = CardState & {
   answer: string;
   hint: string | null;
   noteId: string;
-  noteTitle: string;
+  /** "Curso · Aula", o caminho que o topo do modo foco mostra. */
+  path: string;
 };
+
+type LinhaDeCard = Omit<QueueCard, "path"> & {
+  courseTitle: string;
+  lessonTitle: string;
+};
+
+/**
+ * O caminho do card, na mesma forma que `listRecentNotes` monta para o painel.
+ * A nota não entra: o handoff mostra curso · aula, e o título da nota não cabe
+ * na linha de 13px.
+ */
+function comCaminho({
+  courseTitle,
+  lessonTitle,
+  ...card
+}: LinhaDeCard): QueueCard {
+  return { ...card, path: `${courseTitle} · ${lessonTitle}` };
+}
 
 export type Queue = {
   cards: QueueCard[];
@@ -102,7 +130,8 @@ async function candidatos(now: Date): Promise<QueueCard[]> {
       answer: cards.answer,
       hint: cards.hint,
       noteId: cards.noteId,
-      noteTitle: notes.title,
+      courseTitle: courses.title,
+      lessonTitle: lessons.title,
       due: cards.due,
       stability: cards.stability,
       difficulty: cards.difficulty,
@@ -116,6 +145,9 @@ async function candidatos(now: Date): Promise<QueueCard[]> {
     })
     .from(cards)
     .innerJoin(notes, eq(notes.id, cards.noteId))
+    .innerJoin(lessons, eq(lessons.id, notes.lessonId))
+    .innerJoin(modules, eq(modules.id, lessons.moduleId))
+    .innerJoin(courses, eq(courses.id, modules.courseId))
     .where(
       and(
         isNull(cards.archivedAt),
@@ -126,7 +158,7 @@ async function candidatos(now: Date): Promise<QueueCard[]> {
     // novos na ordem da nota; vencidos o `queueFor` reordena por vencimento
     .orderBy(cards.noteId, cards.ordinal);
 
-  return rows;
+  return rows.map(comCaminho);
 }
 
 /**
@@ -195,7 +227,8 @@ export async function fetchAheadQueue(): Promise<Queue> {
       answer: cards.answer,
       hint: cards.hint,
       noteId: cards.noteId,
-      noteTitle: notes.title,
+      courseTitle: courses.title,
+      lessonTitle: lessons.title,
       due: cards.due,
       stability: cards.stability,
       difficulty: cards.difficulty,
@@ -209,6 +242,9 @@ export async function fetchAheadQueue(): Promise<Queue> {
     })
     .from(cards)
     .innerJoin(notes, eq(notes.id, cards.noteId))
+    .innerJoin(lessons, eq(lessons.id, notes.lessonId))
+    .innerJoin(modules, eq(modules.id, lessons.moduleId))
+    .innerJoin(courses, eq(courses.id, modules.courseId))
     .where(
       and(
         isNull(cards.archivedAt),
@@ -222,7 +258,7 @@ export async function fetchAheadQueue(): Promise<Queue> {
   const proximo = rows[0]?.due;
 
   return {
-    cards: rows,
+    cards: rows.map(comCaminho),
     nextDueInDays: proximo === undefined ? null : daysUntil(proximo, now),
   };
 }
@@ -375,11 +411,15 @@ export async function fetchUndoTarget(): Promise<UndoTarget | null> {
         state: cards.state,
         lastReview: cards.lastReview,
       },
-      noteTitle: notes.title,
+      courseTitle: courses.title,
+      lessonTitle: lessons.title,
     })
     .from(reviews)
     .innerJoin(cards, eq(cards.id, reviews.cardId))
     .innerJoin(notes, eq(notes.id, cards.noteId))
+    .innerJoin(lessons, eq(lessons.id, notes.lessonId))
+    .innerJoin(modules, eq(modules.id, lessons.moduleId))
+    .innerJoin(courses, eq(courses.id, modules.courseId))
     .where(efetiva)
     .orderBy(sql`${reviews.reviewedAt} desc`)
     .limit(1);
@@ -392,7 +432,11 @@ export async function fetchUndoTarget(): Promise<UndoTarget | null> {
 
   return {
     reviewId: linha.reviewId,
-    card: { ...linha.card, noteTitle: linha.noteTitle },
+    card: comCaminho({
+      ...linha.card,
+      courseTitle: linha.courseTitle,
+      lessonTitle: linha.lessonTitle,
+    }),
     log: {
       rating,
       stateBefore: linha.stateBefore,

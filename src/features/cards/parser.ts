@@ -3,6 +3,7 @@
 // aviso — toda alteração vem com teste no mesmo commit.
 
 import { blocos, type Bloco } from "@/shared/markdown-blocks";
+import { LACUNA } from "@/shared/markdown-cloze";
 
 export type CardKind = "cloze" | "qa";
 
@@ -26,9 +27,6 @@ export type ParseIssue = { line: number; message: string };
  * estilo do projeto proíbe devolver erro por throw. Daí as duas listas.
  */
 export type ParseResult = { cards: ParsedCard[]; issues: ParseIssue[] };
-
-/** Marca da lacuna na frente do card. */
-const LACUNA = "[…]";
 
 const ABRE = "{{";
 const FECHA = "}}";

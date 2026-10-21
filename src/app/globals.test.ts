@@ -198,6 +198,26 @@ describe("corpo da nota de SPEC.md §6", () => {
   });
 });
 
+describe("a lacuna do cloze no modo foco", () => {
+  const face = css.slice(css.indexOf(".card-face .cloze-oculta {"));
+
+  it("desenha a lacuna oculta como filete de 2px, não como texto solto", () => {
+    // O parser entrega `[…]` como texto puro; o filete só existe porque o
+    // render envolve a marca num `span`. Se esta regra sair, o cloze fica
+    // indistinguível do resto da frase e a suíte continua verde.
+    const oculta = face.slice(0, face.indexOf("}"));
+    expect(oculta).toContain("border-bottom: 2px solid var(--ink);");
+    expect(oculta).toContain("padding: 0 0.5rem;");
+  });
+
+  it("revela a resposta in-loco com o mesmo fundo do destaque de busca", () => {
+    const revelada = face.slice(face.indexOf(".card-face .cloze-revelada {"));
+    expect(revelada.slice(0, revelada.indexOf("}"))).toContain(
+      "background-color: var(--rule);",
+    );
+  });
+});
+
 describe("margem de cards de SPEC.md §6", () => {
   it("some abaixo de 1100px", () => {
     expect(css).toContain("--breakpoint-cards: 68.75rem;");

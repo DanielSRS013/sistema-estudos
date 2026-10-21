@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
 import { MathMarkdown } from "@/shared/markdown";
+import { marcarLacuna } from "@/shared/markdown-cloze";
 
 import { rateCard, undoLast } from "../actions";
 import type { QueueCard } from "../queries";
@@ -23,7 +24,7 @@ const BOTOES: {
 }[] = [
   {
     rating: "again",
-    label: "Errei",
+    label: "De novo",
     tecla: "1",
     cor: "bg-again text-viridis-paper",
   },
@@ -44,11 +45,17 @@ const TECLAS: Record<string, Rating> = {
   "4": "easy",
 };
 
+/** Quanto tempo "Avaliação desfeita" fica na tela, em ms. */
+const AVISO_MS = 2_500;
+
+/** A coluna do modo foco: 720px, a mesma na fila, no vazio e na espera. */
+const COLUNA = "mx-auto w-full max-w-180";
+
 /* ─────────────────────────────── vazio ───────────────────────────────── */
 
-function proximaRevisao(dias: number | null): string {
-  if (dias === null) return "Nenhum card espera revisão.";
-  if (dias === 0) return "A próxima revisão é ainda hoje.";
+/** `null` quando nada está agendado: aí a linha simplesmente não aparece. */
+function proximaRevisao(dias: number | null): string | null {
+  if (dias === null) return null;
   if (dias === 1) return "Próxima revisão amanhã.";
 
   return `Próxima revisão em ${dias} dias.`;
@@ -61,15 +68,17 @@ function Vazio({
   nextDueInDays: number | null;
   ahead: boolean;
 }) {
+  const proxima = proximaRevisao(nextDueInDays);
+
   return (
-    <div className="measure space-y-4">
-      <h1 className="font-serif text-xl leading-snug">
-        {ahead ? "Nada para adiantar." : "Nada vence hoje."}
+    <div className={`${COLUNA} flex flex-1 flex-col justify-center gap-3`}>
+      <h1 className="font-serif text-xl leading-snug font-medium">
+        Nada vence hoje.
       </h1>
-      <p className="font-serif text-base leading-prose text-ink-soft">
-        {proximaRevisao(nextDueInDays)}
-      </p>
-      <div className="flex flex-wrap gap-4 text-sm">
+      {proxima === null ? null : (
+        <p className="text-base text-ink-soft">{proxima}</p>
+      )}
+      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm">
         {ahead || nextDueInDays === null ? null : (
           <Link href="/review?adiantado=1" className="text-accent underline">
             Estudar adiantado
@@ -85,6 +94,18 @@ function Vazio({
 
 /* ────────────────────────────── sessão ───────────────────────────────── */
 
+/** Atalho não dispara com o foco num campo — exigência do handoff. */
+function emCampo(alvo: EventTarget | null): boolean {
+  if (!(alvo instanceof HTMLElement)) return false;
+
+  return (
+    alvo.isContentEditable ||
+    alvo.tagName === "INPUT" ||
+    alvo.tagName === "TEXTAREA" ||
+    alvo.tagName === "SELECT"
+  );
+}
+
 export function ReviewSession({
   cards,
   nextDueInDays,
@@ -98,14 +119,34 @@ export function ReviewSession({
 
   const [fila, setFila] = useState(cards);
   const [revelado, setRevelado] = useState(false);
-  const [avaliados, setAvaliados] = useState(0);
   const [erro, setErro] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
   const [pendente, startTransition] = useTransition();
 
   // Quando a resposta apareceu, para medir o tempo de pensamento.
   const reveladoEm = useRef<number | null>(null);
+  const avisoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const atual = fila[0];
+
+  const anunciar = useCallback((texto: string) => {
+    setAviso(texto);
+
+    if (avisoTimer.current !== null) clearTimeout(avisoTimer.current);
+
+    avisoTimer.current = setTimeout(() => {
+      setAviso(null);
+      avisoTimer.current = null;
+    }, AVISO_MS);
+  }, []);
+
+  // O timer não pode disparar depois de a sessão sair da tela.
+  useEffect(
+    () => () => {
+      if (avisoTimer.current !== null) clearTimeout(avisoTimer.current);
+    },
+    [],
+  );
 
   const revelar = useCallback(() => {
     if (revelado) return;
@@ -139,13 +180,12 @@ export function ReviewSession({
           return;
         }
 
-        // "Errei" devolve o card ao fim da fila da sessão: o FSRS marcou para
-        // daqui a poucos minutos, e é hoje que ele precisa ser revisto.
+        // "De novo" devolve o card ao fim da fila da sessão: o FSRS marcou
+        // para daqui a poucos minutos, e é hoje que ele precisa ser revisto.
         setFila((anterior) => {
           const resto = anterior.slice(1);
           return rating === "again" ? [...resto, card] : resto;
         });
-        setAvaliados((n) => n + 1);
         setRevelado(false);
         reveladoEm.current = null;
       });
@@ -172,15 +212,18 @@ export function ReviewSession({
         card,
         ...anterior.filter((outro) => outro.id !== card.id),
       ]);
-      setAvaliados((n) => Math.max(0, n - 1));
-      setRevelado(false);
-      reveladoEm.current = null;
+      // O card volta com a resposta à vista, como o handoff pede: desfazer é
+      // para corrigir a nota que acabou de ser dada, não para reler a frente.
+      setRevelado(true);
+      reveladoEm.current = performance.now();
+      anunciar("Avaliação desfeita");
     });
-  }, [pendente]);
+  }, [anunciar, pendente]);
 
   useEffect(() => {
     function aoTeclar(evento: KeyboardEvent) {
       if (evento.metaKey || evento.ctrlKey || evento.altKey) return;
+      if (emCampo(evento.target)) return;
 
       if (evento.key === "Escape") {
         router.push("/");
@@ -215,101 +258,100 @@ export function ReviewSession({
 
   /* ──────────────────────────── render ──────────────────────────── */
 
+  // Cloze revela in-loco: a resposta ocupa o lugar da lacuna, na mesma frase.
+  // Pergunta/resposta revela abaixo do filete, e aí a frente não muda.
+  const cloze = atual?.kind === "cloze";
+  const face = atual === undefined ? "" : montarFace(atual, cloze, revelado);
+
+  const rodape = aviso ?? rodapeDe(atual === undefined, revelado);
+
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[46rem] flex-col px-6 py-6 sm:px-10">
-      <header className="flex items-baseline justify-between gap-4 font-mono text-xs text-ink-soft">
-        <p>
-          {ahead ? "adiantando · " : ""}
-          {fila.length > 0
-            ? `${fila.length} na fila · ${avaliados} ${avaliados === 1 ? "avaliado" : "avaliados"}`
-            : `${avaliados} ${avaliados === 1 ? "avaliado" : "avaliados"}`}
-        </p>
-        <Link href="/" className="underline">
-          esc sai
-        </Link>
-      </header>
-
-      <div className="flex flex-1 flex-col justify-center py-10">
-        {atual === undefined ? (
-          <Vazio nextDueInDays={nextDueInDays} ahead={ahead} />
-        ) : (
-          <article className="space-y-8">
-            <MathMarkdown
-              content={atual.prompt}
-              className="card-face font-serif text-xl"
-            />
-
-            {revelado ? (
-              <div className="space-y-6 border-t border-rule pt-8">
-                <MathMarkdown
-                  content={atual.answer}
-                  className="card-face font-serif text-lg"
-                />
-                <p className="font-mono text-xs text-ink-soft">
-                  {atual.noteTitle}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-6 border-t border-rule pt-8">
-                {atual.hint === null ? null : (
-                  <p className="font-serif text-base text-ink-soft">
-                    {atual.hint}
-                  </p>
-                )}
-                <button
-                  type="button"
-                  onClick={revelar}
-                  className="rounded-md border border-rule px-4 py-2 font-sans text-sm text-ink"
-                >
-                  Revelar resposta
-                  <span className="ml-2 font-mono text-xs text-ink-soft">
-                    espaço
-                  </span>
-                </button>
-              </div>
-            )}
-          </article>
-        )}
+    <main className="flex min-h-dvh flex-col px-4 pt-4 pb-5 rail:px-14 rail:pt-7 rail:pb-10">
+      <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 text-xs text-ink-soft">
+        <span>{atual?.path ?? ""}</span>
+        <span>
+          {atual === undefined ? "Fila concluída" : `Restam ${fila.length}`}
+        </span>
       </div>
 
-      <footer className="space-y-3">
+      {atual === undefined ? (
+        <Vazio nextDueInDays={nextDueInDays} ahead={ahead} />
+      ) : (
+        <div
+          className={`${COLUNA} flex flex-1 flex-col justify-center gap-7 py-10`}
+        >
+          <MathMarkdown
+            content={face}
+            className="card-face text-xl"
+            {...(cloze ? { lacuna: revelado ? "revelada" : "oculta" } : {})}
+          />
+
+          {revelado && !cloze ? (
+            <div className="border-t border-rule pt-6">
+              <MathMarkdown
+                content={atual.answer}
+                className="card-face text-xl"
+              />
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      <div className={`${COLUNA} grid gap-4`}>
         {erro === null ? null : (
-          <p role="alert" className="font-sans text-sm">
+          <p role="alert" className="text-sm">
             {erro}
           </p>
         )}
 
-        {atual === undefined || !revelado ? null : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {atual === undefined ? null : revelado ? (
+          <div
+            role="group"
+            aria-label="Avaliar o card"
+            className="grid grid-cols-4 gap-2"
+          >
             {BOTOES.map((botao) => (
               <button
                 key={botao.rating}
                 type="button"
                 disabled={pendente}
                 onClick={() => avaliar(botao.rating)}
-                className={`flex flex-col items-center gap-0.5 rounded-md px-4 py-3 font-sans text-sm font-medium disabled:opacity-50 ${botao.cor}`}
+                className={`flex min-h-18 flex-col items-center justify-center gap-0.5 rounded-md px-1 py-2 disabled:opacity-50 ${botao.cor}`}
               >
-                {botao.label}
-                <span className="font-mono text-xs opacity-80">
-                  {botao.tecla}
-                </span>
+                <span className="text-base font-medium">{botao.label}</span>
+                <span className="text-xs">{botao.tecla}</span>
               </button>
             ))}
           </div>
-        )}
-
-        <div className="flex items-center justify-between font-mono text-xs text-ink-soft">
+        ) : (
           <button
             type="button"
-            onClick={desfazer}
-            disabled={pendente}
-            className="underline disabled:opacity-50"
+            onClick={revelar}
+            className="flex min-h-18 w-full flex-col items-center justify-center gap-0.5 rounded-md bg-ink text-paper"
           >
-            u desfaz a última avaliação
+            <span className="text-base font-medium">Mostrar resposta</span>
+            <span className="text-xs">espaço</span>
           </button>
-          {pendente ? <span>gravando…</span> : null}
-        </div>
-      </footer>
+        )}
+
+        <p role="status" className="text-center text-xs text-ink-soft">
+          {rodape}
+        </p>
+      </div>
     </main>
   );
+}
+
+function montarFace(card: QueueCard, cloze: boolean, revelado: boolean): string {
+  if (!cloze) return card.prompt;
+
+  return revelado
+    ? marcarLacuna(card.prompt, card.answer)
+    : marcarLacuna(card.prompt);
+}
+
+function rodapeDe(vazia: boolean, revelado: boolean): string {
+  if (vazia) return "esc volta ao painel";
+
+  return revelado ? "u desfaz · esc sai" : "esc sai";
 }
