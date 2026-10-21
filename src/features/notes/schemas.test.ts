@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { createNoteSchema, moveNoteSchema, saveNoteSchema } from "./schemas";
+import {
+  createNoteSchema,
+  moveNoteSchema,
+  saveNoteSchema,
+  setNoteKindSchema,
+} from "./schemas";
 
 const ID = "4f3b9f7e-2a4f-4c1e-9f9c-2b7a1d5e6c80";
 const OUTRO_ID = "9c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f";
@@ -77,5 +82,38 @@ describe("moveNoteSchema", () => {
 
     expect(parsed.success).toBe(false);
     expect(parsed.error?.issues[0]?.message).toBe("Aula não encontrada.");
+  });
+});
+
+describe("setNoteKindSchema", () => {
+  it("aceita um valor do enum", () => {
+    const parsed = setNoteKindSchema.safeParse({ id: ID, kind: "summary" });
+
+    expect(parsed.success).toBe(true);
+    expect(parsed.data).toEqual({ id: ID, kind: "summary" });
+  });
+
+  it("recusa o rótulo da interface no lugar do valor", () => {
+    const parsed = setNoteKindSchema.safeParse({ id: ID, kind: "Resumo" });
+
+    expect(parsed.success).toBe(false);
+    expect(parsed.error?.issues[0]?.message).toBe("Tipo de nota inválido.");
+  });
+
+  it("recusa tipo ausente", () => {
+    const parsed = setNoteKindSchema.safeParse({ id: ID });
+
+    expect(parsed.success).toBe(false);
+    expect(parsed.error?.issues[0]?.message).toBe("Tipo de nota inválido.");
+  });
+
+  it("recusa nota que não é um id", () => {
+    const parsed = setNoteKindSchema.safeParse({
+      id: "nota",
+      kind: "lesson_note",
+    });
+
+    expect(parsed.success).toBe(false);
+    expect(parsed.error?.issues[0]?.message).toBe("Nota não encontrada.");
   });
 });

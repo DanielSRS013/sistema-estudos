@@ -2,10 +2,15 @@
 // texto em português que o handoff escreve ("Anotação de aula", "Resumo",
 // "Resolução") — na linha da aula, no meta da leitura e no seletor do editor.
 //
-// Os valores vêm do enum do banco, não de uma lista paralela: um tipo novo no
-// schema quebra o `Record` no `tsc` antes de chegar à tela sem rótulo.
+// O tipo vem do enum do banco, e só o tipo: `import type` some no build, e o
+// seletor é `"use client"` — importar o schema como valor levaria os dez
+// `pgTable` e o drizzle inteiro para o navegador (`client-bundle.test.ts`).
+//
+// Um tipo novo no schema quebra o `Record` no `tsc` antes de chegar à tela sem
+// rótulo, o `satisfies` recusa valor inventado na lista, e `kind.test.ts` —
+// que roda em node e pode ler o enum de verdade — pega a lista desatualizada.
 
-import { noteKindEnum } from "@/db/schema";
+import type { noteKindEnum } from "@/db/schema";
 
 export type NoteKind = (typeof noteKindEnum.enumValues)[number];
 
@@ -19,7 +24,11 @@ const ROTULOS: Record<NoteKind, string> = {
  * Os tipos na ordem em que a interface os oferece — a mesma do handoff, e a
  * primeira é a que toda nota recebe ao nascer.
  */
-export const NOTE_KINDS = noteKindEnum.enumValues;
+export const NOTE_KINDS = [
+  "lesson_note",
+  "summary",
+  "solution",
+] as const satisfies readonly NoteKind[];
 
 export function noteKindLabel(kind: NoteKind): string {
   return ROTULOS[kind];

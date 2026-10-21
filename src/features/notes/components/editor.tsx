@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { marcarLacunasVazias } from "@/features/cards/empty-gaps";
 import type { ParseIssue } from "@/features/cards/parser";
@@ -49,20 +49,23 @@ function Aviso({ titulo, corpo }: { titulo: string | null; corpo: string }) {
  * uma lista fechada, não texto a digitar, então não entra no debounce do
  * autosave. Sem rótulo visível porque o próprio valor se lê — o handoff não
  * tem esse controle no editor, e inventar uma etiqueta seria inventar tela.
+ *
+ * Não desabilita durante a gravação: com o `<select>` fechado, cada seta já
+ * dispara `change`, e desabilitar o elemento em foco joga o foco para o
+ * `body` — quem fosse de "Anotação de aula" até "Resolução" pelo teclado
+ * gravaria "Resumo" e perderia o foco no caminho. Quem ordena as respostas é
+ * `trocarTipo`, não o `disabled`.
  */
 function SeletorDeTipo({
   value,
-  disabled,
   onChange,
 }: {
   value: NoteKind;
-  disabled: boolean;
   onChange: (kind: NoteKind) => void;
 }) {
   return (
     <select
       value={value}
-      disabled={disabled}
       aria-label="Tipo da nota"
       onChange={(event) => {
         // O `<select>` só oferece os valores da lista; o guarda existe porque
@@ -122,10 +125,14 @@ export function Editor({
   // autosave não insiste sozinho — ver `shouldAutosave`.
   const [falhou, setFalhou] = useState<Texto | null>(null);
   const [status, setStatus] = useState<SaveStatus>(idleStatus);
-  // O tipo da nota e a troca em voo. O valor na tela é o que o usuário
-  // escolheu; se o servidor recusar, volta ao que era e o erro se diz.
+  // O tipo da nota. `tipo` é o que a tela mostra; `tipoGravado` é o que o
+  // servidor confirmou, e é para ele que uma recusa volta. Fica em `ref`
+  // porque quem o lê é a resposta de uma gravação que já estava em voo.
   const [tipo, setTipo] = useState<NoteKind>(initialKind);
-  const [trocandoTipo, setTrocandoTipo] = useState(false);
+  const tipoGravado = useRef<NoteKind>(initialKind);
+  // Número da última troca pedida. Setas no teclado disparam uma troca por
+  // tecla: sem isto, a resposta atrasada da primeira sobrescreveria a última.
+  const pedidoDeTipo = useRef(0);
   const [erroDoTipo, setErroDoTipo] = useState<string | null>(null);
   // O que a última gravação disse sobre a sintaxe dos cards. `null` enquanto
   // nada foi gravado nesta sessão.
@@ -160,22 +167,26 @@ export function Editor({
 
   const trocarTipo = useCallback(
     async (escolhido: NoteKind) => {
-      const anterior = tipo;
+      const pedido = (pedidoDeTipo.current += 1);
 
       setTipo(escolhido);
-      setTrocandoTipo(true);
       setErroDoTipo(null);
 
       const result = await setNoteKind({ id: noteId, kind: escolhido });
 
-      setTrocandoTipo(false);
+      // Chegou fora de hora: o usuário já escolheu outro tipo depois deste, e
+      // quem manda na tela é a escolha mais nova.
+      if (pedido !== pedidoDeTipo.current) return;
 
       if (!result.ok) {
-        setTipo(anterior);
+        setTipo(tipoGravado.current);
         setErroDoTipo(result.message);
+        return;
       }
+
+      tipoGravado.current = escolhido;
     },
-    [noteId, tipo],
+    [noteId],
   );
 
   useEffect(() => {
@@ -251,7 +262,6 @@ export function Editor({
           <h1 className="text-lg leading-tight font-medium">{texto.title}</h1>
           <SeletorDeTipo
             value={tipo}
-            disabled={trocandoTipo}
             onChange={(escolhido) => void trocarTipo(escolhido)}
           />
         </div>
@@ -274,7 +284,7 @@ export function Editor({
         >
           {erro === null ? null : <Aviso titulo={null} corpo={erro} />}
           {erroDoTipo === null ? null : (
-            <Aviso titulo={null} corpo={erroDoTipo} />
+            <Aviso titulo="Tipo não alterado" corpo={erroDoTipo} />
           )}
           {/* Sintaxe torta é erro de validação, não silêncio — SPEC §3.3. */}
           {reclamacoes.map((issue, indice) => (
