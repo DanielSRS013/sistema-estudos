@@ -406,3 +406,63 @@ describe("a casca do handoff", () => {
     }
   });
 });
+
+describe("o editor do handoff", () => {
+  const editor = readFileSync(
+    join(raiz, "features", "notes", "components", "editor.tsx"),
+    "utf8",
+  );
+  const pagina = readFileSync(
+    join(raiz, "app", "notes", "[noteId]", "edit", "page.tsx"),
+    "utf8",
+  );
+
+  it("é um retângulo só, com a borda no container", () => {
+    // As bordas estavam no textarea e na caixa do preview: duas caixas soltas
+    // em vez do retângulo com divisória.
+    expect(editor).toContain("rounded-md border border-rule rail:grid-cols-2");
+  });
+
+  it("vira a divisória nos 900px, de horizontal para vertical", () => {
+    expect(editor).toContain("border-b border-rule rail:border-r rail:border-b-0");
+  });
+
+  it("dá ao textarea as duas alturas do handoff e nenhuma borda", () => {
+    // 420px abaixo de 900, 720px acima.
+    expect(editor).toContain("min-h-105");
+    expect(editor).toContain("rail:min-h-180");
+    expect(editor).not.toContain("min-h-[24rem]");
+  });
+
+  it("desliga o corretor e não oferece exemplo de LaTeX", () => {
+    // Markdown com LaTeX é sublinhado de ponta a ponta pelo corretor, e o
+    // placeholder longo competia com a nota em branco.
+    expect(editor).toContain("spellCheck={false}");
+    expect(editor).not.toContain("placeholder");
+  });
+
+  it("dá à pré-visualização a medida e o respiro do handoff", () => {
+    // 680px de largura, padding 20/24/32 — e `note-prose`, que é o default de
+    // `MathMarkdown`: sem a classe, nenhuma medida da leitura bate.
+    expect(editor).toContain("max-w-170");
+    expect(editor).toContain("px-6 pt-5 pb-8");
+    expect(editor).not.toContain("className=\"card-face\"");
+  });
+
+  it("grava 900ms depois da última tecla, como o handoff", () => {
+    expect(editor).toContain("const DEBOUNCE_MS = 900");
+  });
+
+  it("não deixa Mono nem ícone no cabeçalho do editor", () => {
+    // Os rótulos dos painéis e o fio do cabeçalho são Sans a 13px; o handoff
+    // proíbe ícone decorativo.
+    expect(editor).not.toContain("font-mono text-xs");
+    expect(pagina).not.toContain("lucide-react");
+  });
+
+  it("deixa o fio do cabeçalho em dois níveis, sem o módulo", () => {
+    expect(pagina).toContain("courseTitle");
+    expect(pagina).toContain("lessonTitle");
+    expect(pagina).not.toContain("modulo.title");
+  });
+});

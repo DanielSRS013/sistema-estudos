@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { marcarLacunasVazias } from "@/features/cards/empty-gaps";
 import type { ParseIssue } from "@/features/cards/parser";
 
 import { saveNote } from "../actions";
@@ -16,26 +18,59 @@ import {
 import { linkifyTags } from "@/features/tags/linkify";
 import { MathMarkdown } from "@/shared/markdown";
 
-/** Janela de silêncio antes de gravar. SPEC: 1,5s. */
-const DEBOUNCE_MS = 1500;
+/** Janela de silêncio antes de gravar. SPEC §5: 900ms, como o handoff. */
+const DEBOUNCE_MS = 900;
 
 type Texto = NoteDraft;
 
+/** Onde a nota mora, para o fio do cabeçalho: curso · aula, sem o módulo. */
+export type Trilha = {
+  courseTitle: string;
+  courseHref: string;
+  lessonTitle: string;
+  lessonHref: string;
+};
+
+/** Um aviso do cabeçalho do editor: título em 600 e corpo, ou só corpo. */
+function Aviso({ titulo, corpo }: { titulo: string | null; corpo: string }) {
+  return (
+    <div className="grid gap-1">
+      {titulo === null ? null : (
+        <strong className="font-semibold">{titulo}</strong>
+      )}
+      <span>{corpo}</span>
+    </div>
+  );
+}
+
+/** O cabeçalho de cada painel: 13px soft sobre filete, dentro do painel. */
+function Painel({ titulo }: { titulo: string }) {
+  return (
+    <div className="border-b border-rule px-4 py-2 text-xs text-ink-soft">
+      {titulo}
+    </div>
+  );
+}
+
 /**
- * Editor da nota: Markdown à esquerda, render à direita, coluna única abaixo
- * de 900px. Grava sozinho 1,5s depois da última tecla, e na hora quando o
- * campo perde o foco ou o usuário pede `Ctrl+S` — assim um refresh no meio da
- * digitação não leva o parágrafo embora.
+ * Editor da nota: um retângulo com divisória — Markdown à esquerda, render à
+ * direita, coluna única abaixo de 900px. Grava sozinho 900ms depois da última
+ * tecla, e na hora quando o campo perde o foco ou o usuário pede `Ctrl+S` —
+ * assim um refresh no meio da digitação não leva o parágrafo embora.
  */
 export function Editor({
   noteId,
   initialTitle,
   initialContent,
+  trilha,
 }: {
   noteId: string;
   initialTitle: string;
   initialContent: string;
+  trilha: Trilha;
 }) {
+  // O título é estático nesta tela: o handoff não tem campo de título no
+  // editor. Fica no rascunho porque é o que a gravação envia junto do corpo.
   const [texto, setTexto] = useState<Texto>({
     title: initialTitle,
     content: initialContent,
@@ -48,12 +83,9 @@ export function Editor({
   // autosave não insiste sozinho — ver `shouldAutosave`.
   const [falhou, setFalhou] = useState<Texto | null>(null);
   const [status, setStatus] = useState<SaveStatus>(idleStatus);
-  // O que a última gravação disse sobre os cards do texto. `null` enquanto
+  // O que a última gravação disse sobre a sintaxe dos cards. `null` enquanto
   // nada foi gravado nesta sessão.
-  const [cards, setCards] = useState<{
-    total: number;
-    issues: ParseIssue[];
-  } | null>(null);
+  const [issues, setIssues] = useState<ParseIssue[] | null>(null);
 
   const sujo =
     texto.title !== gravado.title || texto.content !== gravado.content;
@@ -78,7 +110,7 @@ export function Editor({
     // a ida ao servidor continua sujo e dispara a gravação seguinte.
     setFalhou(null);
     setGravado(enviado);
-    setCards({ total: result.cardCount, issues: result.issues });
+    setIssues(result.issues);
     setStatus({ kind: "saved", at: new Date(result.savedAt) });
   }, [noteId]);
 
@@ -100,7 +132,7 @@ export function Editor({
   }, [texto, gravado, gravando, falhou, gravar]);
 
   // Fechar a aba com texto não gravado pede confirmação. Notas e histórico de
-  // revisão são insubstituíveis; 1,5s de texto também conta.
+  // revisão são insubstituíveis; 900ms de texto também conta.
   useEffect(() => {
     if (!sujo) return;
 
@@ -130,40 +162,68 @@ export function Editor({
     status.kind === "error" && !sujo ? idleStatus : status;
   const rotulo = saveStatusLabel(visivel);
 
-  return (
-    <div className="space-y-4" onKeyDown={atalho}>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <input
-          value={texto.title}
-          onChange={(event) =>
-            setTexto((anterior) => ({ ...anterior, title: event.target.value }))
-          }
-          onBlur={agora}
-          aria-label="Título da nota"
-          className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-xl font-semibold tracking-tight text-ink hover:border-rule"
-        />
-        <p
-          aria-live="polite"
-          className="shrink-0 px-1 font-mono text-xs text-ink-soft"
-        >
-          {visivel.kind === "error" ? (
-            <span className="text-ink">{rotulo}</span>
-          ) : (
-            (rotulo ?? (sujo ? "Não salvo" : ""))
-          )}
-        </p>
-      </div>
+  // O indicador diz duas coisas e só duas, como o handoff: "Salvando…" e
+  // "Salvo 18:42". Gravação recusada é erro de validação, e vai para o bloco
+  // de alerta junto das reclamações do parser — é lá que o erro se diz nesta
+  // tela, com filete de 2px e `role="alert"`.
+  const indicador =
+    visivel.kind === "saving" || visivel.kind === "saved" ? (rotulo ?? "") : "";
+  const erro = visivel.kind === "error" ? rotulo : null;
+  const reclamacoes = issues ?? [];
 
-      <div className="grid gap-4 rail:grid-cols-2">
-        <div className="space-y-1">
-          <label
-            htmlFor="note-markdown"
-            className="block px-1 font-mono text-xs text-ink-soft"
-          >
-            markdown
-          </label>
+  return (
+    <div className="grid gap-4" onKeyDown={atalho}>
+      <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+        <div className="grid min-w-0 gap-1">
+          <nav className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-ink-soft">
+            <Link href={trilha.courseHref} className="text-accent hover:underline">
+              {trilha.courseTitle}
+            </Link>
+            <span aria-hidden>·</span>
+            <Link href={trilha.lessonHref} className="text-accent hover:underline">
+              {trilha.lessonTitle}
+            </Link>
+          </nav>
+          <h1 className="text-lg leading-tight font-medium">{texto.title}</h1>
+        </div>
+        <div className="flex items-baseline gap-4 text-xs">
+          {/* Permanente: um `role=status` que nasce junto com a mensagem não é
+              lido por leitor de tela nenhum. */}
+          <span role="status" className="text-ink-soft">
+            {indicador}
+          </span>
+          <Link href={`/notes/${noteId}`} className="text-accent hover:underline">
+            Ver nota
+          </Link>
+        </div>
+      </header>
+
+      {erro === null && reclamacoes.length === 0 ? null : (
+        <div
+          role="alert"
+          className="grid gap-3 rounded-md border-2 border-ink px-4 py-3 text-sm leading-normal"
+        >
+          {erro === null ? null : <Aviso titulo={null} corpo={erro} />}
+          {/* Sintaxe torta é erro de validação, não silêncio — SPEC §3.3. */}
+          {reclamacoes.map((issue, indice) => (
+            <Aviso
+              // Duas lacunas vazias na mesma linha dão título e linha iguais:
+              // a ordem é o que separa as duas reclamações.
+              key={`${issue.line}-${issue.title}-${indice}`}
+              titulo={`Card não criado: ${issue.title} na linha ${issue.line}`}
+              corpo={issue.message}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="grid rounded-md border border-rule rail:grid-cols-2">
+        <section
+          aria-label="Markdown"
+          className="flex min-w-0 flex-col border-b border-rule rail:border-r rail:border-b-0"
+        >
+          <Painel titulo="Markdown" />
           <textarea
-            id="note-markdown"
             value={texto.content}
             onChange={(event) =>
               setTexto((anterior) => ({
@@ -172,47 +232,24 @@ export function Editor({
               }))
             }
             onBlur={agora}
-            spellCheck
-            // O `$$` em linha própria é o que vira fórmula em display; numa
-            // linha só, o remark-math o trata como inline.
-            placeholder={
-              "# Título\n\nInline: $a^2 + b^2 = c^2$.\n\nEm bloco:\n\n$$\nx^2 + y^2 = r^2\n$$"
-            }
-            className="min-h-[24rem] w-full resize-y rounded-md border border-rule bg-paper px-3 py-2 font-mono text-sm leading-relaxed text-ink placeholder:text-ink-soft rail:min-h-[60vh]"
+            spellCheck={false}
+            aria-label="Texto da nota em Markdown"
+            className="min-h-105 w-full flex-1 resize-y bg-paper p-4 font-mono text-sm leading-prose text-ink rail:min-h-180"
           />
-          {cards === null ? null : (
-            <div className="space-y-1 px-1 pt-1">
-              <p className="font-mono text-xs text-ink-soft">
-                {cards.total === 1 ? "1 card" : `${cards.total} cards`}
-              </p>
-              {/* Sintaxe torta é erro de validação, não silêncio — SPEC §3.3. */}
-              {cards.issues.map((issue) => (
-                <p
-                  key={`${issue.line}-${issue.message}`}
-                  role="alert"
-                  className="text-xs"
-                >
-                  Linha {issue.line}: {issue.message}
-                </p>
-              ))}
-            </div>
-          )}
-        </div>
+        </section>
 
-        <div className="space-y-1">
-          <p className="px-1 font-mono text-xs text-ink-soft">
-            pré-visualização
-          </p>
-          <div className="min-h-[24rem] overflow-x-auto rounded-md border border-rule px-3 py-2 rail:min-h-[60vh]">
-            {texto.content.trim() === "" ? (
-              <p className="font-serif text-base text-ink-soft">
-                O que você escrever à esquerda aparece aqui.
-              </p>
-            ) : (
-              <MathMarkdown content={linkifyTags(texto.content)} />
-            )}
+        <section aria-label="Pré-visualização" className="min-w-0">
+          <Painel titulo="Pré-visualização" />
+          <div className="max-w-170 overflow-x-auto px-6 pt-5 pb-8">
+            {/* A mesma classe da leitura: "renderização idêntica" é medida,
+                não só fonte. A marca da lacuna vazia entra depois das tags,
+                que não tocam o `{{}}`. */}
+            <MathMarkdown
+              content={marcarLacunasVazias(linkifyTags(texto.content))}
+              vazias
+            />
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

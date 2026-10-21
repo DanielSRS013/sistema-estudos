@@ -127,6 +127,10 @@ function queueFor(cards: CardState[], now: Date, limits: Limits): CardState[]
 | `/tags/[tagSlug]` | Notas e cards que citam o conceito |
 | `/search` | Busca full-text em notas |
 
+No editor, o autosave grava **900 ms** depois da última tecla, e na hora quando
+o campo perde o foco ou o usuário pede `Ctrl`/`Cmd+S`. O número é do handoff;
+1,5 s deixava parágrafo demais sem gravar.
+
 Busca na v1: `to_tsvector` do Postgres com configuração `portuguese`, coluna
 gerada e índice GIN. Sem serviço externo.
 

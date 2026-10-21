@@ -158,6 +158,35 @@ describe("validação", () => {
     expect(issues[0]?.line).toBe(5);
   });
 
+  it("escreve a lacuna vazia com o título e o corpo do handoff", () => {
+    // O bloco de alerta do editor compõe "Card não criado: {title} na linha
+    // {line}" e mostra `message` como corpo. As duas frases são do handoff, e
+    // é aqui que elas ficam travadas: a tela só as exibe.
+    const { issues } = parse("Uma lacuna vazia {{}} na linha 1.");
+
+    expect(issues[0]).toEqual({
+      line: 1,
+      title: "lacuna vazia",
+      message:
+        "A marcação de lacuna vazia não tem resposta. Escreva a resposta " +
+        "entre as chaves, ou apague a marcação. O resto da nota está salvo.",
+    });
+  });
+
+  it("dá a cada reclamação o título da causa", () => {
+    // O título entra na primeira linha do alerta, em 600. Sem ele a tela teria
+    // de adivinhar a causa pelo texto da mensagem.
+    const vazia = parse("Uma lacuna vazia {{}} aqui.").issues[0];
+    const aberta = parse("Uma lacuna {{sem fim por aqui.").issues[0];
+    const semResposta = parse("Q:: Uma pergunta?").issues[0];
+    const semTexto = parse("Q::\nA::").issues[0];
+
+    expect(vazia?.title).toBe("lacuna vazia");
+    expect(aberta?.title).toBe("lacuna que não fecha");
+    expect(semResposta?.title).toBe("pergunta sem resposta");
+    expect(semTexto?.title).toBe("pergunta ou resposta vazia");
+  });
+
   it("reclama de lacuna que não fecha", () => {
     const { cards, issues } = parse("Uma lacuna {{sem fim por aqui.");
 

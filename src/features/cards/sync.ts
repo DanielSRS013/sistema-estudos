@@ -47,6 +47,7 @@ export async function planCards(
 
   const repetidos = plan.duplicates.map((card) => ({
     line: card.line,
+    title: "trecho repetido",
     message: "Este trecho já virou card nesta nota; o repetido foi ignorado.",
   }));
 

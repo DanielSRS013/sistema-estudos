@@ -54,7 +54,7 @@ export function marcarLacuna(prompt: string, conteudo: string = LACUNA): string 
 
 export type Estado = "oculta" | "revelada";
 
-type No = {
+export type No = {
   type: string;
   value?: string;
   tagName?: string;

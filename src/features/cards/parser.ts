@@ -19,7 +19,13 @@ export type ParsedCard = {
   line: number;
 };
 
-export type ParseIssue = { line: number; message: string };
+/**
+ * Uma reclamação do parser. `title` é a causa em uma frase curta — o alerta do
+ * editor compõe "Card não criado: {title} na linha {line}" e mostra `message`
+ * como corpo. As duas frases moram aqui, e não na tela, porque é aqui que o
+ * teste as alcança.
+ */
+export type ParseIssue = { line: number; title: string; message: string };
 
 /**
  * SPEC §3.3 descreve `parse(markdown): ParsedCard[]`, mas também manda a
@@ -32,9 +38,9 @@ const ABRE = "{{";
 const FECHA = "}}";
 const DICA = "::";
 
-type Lacuna = { inicio: number; fim: number; conteudo: string };
+export type Varredura = { lacunas: Lacuna[]; naoFecha: boolean };
 
-type Varredura = { lacunas: Lacuna[]; naoFecha: boolean };
+export type Lacuna = { inicio: number; fim: number; conteudo: string };
 
 /**
  * Acha as lacunas de um texto. A profundidade de chaves simples é contada para
@@ -42,7 +48,7 @@ type Varredura = { lacunas: Lacuna[]; naoFecha: boolean };
  * barra invertida sempre escapa o caractere seguinte — é isso que faz a chave
  * dupla escapada virar texto literal em vez de lacuna.
  */
-function varrer(texto: string): Varredura {
+export function varrer(texto: string): Varredura {
   const lacunas: Lacuna[] = [];
   let naoFecha = false;
   let i = 0;
@@ -139,6 +145,7 @@ function lerCloze(bloco: Bloco, emitir: Emitir, reclamar: Reclamar): void {
   if (naoFecha) {
     reclamar({
       line: bloco.primeiraLinha,
+      title: "lacuna que não fecha",
       message:
         "Uma lacuna abre e não fecha. Feche com as duas chaves ou escape a abertura para deixá-la literal.",
     });
@@ -149,7 +156,10 @@ function lerCloze(bloco: Bloco, emitir: Emitir, reclamar: Reclamar): void {
 
     reclamar({
       line: linhaDe(texto, lacuna.inicio, bloco.primeiraLinha),
-      message: "Lacuna vazia: não há resposta para esconder.",
+      title: "lacuna vazia",
+      message:
+        "A marcação de lacuna vazia não tem resposta. Escreva a resposta " +
+        "entre as chaves, ou apague a marcação. O resto da nota está salvo.",
     });
 
     return false;
@@ -194,6 +204,7 @@ function lerQA(
   if (primeiraResposta === undefined || !primeiraResposta.startsWith("A::")) {
     reclamar({
       line: primeiraLinha,
+      title: "pergunta sem resposta",
       message: "Pergunta sem resposta: escreva A:: na linha seguinte ao Q::.",
     });
     return;
@@ -209,6 +220,7 @@ function lerQA(
   if (pergunta === "" || corpo === "") {
     reclamar({
       line: primeiraLinha,
+      title: "pergunta ou resposta vazia",
       message: "Pergunta ou resposta vazia: Q:: e A:: precisam de texto.",
     });
     return;
@@ -223,6 +235,81 @@ function lerQA(
   });
 }
 
+type Partes = { cloze: Bloco | null; qa: Bloco | null };
+
+/**
+ * Como um bloco se divide entre os dois leitores. O `Q::` corta: o que vem
+ * antes dele ainda é cloze, o que vem depois é pergunta e resposta.
+ *
+ * `lacunasVazias` depende desta mesma divisão — marcar na pré-visualização uma
+ * lacuna que o parser não lê seria apontar um erro que a tela não reporta.
+ */
+function partirBloco(bloco: Bloco): Partes {
+  const corte = bloco.linhas.findIndex((linha) => linha.startsWith("Q::"));
+
+  if (corte === -1) return { cloze: bloco, qa: null };
+
+  return {
+    cloze:
+      corte > 0
+        ? { linhas: bloco.linhas.slice(0, corte), primeiraLinha: bloco.primeiraLinha }
+        : null,
+    qa: {
+      linhas: bloco.linhas.slice(corte),
+      primeiraLinha: bloco.primeiraLinha + corte,
+    },
+  };
+}
+
+/** Onde começa cada linha da nota: índice da linha base 0 → posição no texto. */
+function inicioDasLinhas(markdown: string): number[] {
+  const inicios: number[] = [];
+  let soma = 0;
+
+  for (const linha of markdown.split("\n")) {
+    inicios.push(soma);
+    soma += linha.length + 1;
+  }
+
+  return inicios;
+}
+
+/** Uma lacuna vazia pela posição no texto inteiro, não no bloco. */
+export type LacunaVazia = { inicio: number; fim: number; line: number };
+
+/**
+ * Onde estão as lacunas vazias da nota. É a mesma varredura que gera a
+ * reclamação de `parse` — e por isso a pré-visualização marca exatamente os
+ * trechos que o alerta reporta, nem um a mais.
+ *
+ * `inicio` e `fim` recortam o `{{}}` inteiro, abertura e fechamento incluídos.
+ */
+export function lacunasVazias(markdown: string): LacunaVazia[] {
+  const inicios = inicioDasLinhas(markdown);
+  const achadas: LacunaVazia[] = [];
+
+  for (const bloco of blocos(markdown)) {
+    const { cloze } = partirBloco(bloco);
+
+    if (cloze === null) continue;
+
+    const texto = cloze.linhas.join("\n");
+    const base = inicios[cloze.primeiraLinha - 1] ?? 0;
+
+    for (const lacuna of varrer(texto).lacunas) {
+      if (lacuna.conteudo.trim() !== "") continue;
+
+      achadas.push({
+        inicio: base + lacuna.inicio,
+        fim: base + lacuna.fim,
+        line: linhaDe(texto, lacuna.inicio, cloze.primeiraLinha),
+      });
+    }
+  }
+
+  return achadas;
+}
+
 export function parse(markdown: string): ParseResult {
   const cards: ParsedCard[] = [];
   const issues: ParseIssue[] = [];
@@ -235,30 +322,10 @@ export function parse(markdown: string): ParseResult {
   };
 
   for (const bloco of blocos(markdown)) {
-    const corte = bloco.linhas.findIndex((linha) => linha.startsWith("Q::"));
+    const { cloze, qa } = partirBloco(bloco);
 
-    if (corte === -1) {
-      lerCloze(bloco, emitir, reclamar);
-      continue;
-    }
-
-    if (corte > 0) {
-      lerCloze(
-        {
-          linhas: bloco.linhas.slice(0, corte),
-          primeiraLinha: bloco.primeiraLinha,
-        },
-        emitir,
-        reclamar,
-      );
-    }
-
-    lerQA(
-      bloco.linhas.slice(corte),
-      bloco.primeiraLinha + corte,
-      emitir,
-      reclamar,
-    );
+    if (cloze !== null) lerCloze(cloze, emitir, reclamar);
+    if (qa !== null) lerQA(qa.linhas, qa.primeiraLinha, emitir, reclamar);
   }
 
   return { cards, issues };
