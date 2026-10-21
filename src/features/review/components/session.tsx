@@ -243,7 +243,7 @@ export function ReviewSession({
               <div className="space-y-6 border-t border-rule pt-8">
                 <MathMarkdown
                   content={atual.answer}
-                  className="card-face font-serif text-lg leading-normal"
+                  className="card-face font-serif text-lg"
                 />
                 <p className="font-mono text-xs text-ink-soft">
                   {atual.noteTitle}

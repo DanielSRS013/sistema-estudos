@@ -47,9 +47,10 @@ IBM Plex Sans na interface, Serif no corpo das notas e na face dos cards, Mono
 só em código, sintaxe de card e editor — metadado e caminho são Sans 13px em
 `--ink-soft`, nunca Mono. Escala fechada 13 / 15 / 17 / 21 / 28 / 38px, no
 Tailwind `xs sm base lg xl 2xl`, sem degrau nenhum fora dela. Corpo de nota a
-17px, `line-height` 1,65, medida máxima 68 caracteres. Entrelinha não se escreve
-à mão na classe: 1,65 é o degrau `leading-prose`, 1,45 mora em `.card-face`, 1,6
-em `.note-prose pre`.
+17px, `line-height` 1,65, medida máxima 68 caracteres. As três entrelinhas da
+§6 têm uma casa cada: 1,65 é o degrau `leading-prose`, 1,45 mora em
+`.card-face`, 1,6 em `.note-prose pre`. Nenhuma delas vira valor arbitrário na
+classe; fora dessas três, use o degrau nomeado do Tailwind.
 
 ## Forma
 
@@ -69,9 +70,11 @@ Um idioma só, global, em `globals.css`:
 
 Nenhum componente escreve receita de foco própria — nem `focus-visible:ring-*`,
 nem `focus-visible:outline-*`, nem `focus-visible:border-*`. Anel de baixa
-opacidade fica perto de 1,3:1 e não é foco visível; o filete sólido dá 5,4:1 no
-claro e 6,7:1 no escuro. Componente vindo do registry do shadcn chega com o anel
-fraco e com `outline-none`: tire os dois, ou o foco global não desenha.
+opacidade fica perto de 1,3:1 e não é foco visível; o filete sólido dá 5,84:1
+contra `--paper` no claro e 6,75:1 no escuro. Componente vindo do registry do
+shadcn chega com o anel fraco **e** com `outline-none` — às vezes só com o
+segundo. Tire os dois: utilitário vence `@layer base` por ordem de camada, então
+`outline-none` sozinho já apaga o filete.
 
 ## Layout
 

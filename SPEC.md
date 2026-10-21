@@ -179,9 +179,11 @@ fechada, não uma sugestão. No Tailwind os seis degraus são `xs 13`, `sm 15`,
 apagados, para que `text-3xl` não exista. Corpo de nota a 17px com `line-height`
 1,65 e medida máxima de 68 caracteres. KaTeX herda o tamanho do corpo. A
 entrelinha é decisão de contexto, não do degrau: 1,65 no corpo da nota, 1,45 na
-face do card, 1,6 no código. As três moram onde o contexto mora — 1,65 como
-degrau nomeado (`leading-prose`), porque repete em parágrafo de interface; 1,45
-em `.card-face`; 1,6 em `.note-prose pre` —, nunca escritas à mão na classe.
+face do card, 1,6 no código. Cada uma das três tem uma casa só — 1,65 é o
+degrau nomeado `leading-prose`, porque repete em parágrafo de interface; 1,45
+mora em `.card-face`; 1,6 em `.note-prose pre` — e nenhuma delas se escreve como
+valor arbitrário na classe. Fora dessas três, vale o degrau nomeado do Tailwind
+onde o desenho pedir.
 
 ### Forma
 
@@ -220,9 +222,10 @@ hover de card. `prefers-reduced-motion` respeitado.
 
 Responsivo até 375px. Foco de teclado sempre visível, com **um** idioma só e
 global: `:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }`
-em `globals.css`, nunca receita de foco em componente. O filete sólido dá 5,4:1
-contra `--paper` no claro e 6,7:1 no escuro; anel de baixa opacidade não passa.
-A fila de revisão é
+em `globals.css`, nunca receita de foco em componente — e nenhum componente
+apaga o filete com `outline-none`, que vence a camada base. O filete sólido dá
+5,84:1 contra `--paper` no claro e 6,75:1 no escuro; anel de baixa opacidade não
+passa. A fila de revisão é
 inteiramente operável por teclado: `espaço` revela, `1`–`4` avalia, `u` desfaz.
 Contraste mínimo 4.5:1 em todo texto.
 

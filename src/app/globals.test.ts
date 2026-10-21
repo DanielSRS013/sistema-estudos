@@ -19,7 +19,7 @@ function arquivosDeFonte(pastas: readonly string[]): [string, string][] {
         (entrada) =>
           entrada.isFile() &&
           /\.tsx?$/.test(entrada.name) &&
-          !entrada.name.endsWith(".test.ts"),
+          !/\.test\.tsx?$/.test(entrada.name),
       )
       .map((entrada): [string, string] => {
         const caminho = join(entrada.parentPath, entrada.name);
@@ -231,6 +231,18 @@ describe("nenhuma receita de foco nos componentes", () => {
     expect(comFoco).toEqual([]);
   });
 
+  it("não deixa nenhum componente apagar o filete global", () => {
+    // Metade do que o registry traz de volta não tem `focus-visible:` nenhum:
+    // `input.tsx` chega com `outline-none` na string base. Utilitário vence
+    // `@layer base` por ordem de camada — não por especificidade, as duas são
+    // 0,1,0 —, então o filete some de todo campo, com a suíte verde.
+    const apagadores = /outline-none|outline-hidden|outline-0\b|outline-\[|outline:\s*none/;
+    const comApagador = arquivosDeFonte(["app", "features", "shared"])
+      .filter(([, texto]) => apagadores.test(texto))
+      .map(([caminho]) => caminho);
+    expect(comApagador).toEqual([]);
+  });
+
   it("não deixa `destructive` no botão do registry", () => {
     // `--destructive` saiu dos tokens na Fatia 12; a variante e as cadeias
     // `aria-invalid:` ficaram apontando para token que não existe.
@@ -240,6 +252,20 @@ describe("nenhuma receita de foco nos componentes", () => {
     );
     expect(botao).not.toContain("destructive");
     expect(botao).not.toContain("aria-invalid");
+  });
+
+  it("não deixa o botão do registry reintroduzir movimento", () => {
+    // SPEC §6: movimento só responde a ação do usuário. O registry devolve
+    // `transition-all` e um salto de 1px no `:active` toda vez que o
+    // componente é regerado.
+    const botao = readFileSync(join(raiz, "shared", "ui", "button.tsx"), "utf8");
+    expect(botao).not.toContain("transition-all");
+    expect(botao).not.toContain("translate-y-px");
+  });
+
+  it("não reimporta a biblioteca de animação", () => {
+    // Zero classes `animate-*` em `src`; o import só volta junto com elas.
+    expect(css).not.toContain("tw-animate-css");
   });
 });
 
@@ -258,13 +284,16 @@ describe("nenhum valor arbitrário de tipografia ou cor", () => {
     expect(comValor).toEqual([]);
   });
 
-  it("não escreve hex cru em `className`", () => {
+  it("não escreve hex cru de cor", () => {
+    // Varre o arquivo inteiro, como as duas travas acima. Casar só o atributo
+    // `className=` deixava passar os dois formatos mais comuns do repo —
+    // `cn(buttonVariants({ size: "sm" }), "bg-[#ff0000]")`, onde o casamento
+    // parava no primeiro `}`, e a constante de módulo, que não tem
+    // `className=`. Três, quatro, seis ou oito dígitos: a âncora `#c1` de
+    // cloze não casa.
+    const hex = /#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/;
     const comHex = arquivosDeFonte(["app", "features"])
-      .filter(([, texto]) =>
-        [...texto.matchAll(/className=(?:"[^"]*"|\{`[^`]*`\}|\{[^}]*\})/g)].some(
-          (m) => /#[0-9a-fA-F]{3,8}\b/.test(m[0]),
-        ),
-      )
+      .filter(([, texto]) => hex.test(texto))
       .map(([caminho]) => caminho);
     expect(comHex).toEqual([]);
   });
