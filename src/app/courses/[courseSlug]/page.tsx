@@ -5,198 +5,213 @@ import { Suspense } from "react";
 import {
   createLesson,
   createModule,
+  moveCourse,
   moveLesson,
   moveModule,
-  renameCourse,
   renameLesson,
   renameModule,
   setCourseArchived,
   setLessonArchived,
+  setLessonStudied,
   setModuleArchived,
 } from "@/features/courses/actions";
 import { CourseRail } from "@/features/courses/components/course-rail";
 import {
   ArchiveButton,
-  CreateForm,
+  CreateDisclosure,
   MoveButtons,
-  RenameForm,
 } from "@/features/courses/components/forms";
-import { getCourseBySlug } from "@/features/courses/queries";
+import { LessonRow } from "@/features/courses/components/lesson-row";
+import { ModuleRow } from "@/features/courses/components/module-row";
+import {
+  courseMetaLabel,
+  lessonNotesLabel,
+  moduleStudiedLabel,
+} from "@/features/courses/labels";
+import { getCourseBySlug, listCourseIds } from "@/features/courses/queries";
+import { studiedCount } from "@/features/courses/studied";
 import { Carregando, Shell } from "@/shared/shell";
 
-async function CourseDetail({ params }: { params: Promise<{ courseSlug: string }> }) {
+async function CourseDetail({
+  params,
+}: {
+  params: Promise<{ courseSlug: string }>;
+}) {
   const { courseSlug } = await params;
-  const course = await getCourseBySlug(courseSlug);
+  const [course, ordemDosCursos] = await Promise.all([
+    getCourseBySlug(courseSlug),
+    listCourseIds(),
+  ]);
 
   if (!course) notFound();
 
-  const cursoArquivado = course.archivedAt !== null;
+  const posicao = ordemDosCursos.indexOf(course.id);
+
+  const modulos = course.modules.filter(
+    (modulo) => modulo.archivedAt === null,
+  );
+  const aulasAtivas = modulos.flatMap((modulo) =>
+    modulo.lessons.filter((aula) => aula.archivedAt === null),
+  );
+
+  // Arquivado sai da lista e se junta no fim, com o rótulo do que é: a
+  // alternativa — ficar na lista mais apagado — some com a hierarquia e deixa
+  // a numeração dos módulos com buraco.
+  const arquivados = [
+    ...course.modules
+      .filter((modulo) => modulo.archivedAt !== null)
+      .map((modulo) => ({
+        key: `m${modulo.id}`,
+        id: modulo.id,
+        nome: modulo.title,
+        label: `Módulo · ${modulo.title}`,
+        action: setModuleArchived,
+        tipo: "módulo",
+      })),
+    ...course.modules.flatMap((modulo) =>
+      modulo.lessons
+        .filter((aula) => aula.archivedAt !== null)
+        .map((aula) => ({
+          key: `l${aula.id}`,
+          id: aula.id,
+          nome: aula.title,
+          label: `Aula · ${modulo.title} · ${aula.title}`,
+          action: setLessonArchived,
+          tipo: "aula",
+        })),
+    ),
+  ];
 
   return (
-    <div className="space-y-8">
-      <header className="space-y-3">
-        <nav className="font-mono text-xs text-ink-soft">
-          <Link href="/courses" className="hover:text-ink">
-            cursos
+    <div className="grid gap-8">
+      <header className="grid gap-2">
+        <nav className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs text-ink-soft">
+          <Link href="/courses" className="text-accent">
+            Cursos
           </Link>
+          {course.track === null ? null : (
+            <>
+              <span aria-hidden="true">·</span>
+              <span>{course.track}</span>
+            </>
+          )}
         </nav>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <RenameForm
-            action={renameCourse}
-            id={course.id}
-            current={course.title}
-          >
-            <h1 className="truncate text-xl font-semibold tracking-tight">
-              {course.title}
-            </h1>
-          </RenameForm>
-          <ArchiveButton
-            action={setCourseArchived}
-            id={course.id}
-            archived={cursoArquivado}
-            label="curso"
-          />
-          {cursoArquivado ? (
-            <span className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-xs text-ink-soft">
-              arquivado
-            </span>
-          ) : null}
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+          <h1 className="min-w-0 truncate text-xl font-medium tracking-tight">
+            {course.title}
+          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Reordenar e arquivar o curso moram aqui: a lista de /courses
+                virou só nome e meta, e a tela do curso é a que fala dele. */}
+            <MoveButtons
+              action={moveCourse}
+              id={course.id}
+              canUp={posicao > 0}
+              canDown={posicao !== -1 && posicao < ordemDosCursos.length - 1}
+              nome={course.title}
+            />
+            <ArchiveButton
+              action={setCourseArchived}
+              id={course.id}
+              archived={course.archivedAt !== null}
+              tipo="curso"
+              nome={course.title}
+            />
+            <CreateDisclosure
+              buttonLabel="Novo módulo"
+              action={createModule}
+              hidden={{ courseId: course.id }}
+              placeholder="Nome do módulo"
+              submitLabel="Criar módulo"
+            />
+          </div>
         </div>
 
-        {/* Especialização e instituição — SPEC §2. Moram no cabeçalho porque
-            é onde a pergunta "de onde vem este curso?" aparece. */}
-        {course.track === null && course.provider === null ? null : (
-          <p className="font-mono text-xs text-ink-soft">
-            {[course.track, course.provider].filter(Boolean).join(" · ")}
-          </p>
-        )}
+        <p className="text-xs text-ink-soft">
+          {courseMetaLabel({
+            moduleCount: modulos.length,
+            lessonCount: aulasAtivas.length,
+            studiedCount: studiedCount(aulasAtivas),
+          })}
+        </p>
       </header>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-medium text-ink-soft">Novo módulo</h2>
-        <CreateForm
-          action={createModule}
-          hidden={{ courseId: course.id }}
-          placeholder="Nome do módulo"
-          submitLabel="Criar módulo"
-        />
-      </section>
-
-      {course.modules.length === 0 ? (
+      {modulos.length === 0 ? (
         <p className="text-sm text-ink-soft">
-          Nenhum módulo ainda. Crie o primeiro no campo acima.
+          Nenhum módulo ainda. Comece por <strong>Novo módulo</strong>, no alto
+          da página.
         </p>
       ) : (
-        <ul className="space-y-6">
-          {course.modules.map((modulo, indiceModulo) => {
-            const moduloArquivado = modulo.archivedAt !== null;
+        <ol className="border-t border-ink">
+          {modulos.map((modulo, indiceModulo) => {
+            const aulas = modulo.lessons.filter(
+              (aula) => aula.archivedAt === null,
+            );
 
             return (
-              <li
+              <ModuleRow
                 key={modulo.id}
-                className={`space-y-3 border-t border-rule pt-4 ${
-                  moduloArquivado ? "opacity-60" : ""
-                }`}
+                id={modulo.id}
+                number={indiceModulo + 1}
+                title={modulo.title}
+                countLabel={moduleStudiedLabel({
+                  lessonCount: aulas.length,
+                  studiedCount: studiedCount(aulas),
+                })}
+                empty={aulas.length === 0}
+                canUp={indiceModulo > 0}
+                canDown={indiceModulo < modulos.length - 1}
+                renameAction={renameModule}
+                moveAction={moveModule}
+                archiveAction={setModuleArchived}
+                createLessonAction={createLesson}
               >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-xs text-ink-soft">
-                    {String(indiceModulo + 1).padStart(2, "0")}
-                  </span>
-                  <RenameForm
-                    action={renameModule}
-                    id={modulo.id}
-                    current={modulo.title}
-                  >
-                    <h2 className="truncate text-lg font-medium">
-                      {modulo.title}
-                    </h2>
-                  </RenameForm>
-                  {moduloArquivado ? (
-                    <span className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-xs text-ink-soft">
-                      arquivado
-                    </span>
-                  ) : null}
-                  <div className="flex items-center gap-1">
-                    <MoveButtons
-                      action={moveModule}
-                      id={modulo.id}
-                      canUp={indiceModulo > 0}
-                      canDown={indiceModulo < course.modules.length - 1}
-                      label="módulo"
-                    />
-                    <ArchiveButton
-                      action={setModuleArchived}
-                      id={modulo.id}
-                      archived={moduloArquivado}
-                      label="módulo"
-                    />
-                  </div>
-                </div>
-
-                {modulo.lessons.length > 0 ? (
-                  <ul className="divide-y divide-rule border-y border-rule">
-                    {modulo.lessons.map((aula, indiceAula) => {
-                      const aulaArquivada = aula.archivedAt !== null;
-
-                      return (
-                        <li
-                          key={aula.id}
-                          className={`flex flex-wrap items-center gap-x-3 gap-y-1 py-2 ${
-                            aulaArquivada ? "opacity-60" : ""
-                          }`}
-                        >
-                          <div className="flex min-w-0 flex-1 items-center gap-2">
-                            <RenameForm
-                              action={renameLesson}
-                              id={aula.id}
-                              current={aula.title}
-                            >
-                              <Link
-                                href={`/lessons/${aula.id}`}
-                                className="truncate rounded-sm text-sm hover:text-accent"
-                              >
-                                {aula.title}
-                              </Link>
-                            </RenameForm>
-                            {aulaArquivada ? (
-                              <span className="shrink-0 rounded-sm bg-muted px-1.5 py-0.5 font-mono text-xs text-ink-soft">
-                                arquivada
-                              </span>
-                            ) : null}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <MoveButtons
-                              action={moveLesson}
-                              id={aula.id}
-                              canUp={indiceAula > 0}
-                              canDown={indiceAula < modulo.lessons.length - 1}
-                              label="aula"
-                            />
-                            <ArchiveButton
-                              action={setLessonArchived}
-                              id={aula.id}
-                              archived={aulaArquivada}
-                              label="aula"
-                            />
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : null}
-
-                <CreateForm
-                  action={createLesson}
-                  hidden={{ moduleId: modulo.id }}
-                  placeholder="Nome da aula"
-                  submitLabel="Criar aula"
-                />
-              </li>
+                {aulas.map((aula, indiceAula) => (
+                  <LessonRow
+                    key={aula.id}
+                    id={aula.id}
+                    title={aula.title}
+                    studied={aula.studiedOn !== null}
+                    notesLabel={lessonNotesLabel(aula.notes.length)}
+                    canUp={indiceAula > 0}
+                    canDown={indiceAula < aulas.length - 1}
+                    renameAction={renameLesson}
+                    moveAction={moveLesson}
+                    archiveAction={setLessonArchived}
+                    studiedAction={setLessonStudied}
+                  />
+                ))}
+              </ModuleRow>
             );
           })}
-        </ul>
+        </ol>
       )}
+
+      {arquivados.length > 0 ? (
+        <section>
+          <h2 className="text-sm font-medium text-ink-soft">
+            Arquivados ({arquivados.length})
+          </h2>
+          <ul>
+            {arquivados.map((item) => (
+              <li
+                key={item.key}
+                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-rule py-1.5 text-sm text-ink-soft"
+              >
+                <span className="min-w-0 truncate">{item.label}</span>
+                <ArchiveButton
+                  action={item.action}
+                  id={item.id}
+                  archived
+                  tipo={item.tipo}
+                  nome={item.nome}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </div>
   );
 }
@@ -208,7 +223,7 @@ export default function CoursePage({
 }) {
   return (
     <Shell rail={<CourseRail />}>
-      <div className="measure">
+      <div className="w-full max-w-220">
         <Suspense fallback={<Carregando>Carregando o curso.</Carregando>}>
           <CourseDetail params={params} />
         </Suspense>

@@ -1,28 +1,59 @@
 "use client";
 
-import {
-  ArchiveRestore,
-  ArchiveX,
-  ArrowDown,
-  ArrowUp,
-  Check,
-  CircleCheck,
-  Pencil,
-  Plus,
-  RotateCcw,
-  X,
-} from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 
-import { buttonVariants } from "@/shared/ui/button";
-import { cn } from "@/shared/cn";
-
 import { idleState, type ActionState } from "@/shared/action-state";
+import { concluiu, decidirRenomeacao } from "../form-flow";
+import { cn } from "@/shared/cn";
+import { buttonVariants } from "@/shared/ui/button";
 
 export type Action = (
   state: ActionState,
   formData: FormData,
 ) => Promise<ActionState>;
+
+/** Campo de texto das três telas — o mesmo de `note-forms.tsx`. */
+const campo =
+  "min-w-0 flex-1 rounded-sm border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft";
+
+/** Campo em edição: o filete vira accent enquanto o cursor está nele. */
+const campoEmEdicao =
+  "min-w-0 flex-1 rounded-sm border border-accent bg-paper px-2 py-1 text-sm text-ink";
+
+/**
+ * Botão de ação de linha: 13px, filete `--rule`, alvo de 32px. É o degrau
+ * abaixo do botão do handoff (44px, 15/500) e não existe no registry — lá o
+ * tamanho pequeno vem com altura de 28px e raio próprio.
+ */
+export const acao =
+  "inline-flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded-sm border border-rule px-2 text-xs text-ink disabled:opacity-50";
+
+/**
+ * Chama `aoConcluir` quando uma submissão nova volta bem-sucedida — e só aí.
+ * Quem decide é `concluiu`, que tem teste; aqui fica só a parte que é React.
+ *
+ * O retorno de chamada vem de quem abriu, com identidade nova a cada render do
+ * pai: nas dependências de um efeito, ele faria o efeito correr de novo sem
+ * que nada tivesse acontecido — e, quando o retorno fecha o formulário, isso
+ * travava a página inteira. Por isso ele entra por `ref`, fora das
+ * dependências.
+ */
+function useConclusao(state: ActionState, aoConcluir: () => void) {
+  const anterior = useRef<ActionState | null>(null);
+  const chamada = useRef(aoConcluir);
+
+  useEffect(() => {
+    chamada.current = aoConcluir;
+  });
+
+  useEffect(() => {
+    const fechou = concluiu(anterior.current, state);
+
+    anterior.current = state;
+
+    if (fechou) chamada.current();
+  }, [state]);
+}
 
 function Erro({ state }: { state: ActionState }) {
   if (state.ok) return null;
@@ -47,12 +78,15 @@ function Hidden({ values }: { values: Record<string, string> }) {
 
 /* ─────────────────────────────── criar ───────────────────────────────── */
 
+const VAZIO = { title: "", track: "", provider: "" };
+
 export function CreateForm({
   action,
   hidden = {},
   placeholder,
   submitLabel,
   withCourseMeta = false,
+  onDone,
 }: {
   action: Action;
   hidden?: Record<string, string>;
@@ -60,49 +94,66 @@ export function CreateForm({
   submitLabel: string;
   /** Especialização e instituição — só o curso as tem (SPEC §2). */
   withCourseMeta?: boolean;
+  /** Fecha quem abriu o formulário, quando a criação dá certo. */
+  onDone?: () => void;
 }) {
   const [state, formAction, pending] = useActionState(action, idleState);
-  const form = useRef<HTMLFormElement>(null);
+  // Campos controlados: ao fim de uma action o React repõe o formulário no
+  // estado inicial, e numa submissão recusada ("o título precisa ter no
+  // máximo 200 caracteres") isso apagava o que a pessoa tinha acabado de
+  // digitar, junto com a especialização e a instituição. O estado sobrevive à
+  // reposição; o sucesso é que limpa.
+  const [valores, setValores] = useState(VAZIO);
 
-  useEffect(() => {
-    if (state.ok) form.current?.reset();
-  }, [state]);
+  useConclusao(state, () => {
+    setValores(VAZIO);
+    onDone?.();
+  });
+
+  function muda(campo_: keyof typeof VAZIO) {
+    return (event: React.ChangeEvent<HTMLInputElement>) => {
+      const valor = event.currentTarget.value;
+      setValores((atuais) => ({ ...atuais, [campo_]: valor }));
+    };
+  }
 
   return (
-    <form ref={form} action={formAction} className="space-y-2">
+    <form action={formAction} className="w-full space-y-2">
       <Hidden values={hidden} />
       <div className="flex flex-wrap items-center gap-2">
         <input
           name="title"
+          value={valores.title}
+          onChange={muda("title")}
           placeholder={placeholder}
           aria-label={placeholder}
           autoComplete="off"
-          className="min-w-0 flex-1 rounded-md border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft"
+          autoFocus
+          className={campo}
         />
         {withCourseMeta ? (
           <>
             <input
               name="track"
+              value={valores.track}
+              onChange={muda("track")}
               placeholder="Especialização (opcional)"
               aria-label="Especialização (opcional)"
               autoComplete="off"
-              className="min-w-0 flex-1 rounded-md border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft"
+              className={campo}
             />
             <input
               name="provider"
+              value={valores.provider}
+              onChange={muda("provider")}
               placeholder="Instituição (opcional)"
               aria-label="Instituição (opcional)"
               autoComplete="off"
-              className="min-w-0 flex-1 rounded-md border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft"
+              className={campo}
             />
           </>
         ) : null}
-        <button
-          type="submit"
-          disabled={pending}
-          className={cn(buttonVariants({ size: "sm" }), "shrink-0")}
-        >
-          <Plus aria-hidden />
+        <button type="submit" disabled={pending} className={acao}>
           {submitLabel}
         </button>
       </div>
@@ -111,81 +162,137 @@ export function CreateForm({
   );
 }
 
+/**
+ * O botão do cabeçalho e o formulário que ele revela.
+ *
+ * O handoff desenha só o botão — "Novo curso", "Novo módulo", "Nova aula" —, e
+ * não diz onde o nome é digitado. Revelar o campo embaixo do botão é o que não
+ * inventa tela: não há modal em lugar nenhum do pacote de design, e o campo
+ * sempre visível é justamente o que esta fatia tira do alto da página.
+ *
+ * `display: contents` deixa o botão e o formulário serem itens do flex do
+ * cabeçalho: o botão fica na linha do `h1` e o formulário, com largura cheia,
+ * cai para a linha de baixo.
+ */
+export function CreateDisclosure({
+  buttonLabel,
+  variant = "outline",
+  ...form
+}: {
+  buttonLabel: string;
+  variant?: "default" | "outline";
+  action: Action;
+  hidden?: Record<string, string>;
+  placeholder: string;
+  submitLabel: string;
+  withCourseMeta?: boolean;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const botao = useRef<HTMLButtonElement>(null);
+
+  return (
+    <div className="contents">
+      <button
+        ref={botao}
+        type="button"
+        aria-expanded={aberto}
+        onClick={() => setAberto((valor) => !valor)}
+        className={cn(buttonVariants({ variant }))}
+      >
+        {buttonLabel}
+      </button>
+      {aberto ? (
+        <CreateForm
+          {...form}
+          onDone={() => {
+            // Criado: o formulário some e o foco volta para o botão, em vez
+            // de cair no `<body>`.
+            setAberto(false);
+            botao.current?.focus();
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 /* ────────────────────────────── renomear ─────────────────────────────── */
 
+/**
+ * O campo de renomear, no lugar do nome. Quem abre é o botão "Renomear" da
+ * linha, então o estado de edição mora no pai e chega por `onDone`.
+ *
+ * Enter salva, Esc cancela, sair do campo salva — as três do handoff. Enter é
+ * interceptado em vez de deixar o envio nativo acontecer: sem isso, teclar
+ * Enter num nome que não mudou gravaria o mesmo título de novo. O campo não
+ * fica `disabled` enquanto grava: `disabled` tira o foco do próprio campo, e o
+ * blur que isso dispara enviaria o formulário uma segunda vez (Fatia 18).
+ */
 export function RenameForm({
   action,
   id,
   current,
-  children,
+  label,
+  onDone,
 }: {
   action: Action;
   id: string;
   current: string;
-  /** Como o título aparece quando não está em edição. */
-  children: React.ReactNode;
+  /** "do módulo", "da aula", "do curso" — entra no nome acessível. */
+  label: string;
+  onDone: () => void;
 }) {
   const [state, formAction, pending] = useActionState(action, idleState);
-  const [editing, setEditing] = useState(false);
-  const [visto, setVisto] = useState(state);
+  const [valor, setValor] = useState(current);
+  const form = useRef<HTMLFormElement>(null);
 
-  // Ajuste em render, não em efeito: cada submissão devolve um estado novo, e
-  // o que foi bem-sucedido fecha o campo de edição.
-  if (visto !== state) {
-    setVisto(state);
-    if (state.ok) setEditing(false);
-  }
+  // Cada submissão devolve um estado novo: o que deu certo fecha a edição. O
+  // que falhou deixa o campo aberto, com a mensagem e com o que foi digitado
+  // — por isso o campo é controlado, e não `defaultValue`: a reposição que o
+  // React faz ao fim da action punha o nome antigo de volta, e aí o Enter
+  // seguinte via "não mudou" e fechava sem gravar.
+  useConclusao(state, onDone);
 
-  if (!editing) {
-    return (
-      <span className="flex min-w-0 items-center gap-1.5">
-        {children}
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
-          aria-label={`Renomear ${current}`}
-          className={cn(
-            buttonVariants({ variant: "ghost", size: "icon-xs" }),
-            "text-ink-soft",
-          )}
-        >
-          <Pencil aria-hidden />
-        </button>
-      </span>
-    );
+  function salvar() {
+    switch (decidirRenomeacao({ valor, atual: current, pendente: pending })) {
+      case "ignorar":
+        return;
+      case "fechar":
+        onDone();
+        return;
+      case "enviar":
+        form.current?.requestSubmit();
+    }
   }
 
   return (
-    <form action={formAction} className="min-w-0 flex-1 space-y-2">
+    <form
+      ref={form}
+      action={formAction}
+      className="min-w-0 flex-1 basis-60 space-y-1.5"
+    >
       <Hidden values={{ id }} />
-      <div className="flex items-center gap-1.5">
-        <input
-          name="title"
-          defaultValue={current}
-          aria-label="Novo título"
-          autoFocus
-          className="min-w-0 flex-1 rounded-md border border-rule bg-paper px-2 py-1 text-sm text-ink"
-        />
-        <button
-          type="submit"
-          disabled={pending}
-          aria-label="Salvar título"
-          className={cn(buttonVariants({ size: "icon-xs" }))}
-        >
-          <Check aria-hidden />
-        </button>
-        <button
-          type="button"
-          onClick={() => setEditing(false)}
-          aria-label="Cancelar renomeação"
-          className={cn(
-            buttonVariants({ variant: "ghost", size: "icon-xs" }),
-            "text-ink-soft",
-          )}
-        >
-          <X aria-hidden />
-        </button>
-      </div>
+      <input
+        name="title"
+        value={valor}
+        onChange={(event) => setValor(event.currentTarget.value)}
+        aria-label={`Novo nome ${label}`}
+        autoComplete="off"
+        autoFocus
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            onDone();
+          }
+
+          if (event.key === "Enter") {
+            event.preventDefault();
+            salvar();
+          }
+        }}
+        onBlur={salvar}
+        className={campoEmEdicao}
+      />
       <Erro state={state} />
     </form>
   );
@@ -193,49 +300,49 @@ export function RenameForm({
 
 /* ──────────────────────────── mover e arquivar ───────────────────────── */
 
+/**
+ * ↑ e ↓ de um item. O nome acessível leva o nome do item, não o tipo: uma
+ * tela com cinco módulos abertos daria dez botões "Mover módulo para cima"
+ * iguais na lista de quem usa leitor de tela.
+ */
 export function MoveButtons({
   action,
   id,
   canUp,
   canDown,
-  label,
+  nome,
 }: {
   action: Action;
   id: string;
   canUp: boolean;
   canDown: boolean;
-  label: string;
+  /** O nome do item, como ele aparece na linha. */
+  nome: string;
 }) {
   const [state, formAction, pending] = useActionState(action, idleState);
 
   return (
-    <form action={formAction} className="flex items-center gap-0.5">
+    <form action={formAction} className="flex items-center gap-1">
       <Hidden values={{ id }} />
       <button
         type="submit"
         name="direction"
         value="up"
         disabled={pending || !canUp}
-        aria-label={`Mover ${label} para cima`}
-        className={cn(
-          buttonVariants({ variant: "ghost", size: "icon-xs" }),
-          "text-ink-soft",
-        )}
+        aria-label={`Mover ${nome} para cima`}
+        className={acao}
       >
-        <ArrowUp aria-hidden />
+        <span aria-hidden="true">↑</span>
       </button>
       <button
         type="submit"
         name="direction"
         value="down"
         disabled={pending || !canDown}
-        aria-label={`Mover ${label} para baixo`}
-        className={cn(
-          buttonVariants({ variant: "ghost", size: "icon-xs" }),
-          "text-ink-soft",
-        )}
+        aria-label={`Mover ${nome} para baixo`}
+        className={acao}
       >
-        <ArrowDown aria-hidden />
+        <span aria-hidden="true">↓</span>
       </button>
       <Erro state={state} />
     </form>
@@ -246,12 +353,16 @@ export function ArchiveButton({
   action,
   id,
   archived,
-  label,
+  tipo,
+  nome,
 }: {
   action: Action;
   id: string;
   archived: boolean;
-  label: string;
+  /** "curso", "módulo", "aula" — o texto do botão é só "Arquivar". */
+  tipo: string;
+  /** O nome do item: na seção de arquivados são N botões "Restaurar". */
+  nome: string;
 }) {
   const [state, formAction, pending] = useActionState(action, idleState);
 
@@ -261,14 +372,12 @@ export function ArchiveButton({
       <button
         type="submit"
         disabled={pending}
-        aria-label={archived ? `Reativar ${label}` : `Arquivar ${label}`}
-        title={archived ? "Reativar" : "Arquivar"}
-        className={cn(
-          buttonVariants({ variant: "ghost", size: "icon-xs" }),
-          "text-ink-soft",
-        )}
+        aria-label={
+          archived ? `Restaurar ${tipo} ${nome}` : `Arquivar ${tipo} ${nome}`
+        }
+        className={acao}
       >
-        {archived ? <ArchiveRestore aria-hidden /> : <ArchiveX aria-hidden />}
+        {archived ? "Restaurar" : "Arquivar"}
       </button>
       <Erro state={state} />
     </form>
@@ -278,9 +387,69 @@ export function ArchiveButton({
 /* ───────────────────────────── aula estudada ─────────────────────────── */
 
 /**
- * Marca a aula como estudada, ou desfaz. Botão com texto, não ícone: é a
- * única ação do cabeçalho que muda um fato sobre o estudo, e não um arranjo
- * da árvore — vale dizer por extenso o que acontece.
+ * A caixa de seleção da linha da aula: marcar ali é a maneira rápida de
+ * fechar um módulo inteiro, sem abrir aula por aula. Envia no `change`, que é
+ * o que o teclado dispara ao teclar espaço.
+ */
+export function StudiedCheckbox({
+  action,
+  id,
+  studied,
+  title,
+}: {
+  action: Action;
+  id: string;
+  studied: boolean;
+  title: string;
+}) {
+  const [state, formAction] = useActionState(action, idleState);
+  const form = useRef<HTMLFormElement>(null);
+  const intencao = useRef<HTMLInputElement>(null);
+
+  return (
+    <form ref={form} action={formAction} className="flex items-center">
+      <input type="hidden" name="id" value={id} />
+      {/* O que vai para o banco é o estado da caixa no momento do clique, e
+          não o inverso do que o servidor mandou: dois cliques seguidos, antes
+          de a primeira gravação voltar, enviavam duas vezes o mesmo valor e a
+          segunda escolha se perdia. */}
+      <input
+        ref={intencao}
+        type="hidden"
+        name="studied"
+        defaultValue={studied ? "false" : "true"}
+      />
+      {/* `defaultChecked`, não `checked`: ao fim de uma Server Action o React
+          repõe o formulário no estado inicial, e um `checked` controlado
+          voltava a desmarcar a caixa que a pessoa acabou de marcar — o banco
+          já tinha gravado, mas a tela dizia o contrário até o refresh. Com o
+          padrão vindo do servidor, a reposição cai no valor novo. */}
+      <input
+        type="checkbox"
+        defaultChecked={studied}
+        aria-label={`Aula estudada: ${title}`}
+        onChange={(event) => {
+          if (intencao.current !== null) {
+            intencao.current.value = String(event.currentTarget.checked);
+          }
+          form.current?.requestSubmit();
+        }}
+        className="size-4.5 shrink-0 accent-accent"
+      />
+      {state.ok ? null : (
+        <p role="alert" className="ml-2 text-xs">
+          {state.message}
+        </p>
+      )}
+    </form>
+  );
+}
+
+/**
+ * Marca a aula como estudada, ou desfaz — o botão do cabeçalho da aula. Diz
+ * os dois lados por extenso ("Marcar"/"Desmarcar como estudada") e carrega o
+ * estado em `aria-pressed`: sem ele, quem ouve a tela recebe dois rótulos
+ * diferentes sem saber qual deles é o estado atual.
  */
 export function StudiedButton({
   action,
@@ -299,13 +468,10 @@ export function StudiedButton({
       <button
         type="submit"
         disabled={pending}
-        className={cn(
-          buttonVariants({ variant: studied ? "ghost" : "outline", size: "sm" }),
-          studied ? "text-ink-soft" : "",
-        )}
+        aria-pressed={studied}
+        className={cn(buttonVariants({ variant: "outline" }))}
       >
-        {studied ? <RotateCcw aria-hidden /> : <CircleCheck aria-hidden />}
-        {studied ? "Desmarcar" : "Marcar como estudada"}
+        {studied ? "Desmarcar como estudada" : "Marcar como estudada"}
       </button>
       <Erro state={state} />
     </form>

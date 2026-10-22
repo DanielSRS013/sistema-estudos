@@ -1,4 +1,9 @@
+import { asc } from "drizzle-orm";
+
 import { db } from "@/db";
+import { courses } from "@/db/schema";
+
+import { studiedCount } from "./studied";
 
 /* ──────────────────────────────── rail ───────────────────────────────── */
 
@@ -57,6 +62,8 @@ export type CourseRow = {
   archivedAt: Date | null;
   moduleCount: number;
   lessonCount: number;
+  /** Aulas com `studied_on` — a terceira parte da meta da linha. */
+  studiedCount: number;
 };
 
 /** Lista completa, arquivados inclusive — a página os separa. */
@@ -70,18 +77,40 @@ export async function listCourses(): Promise<CourseRow[]> {
         with: {
           lessons: {
             where: (lesson, { isNull }) => isNull(lesson.archivedAt),
-            columns: { id: true },
+            columns: { id: true, studiedOn: true },
           },
         },
       },
     },
   });
 
-  return rows.map(({ modules, ...course }) => ({
-    ...course,
-    moduleCount: modules.length,
-    lessonCount: modules.reduce((total, m) => total + m.lessons.length, 0),
-  }));
+  return rows.map(({ modules, ...course }) => {
+    const aulas = modules.flatMap((m) => m.lessons);
+
+    return {
+      ...course,
+      moduleCount: modules.length,
+      lessonCount: aulas.length,
+      studiedCount: studiedCount(aulas),
+    };
+  });
+}
+
+/**
+ * A ordem global dos cursos, só os ids. A tela do curso precisa dela para
+ * saber se ↑ e ↓ estão nas pontas, e `listCourses` traria módulos e aulas
+ * inteiros para responder a uma pergunta de duas posições.
+ *
+ * Inclui o arquivado, como `moveCourse`: trocar de lugar é mexer na coluna
+ * `position`, que não conhece arquivamento.
+ */
+export async function listCourseIds(): Promise<string[]> {
+  const rows = await db
+    .select({ id: courses.id })
+    .from(courses)
+    .orderBy(asc(courses.position), asc(courses.createdAt));
+
+  return rows.map((row) => row.id);
 }
 
 /* ─────────────────────── /courses/[courseSlug] ───────────────────────── */
@@ -105,6 +134,9 @@ export async function getCourseBySlug(slug: string) {
               asc(lesson.position),
               asc(lesson.createdAt),
             ],
+            // Só o id das notas: a linha da aula escreve "3 notas", e a
+            // alternativa seria uma contagem por aula em ida separada.
+            with: { notes: { columns: { id: true } } },
           },
         },
       },

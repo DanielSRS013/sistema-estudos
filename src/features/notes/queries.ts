@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { db } from "@/db";
 import { cards, courses, lessons, modules, notes } from "@/db/schema";
 
+import { noteLineMeta } from "./edited";
 import type { NoteKind } from "./kind";
 import { lastEditLabel } from "./recent";
 
@@ -13,9 +14,8 @@ export type NoteRow = {
   id: string;
   title: string;
   kind: NoteKind;
-  updatedAt: Date;
-  /** Cards vivos da nota: o arquivado não entra na conta que a aula mostra. */
-  cardCount: number;
+  /** "4 cards · editada há 2 h" — a terceira linha da nota na lista. */
+  meta: string;
 };
 
 /**
@@ -29,7 +29,13 @@ export type NoteRow = {
 export async function listNotesForLesson(
   lessonId: string,
 ): Promise<NoteRow[]> {
-  return db
+  // O rótulo de edição compara com o agora da requisição: `connection()`
+  // marca a leitura como dinâmica, pelo mesmo motivo de `listRecentNotes`.
+  await connection();
+
+  const now = new Date();
+
+  const rows = await db
     .select({
       id: notes.id,
       title: notes.title,
@@ -44,6 +50,13 @@ export async function listNotesForLesson(
     .where(eq(notes.lessonId, lessonId))
     .groupBy(notes.id)
     .orderBy(asc(notes.createdAt));
+
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    kind: row.kind,
+    meta: noteLineMeta(row.cardCount, row.updatedAt, now),
+  }));
 }
 
 /* ───────────────────────── últimas notas editadas ────────────────────── */
