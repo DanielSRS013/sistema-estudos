@@ -19,6 +19,8 @@ import { splitHighlight, type Segmento } from "./highlight";
 export type NoteRow = {
   id: string;
   title: string;
+  /** O título sem as marcas do destaque — ver `plainTitle` na consulta. */
+  plainTitle: string;
   snippet: string;
   kind: NoteKind;
   updatedAt: Date;
@@ -85,7 +87,7 @@ function daNota(row: NoteRow): SearchHit {
     title: splitHighlight(row.title),
     snippet: splitHighlight(row.snippet),
     path: caminho(row),
-    noteTitle: row.title,
+    noteTitle: row.plainTitle,
     updatedAt: row.updatedAt,
     rank: row.rank,
   };

@@ -19,6 +19,7 @@ function nota(over: Partial<NoteRow> = {}): NoteRow {
   return {
     id: "n1",
     title: "Projeção ortogonal",
+    plainTitle: "Projeção ortogonal",
     snippet: "A projeção de v sobre u …",
     kind: "lesson_note",
     updatedAt: new Date("2026-10-01T10:00:00Z"),
@@ -67,6 +68,17 @@ describe("mesclarHits", () => {
     expect(hit.tipo).toBe("Lacuna");
     expect(hit.estado).toBe("aprendendo");
     expect(hit.noteId).toBe("n9");
+    expect(hit.noteTitle).toBe("Projeção ortogonal");
+  });
+
+  it("não leva marca de destaque no título da nota de origem", () => {
+    // `title` vem do `ts_headline`, com os caracteres de controle dentro.
+    // `noteTitle` é texto para ler, não para recortar: na nota ele vinha da
+    // mesma string marcada, e quem o exibisse imprimiria os controles.
+    const hit = primeiro(
+      mesclarHits([nota({ title: `${ABRE}Projeção${FECHA} ortogonal` })], [], 30),
+    );
+
     expect(hit.noteTitle).toBe("Projeção ortogonal");
   });
 

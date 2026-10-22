@@ -124,12 +124,13 @@ async function Painel({
         <p className="font-serif text-base leading-prose text-ink-soft">
           Digite uma palavra do conceito. A busca varre título e corpo das notas
           e a face e a resposta dos cards, com radical em português e acento
-          opcional: “projecoes” encontra “projeção”.
+          opcional: “limites” encontra “limite”, e “projecao” encontra
+          “projeção”.
         </p>
       ) : (
         <Suspense
           key={termo}
-          fallback={<Carregando>Buscando nas notas.</Carregando>}
+          fallback={<Carregando>Buscando nas notas e nos cards.</Carregando>}
         >
           <Resultados termo={termo} />
         </Suspense>

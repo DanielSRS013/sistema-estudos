@@ -132,3 +132,31 @@ describe("o destaque do trecho", () => {
     expect(queries).not.toMatch(/ts_headline\([^)]*\$\{consulta\}/);
   });
 });
+
+describe("o que cada consulta traz", () => {
+  // Achado da revisão: `LIMIT 30` sem `ORDER BY` são 30 linhas quaisquer, na
+  // ordem em que o bitmap scan as entregar. `mesclarHits` ordena só o que
+  // chegou, então a nota mais relevante pode nem estar na lista — e a mesma
+  // busca pode devolver listas diferentes.
+  it("ordena cada lado por relevância antes de cortar no limite", () => {
+    const ordenacoes = queries.match(/\.orderBy\(/g) ?? [];
+    expect(ordenacoes).toHaveLength(2);
+  });
+
+  it("ordena pelo rank do vetor de cada tabela, não por um só", () => {
+    expect(queries).toMatch(/ts_rank_cd\(\$\{notes\.searchVector\}[^)]*\)[^`]*desc/);
+    expect(queries).toMatch(/ts_rank_cd\(\$\{cards\.searchVector\}[^)]*\)[^`]*desc/);
+  });
+
+  it("não devolve a resposta do card inteira", () => {
+    // Face e título são linhas curtas e `HighlightAll` serve. `cards.answer`
+    // é o bloco depois do corte: pode ter parágrafos de Markdown e LaTeX, e
+    // sem limite de palavras um resultado só ocupa a tela toda.
+    // O regex prende as quatro partes da mesma chamada: `[^;]*?` atravessava a
+    // linha de cima, onde a face usa `OPCOES_TITULO` com razão.
+    const opcoes = queries.match(
+      /ts_headline\('portuguese', \$\{cards\.answer\}, \$\{destaque\}, \$\{(\w+)\}\)/,
+    );
+    expect(opcoes?.[1]).toBe("OPCOES");
+  });
+});

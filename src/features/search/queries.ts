@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { cards, courses, lessons, modules, notes } from "@/db/schema";
@@ -67,6 +67,9 @@ export async function searchNotesAndCards(termo: string): Promise<SearchHit[]> {
       .select({
         id: notes.id,
         title: sql<string>`ts_headline('portuguese', ${notes.title}, ${destaque}, ${OPCOES_TITULO})`,
+        // O título cru, além do destacado: `noteTitle` é texto para ler, e a
+        // saída do `ts_headline` carrega os caracteres de controle da marca.
+        plainTitle: notes.title,
         snippet: sql<string>`ts_headline('portuguese', ${notes.content}, ${destaque}, ${OPCOES})`,
         kind: notes.kind,
         updatedAt: notes.updatedAt,
@@ -80,6 +83,12 @@ export async function searchNotesAndCards(termo: string): Promise<SearchHit[]> {
       .innerJoin(modules, sql`${modules.id} = ${lessons.moduleId}`)
       .innerJoin(courses, sql`${courses.id} = ${modules.courseId}`)
       .where(sql`${notes.searchVector} @@ ${consulta}`)
+      // Sem isto o `limit` traz 30 linhas quaisquer: cada lado precisa pedir
+      // os SEUS 30 mais relevantes, senão a mescla ordena uma amostra ao acaso.
+      .orderBy(
+        sql`ts_rank_cd(${notes.searchVector}, ${consulta}) desc`,
+        desc(notes.updatedAt),
+      )
       .limit(LIMITE),
 
     // Card arquivado fica fora: ele saiu de circulação. Suspenso entra, com o
@@ -89,7 +98,9 @@ export async function searchNotesAndCards(termo: string): Promise<SearchHit[]> {
         id: cards.id,
         noteId: cards.noteId,
         prompt: sql<string>`ts_headline('portuguese', ${cards.prompt}, ${destaque}, ${OPCOES_TITULO})`,
-        answer: sql<string>`ts_headline('portuguese', ${cards.answer}, ${destaque}, ${OPCOES_TITULO})`,
+        // A resposta não é linha curta — é o bloco depois do corte, com
+        // parágrafos e LaTeX. Vai com o mesmo limite do corpo da nota.
+        answer: sql<string>`ts_headline('portuguese', ${cards.answer}, ${destaque}, ${OPCOES})`,
         kind: cards.kind,
         state: cards.state,
         suspended: cards.suspended,
@@ -107,6 +118,10 @@ export async function searchNotesAndCards(termo: string): Promise<SearchHit[]> {
       .innerJoin(courses, sql`${courses.id} = ${modules.courseId}`)
       .where(
         sql`${cards.searchVector} @@ ${consulta} and ${cards.archivedAt} is null`,
+      )
+      .orderBy(
+        sql`ts_rank_cd(${cards.searchVector}, ${consulta}) desc`,
+        desc(notes.updatedAt),
       )
       .limit(LIMITE),
   ]);
