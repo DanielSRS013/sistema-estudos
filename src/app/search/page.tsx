@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import { CourseRail } from "@/features/courses/components/course-rail";
 import type { Segmento } from "@/features/search/highlight";
-import { searchNotes } from "@/features/search/queries";
+import { searchNotesAndCards } from "@/features/search/queries";
 import { Carregando, Shell } from "@/shared/shell";
 import { buttonVariants } from "@/shared/ui/button";
 import { cn } from "@/shared/cn";
@@ -54,7 +54,7 @@ function Busca({ termo }: { termo: string }) {
 }
 
 async function Resultados({ termo }: { termo: string }) {
-  const hits = await searchNotes(termo);
+  const hits = await searchNotesAndCards(termo);
 
   if (hits.length === 0) {
     return (
@@ -68,25 +68,34 @@ async function Resultados({ termo }: { termo: string }) {
   return (
     <div className="space-y-4">
       <p className="font-mono text-xs text-ink-soft">
-        {hits.length === 1 ? "1 nota" : `${hits.length} notas`}
-        {hits.length === 30 ? " (primeiras 30)" : ""}
+        {hits.length === 1 ? "1 resultado" : `${hits.length} resultados`}
+        {hits.length === 30 ? " (primeiros 30)" : ""}
       </p>
       <ul className="space-y-4">
         {hits.map((hit) => (
           <li
-            key={hit.id}
+            key={hit.key}
             className="space-y-1 border-t border-rule pt-4 first:border-t-0 first:pt-0"
           >
             <Link
-              href={`/notes/${hit.id}`}
+              href={`/notes/${hit.noteId}`}
               className="font-medium hover:text-accent"
             >
               <Trecho segmentos={hit.title} />
             </Link>
-            <p className="font-mono text-xs text-ink-soft">{hit.path}</p>
+            <p className="font-mono text-xs text-ink-soft">
+              {hit.estado === null ? hit.tipo : `${hit.tipo} · ${hit.estado}`}
+              {" · "}
+              {hit.path}
+            </p>
             <p className="font-serif text-sm leading-prose text-ink-soft">
               <Trecho segmentos={hit.snippet} />
             </p>
+            {hit.origem === "card" ? (
+              <p className="font-mono text-xs text-ink-soft">
+                em <span className="not-italic">{hit.noteTitle}</span>
+              </p>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -113,13 +122,15 @@ async function Painel({
 
       {termo === "" ? (
         <p className="font-serif text-base leading-prose text-ink-soft">
-          Digite uma palavra do conceito. A busca varre título e corpo de todas
-          as notas, com radical em português: “projeções” encontra “projeção”.
+          Digite uma palavra do conceito. A busca varre título e corpo das notas
+          e a face e a resposta dos cards, com radical em português e acento
+          opcional: “limites” encontra “limite”, e “projecao” encontra
+          “projeção”.
         </p>
       ) : (
         <Suspense
           key={termo}
-          fallback={<Carregando>Buscando nas notas.</Carregando>}
+          fallback={<Carregando>Buscando nas notas e nos cards.</Carregando>}
         >
           <Resultados termo={termo} />
         </Suspense>

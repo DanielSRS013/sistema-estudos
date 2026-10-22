@@ -117,8 +117,12 @@ export const notes = pgTable(
     title: text("title").notNull(),
     kind: noteKindEnum("kind").notNull().default("lesson_note"),
     content: text("content").notNull().default(""),
+    // `immutable_unaccent` é o invólucro IMMUTABLE de `unaccent`, criado na
+    // migration 0005: `unaccent(text)` é STABLE e o Postgres recusa coluna
+    // gerada sobre expressão não imutável. Sem ele o stemmer português casa
+    // "projeção" mas não "projecao" — SPEC §5.
     searchVector: tsvector("search_vector").generatedAlwaysAs(
-      sql`to_tsvector('portuguese', coalesce(title, '') || ' ' || coalesce(content, ''))`,
+      sql`to_tsvector('portuguese', immutable_unaccent(coalesce(title, '') || ' ' || coalesce(content, '')))`,
     ),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -152,6 +156,10 @@ export const cards = pgTable(
     prompt: text("prompt").notNull(),
     answer: text("answer").notNull(),
     hint: text("hint"),
+    // a busca varre notas e cards (SPEC §5); mesmo vetor acento-insensível
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      sql`to_tsvector('portuguese', immutable_unaccent(coalesce(prompt, '') || ' ' || coalesce(answer, '')))`,
+    ),
 
     /* estado FSRS — nomes alinhados a ts-fsrs */
     due: timestamp("due", { withTimezone: true }).notNull().defaultNow(),
@@ -183,6 +191,7 @@ export const cards = pgTable(
       .on(t.due)
       .where(sql`${t.archivedAt} is null and ${t.suspended} = false`),
     index("cards_note_idx").on(t.noteId, t.ordinal),
+    index("cards_search_idx").using("gin", t.searchVector),
   ],
 );
 
