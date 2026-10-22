@@ -1,22 +1,21 @@
-import { Pencil } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import {
-  CardMargin,
-  NoteCardsSection,
-} from "@/features/cards/components/margin";
+import { NoteCardsSection } from "@/features/cards/components/margin";
+import { NoteBody } from "@/features/cards/components/note-body";
+import { listCardsForNote } from "@/features/cards/queries";
 import { CourseRail } from "@/features/courses/components/course-rail";
 import { moveNote } from "@/features/notes/actions";
-import { linkifyTags } from "@/features/tags/linkify";
-import { MathMarkdown } from "@/shared/markdown";
 import { MoveNoteForm } from "@/features/notes/components/note-forms";
+import { noteEditedLabel } from "@/features/notes/edited";
+import { noteKindLabel } from "@/features/notes/kind";
 import { getNoteById, listLessonOptions } from "@/features/notes/queries";
-import { cn } from "@/shared/cn";
+import { extractTags } from "@/features/tags/extract";
+import { linkifyTags } from "@/features/tags/linkify";
 import { Carregando, Shell } from "@/shared/shell";
-import { buttonVariants } from "@/shared/ui/button";
 
 async function MoveNote({
   noteId,
@@ -46,51 +45,77 @@ async function MoveNote({
   );
 }
 
+/** As tags da nota em bloco ao fim do corpo, como o handoff desenha. */
+function TagBlock({ content }: { content: string }) {
+  const tags = extractTags(content);
+
+  if (tags.length === 0) return null;
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 border-t border-rule pt-4 font-sans text-sm">
+      {tags.map((tag) => (
+        <Link key={tag.slug} href={`/tags/${tag.slug}`} className="text-accent">
+          #{tag.name}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 async function NoteDetail({ params }: { params: Promise<{ noteId: string }> }) {
   const { noteId } = await params;
 
   // Id fora do formato não chega a virar consulta.
   if (!z.uuid().safeParse(noteId).success) notFound();
 
-  const note = await getNoteById(noteId);
+  // O meta do cabeçalho compara `updatedAt` com o agora da requisição: a
+  // leitura é dinâmica, como em `listCardsForNote`.
+  await connection();
+
+  const [note, cards] = await Promise.all([
+    getNoteById(noteId),
+    listCardsForNote(noteId),
+  ]);
 
   if (!note) notFound();
 
   const { lesson } = note;
   const { module: modulo } = lesson;
+  const total = cards.active.length;
 
   return (
-    <div className="space-y-8">
-      <header className="space-y-3">
-        <nav className="font-mono text-xs text-ink-soft">
-          <Link
-            href={`/courses/${modulo.course.slug}`}
-            className="hover:text-ink"
-          >
+    <article className="space-y-6">
+      <header className="max-w-170 space-y-2">
+        {/* Dois níveis, curso · aula, ambos links: o módulo fica de fora, como
+            no fio do editor. */}
+        <nav className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs text-ink-soft">
+          <Link href={`/courses/${modulo.course.slug}`} className="text-accent">
             {modulo.course.title}
           </Link>
-          {` · ${modulo.title} · `}
-          <Link href={`/lessons/${lesson.id}`} className="hover:text-ink">
+          <span aria-hidden="true">·</span>
+          <Link href={`/lessons/${lesson.id}`} className="text-accent">
             {lesson.title}
           </Link>
         </nav>
 
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="min-w-0 truncate text-xl font-semibold tracking-tight">
-            {note.title}
-          </h1>
-          <Link
-            href={`/notes/${note.id}/edit`}
-            className={cn(buttonVariants({ size: "sm" }), "shrink-0")}
-          >
-            <Pencil aria-hidden />
+        <h1 className="font-serif text-2xl leading-tight font-medium">
+          {note.title}
+        </h1>
+
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft">
+          <span>{noteKindLabel(note.kind)}</span>
+          <span>{noteEditedLabel(note.updatedAt, new Date())}</span>
+          <span>
+            {total} {total === 1 ? "card" : "cards"}
+          </span>
+          <Link href={`/notes/${note.id}/edit`} className="text-accent">
             Editar
           </Link>
         </div>
       </header>
 
       {note.content.trim() === "" ? (
-        <p className="font-serif text-base leading-prose text-ink-soft">
+        <p className="measure font-serif text-base leading-prose text-ink-soft">
           Esta nota está vazia.{" "}
           <Link href={`/notes/${note.id}/edit`} className="text-accent underline">
             Escrever agora
@@ -98,19 +123,17 @@ async function NoteDetail({ params }: { params: Promise<{ noteId: string }> }) {
           .
         </p>
       ) : (
-        <MathMarkdown content={linkifyTags(note.content)} marcarLinhas />
+        <NoteBody content={linkifyTags(note.content)} cards={cards.active}>
+          <TagBlock content={note.content} />
+        </NoteBody>
       )}
 
       {/* Abaixo de 1100px a margem some, os cards não — SPEC §6. */}
-      <Suspense fallback={null}>
-        <NoteCardsSection noteId={note.id} />
-      </Suspense>
+      <NoteCardsSection noteId={note.id} />
 
-      <section className="space-y-2 border-t border-rule pt-4">
-        <h2 className="text-sm font-medium text-ink-soft">Mover</h2>
-        <Suspense
-          fallback={<Carregando>Carregando as aulas.</Carregando>}
-        >
+      <section className="max-w-170 space-y-2 border-t border-rule pt-4">
+        <h2 className="text-xs text-ink-soft">Mover</h2>
+        <Suspense fallback={<Carregando>Carregando as aulas.</Carregando>}>
           <MoveNote
             noteId={note.id}
             lessonId={note.lessonId}
@@ -118,16 +141,8 @@ async function NoteDetail({ params }: { params: Promise<{ noteId: string }> }) {
           />
         </Suspense>
       </section>
-    </div>
+    </article>
   );
-}
-
-async function NoteCards({ params }: { params: Promise<{ noteId: string }> }) {
-  const { noteId } = await params;
-
-  if (!z.uuid().safeParse(noteId).success) return null;
-
-  return <CardMargin noteId={noteId} />;
 }
 
 export default function NotePage({
@@ -137,19 +152,9 @@ export default function NotePage({
 }) {
   return (
     <Shell rail={<CourseRail />}>
-      <div className="flex flex-col gap-8 cards:flex-row cards:items-start">
-        <div className="measure min-w-0 flex-1">
-          <Suspense fallback={<Carregando>Carregando a nota.</Carregando>}>
-            <NoteDetail params={params} />
-          </Suspense>
-        </div>
-        {/* A margem some abaixo de 1100px — SPEC §6. */}
-        <div className="hidden w-64 shrink-0 cards:block">
-          <Suspense fallback={null}>
-            <NoteCards params={params} />
-          </Suspense>
-        </div>
-      </div>
+      <Suspense fallback={<Carregando>Carregando a nota.</Carregando>}>
+        <NoteDetail params={params} />
+      </Suspense>
     </Shell>
   );
 }

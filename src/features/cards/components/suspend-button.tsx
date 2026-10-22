@@ -1,17 +1,17 @@
 "use client";
 
-import { PauseCircle, PlayCircle } from "lucide-react";
 import { useActionState } from "react";
 
 import { idleState, type ActionState } from "@/shared/action-state";
-import { cn } from "@/shared/cn";
-import { buttonVariants } from "@/shared/ui/button";
 
 type Action = (state: ActionState, formData: FormData) => Promise<ActionState>;
 
 /**
  * Tira o card da fila, ou o devolve. Um botão só, porque a ação é o inverso
  * do estado atual — o valor vai no campo escondido, como nos arquivamentos.
+ *
+ * Botão com texto, como o handoff desenha: 13px sobre filete `--rule`, altura
+ * mínima de 32px. Antes era só um ícone de pausa, que não diz o que acontece.
  */
 export function SuspendButton({
   action,
@@ -25,7 +25,7 @@ export function SuspendButton({
   const [state, formAction, pending] = useActionState(action, idleState);
 
   return (
-    <form action={formAction} className="flex items-center gap-1.5">
+    <form action={formAction} className="flex items-center gap-2">
       <input type="hidden" name="id" value={id} />
       <input
         type="hidden"
@@ -35,14 +35,9 @@ export function SuspendButton({
       <button
         type="submit"
         disabled={pending}
-        aria-label={suspended ? "Retomar card" : "Suspender card"}
-        title={suspended ? "Retomar" : "Suspender"}
-        className={cn(
-          buttonVariants({ variant: "ghost", size: "icon-xs" }),
-          "text-ink-soft",
-        )}
+        className="min-h-8 rounded-sm border border-rule px-2.5 py-1 text-xs text-ink"
       >
-        {suspended ? <PlayCircle aria-hidden /> : <PauseCircle aria-hidden />}
+        {suspended ? "Retomar" : "Suspender"}
       </button>
       {state.ok ? null : (
         <span role="alert" className="text-xs">

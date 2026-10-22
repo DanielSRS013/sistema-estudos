@@ -1,5 +1,13 @@
 // Liga trecho de texto a card renderizado — SPEC §6: "margem direita mostra
-// os cards gerados pelo trecho visível". Função pura: sem I/O, sem React.
+// os cards gerados pelo trecho visível". Funções puras: sem I/O, sem React.
+//
+// "Trecho visível" era a viewport: a margem media os blocos com
+// `IntersectionObserver` e apagava a 50% quem estava fora. O handoff resolve o
+// mesmo vínculo por posição — o card mora na linha da grade do bloco que o
+// gerou —, e por isso `cardsNoTrecho` e `destaqueDoTrecho` saíram daqui junto
+// com os testes deles: não havia mais trecho a seguir, só bloco a encontrar, e
+// quem encontra é `blocoDe`, que ficou. Um teste de função apagada vira
+// garantia de comportamento que a tela não tem mais.
 //
 // A linha de origem do card não mora no banco: `parse` já a conhece, e
 // reparsear o conteúdo salvo da nota a reconstrói sem migration nenhuma. O
@@ -46,7 +54,7 @@ export function lineOf(
 
 /**
  * Qual bloco renderizado contém uma linha da nota. `blocos` são as linhas
- * iniciais dos blocos de topo, que o `data-line` do render carrega.
+ * iniciais dos blocos de topo, que o plugin de `by-block.ts` lê da árvore.
  *
  * Linha antes do primeiro bloco cai nele: o parser conta a linha crua e o
  * render pode começar depois dela (uma linha em branco à frente, por exemplo),
@@ -66,41 +74,4 @@ export function blocoDe(line: number, blocos: number[]): number | null {
   }
 
   return achado;
-}
-
-/** Ids dos cards cujo bloco de origem está sob a viewport, na ordem da nota. */
-export function cardsNoTrecho(
-  cards: { id: string; line: number | null }[],
-  blocos: number[],
-  visiveis: number[],
-): string[] {
-  const sob = new Set(visiveis);
-
-  return cards
-    .filter((card) => {
-      if (card.line === null) return false;
-
-      const bloco = blocoDe(card.line, blocos);
-
-      return bloco !== null && sob.has(bloco);
-    })
-    .map((card) => card.id);
-}
-
-/**
- * Quais cards estão no trecho visível, ou `null` enquanto não há bloco
- * observado — antes da hidratação, e sem JavaScript, a margem sai inteira
- * legível em vez de apagada.
- *
- * Conjunto vazio é resposta, não ausência: o trecho na tela não gera card
- * nenhum, e a margem apaga todos.
- */
-export function destaqueDoTrecho(
-  cards: { id: string; line: number | null }[],
-  blocos: number[],
-  visiveis: number[],
-): Set<string> | null {
-  if (blocos.length === 0) return null;
-
-  return new Set(cardsNoTrecho(cards, blocos, visiveis));
 }

@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import Markdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
@@ -5,28 +6,25 @@ import remarkMath from "remark-math";
 
 import { envolverLacuna, type Estado } from "./markdown-cloze";
 import { envolverLacunasVazias } from "./markdown-empty-gap";
-import { anotarLinhas } from "./markdown-lines";
 
 // Fora do componente: as listas são estáveis entre renders, e o editor
 // renderiza a cada tecla.
 const remarkPlugins = [remarkGfm, remarkMath];
 const rehypePlugins = [rehypeKatex];
-const rehypeComLinhas = [rehypeKatex, anotarLinhas];
 const rehypeComVazias = [rehypeKatex, envolverLacunasVazias()];
 const rehypeComLacuna = {
   oculta: [rehypeKatex, envolverLacuna("oculta")],
   revelada: [rehypeKatex, envolverLacuna("revelada")],
 };
 
-function rehypeDe(
-  lacuna: Estado | undefined,
-  marcarLinhas: boolean,
-  vazias: boolean,
-) {
+type Props = ComponentProps<typeof Markdown>;
+type Plugin = NonNullable<Props["rehypePlugins"]>[number];
+
+function rehypeDe(lacuna: Estado | undefined, vazias: boolean) {
   if (lacuna !== undefined) return rehypeComLacuna[lacuna];
   if (vazias) return rehypeComVazias;
 
-  return marcarLinhas ? rehypeComLinhas : rehypePlugins;
+  return rehypePlugins;
 }
 
 /**
@@ -39,18 +37,14 @@ function rehypeDe(
 export function MathMarkdown({
   content,
   className = "note-prose",
-  marcarLinhas = false,
   vazias = false,
   lacuna,
+  plugin,
+  components,
+  children,
 }: {
   content: string;
   className?: string;
-  /**
-   * Escreve `data-line` em cada bloco de topo, que é como a margem de cards
-   * acha o trecho visível (SPEC §6). Só a leitura da nota precisa disso: a
-   * face do card na revisão e a pré-visualização do editor saem sem marca.
-   */
-  marcarLinhas?: boolean;
   /**
    * Envolve cada lacuna vazia num `span`, para o filete de 2px da
    * pré-visualização do editor. Exige que `content` tenha passado por
@@ -64,15 +58,33 @@ export function MathMarkdown({
    * `marcarLacuna`.
    */
   lacuna?: Estado;
+  /**
+   * Um plugin de rehype a mais, depois dos do modo. É por aqui que a leitura da
+   * nota entra com o que ela sabe e `shared` não precisa saber: onde os cards
+   * caem entre os blocos (`cards/by-block.ts`) e o número da lacuna no corpo.
+   */
+  plugin?: Plugin;
+  /** Como desenhar um elemento que o plugin inseriu — o `aside` dos cards. */
+  components?: Props["components"];
+  /**
+   * O que entra na mesma caixa, depois do Markdown. A margem da nota é filha da
+   * grade, e não um irmão dela: é a grade que põe cada card na linha do seu
+   * bloco.
+   */
+  children?: React.ReactNode;
 }) {
+  const rehype = rehypeDe(lacuna, vazias);
+
   return (
     <div className={className}>
       <Markdown
         remarkPlugins={remarkPlugins}
-        rehypePlugins={rehypeDe(lacuna, marcarLinhas, vazias)}
+        rehypePlugins={plugin === undefined ? rehype : [...rehype, plugin]}
+        components={components}
       >
         {content}
       </Markdown>
+      {children}
     </div>
   );
 }

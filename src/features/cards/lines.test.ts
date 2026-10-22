@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  blocoDe,
-  cardLines,
-  cardsNoTrecho,
-  destaqueDoTrecho,
-  lineOf,
-} from "./lines";
+import { blocoDe, cardLines, lineOf } from "./lines";
 import { anchorKey } from "./reconcile";
 
 const NOTA = [
@@ -92,56 +86,5 @@ describe("blocoDe", () => {
 
   it("devolve null quando não há bloco nenhum", () => {
     expect(blocoDe(3, [])).toBeNull();
-  });
-});
-
-describe("cardsNoTrecho", () => {
-  const cards = [
-    { id: "a", line: 3 },
-    { id: "b", line: 6 },
-    { id: "c", line: 20 },
-  ];
-
-  it("destaca os cards cujo bloco de origem está visível", () => {
-    expect(cardsNoTrecho(cards, [1, 5, 18], [5])).toEqual(["b"]);
-  });
-
-  it("destaca mais de um card do mesmo bloco visível", () => {
-    expect(cardsNoTrecho([...cards, { id: "d", line: 7 }], [1, 5, 18], [5])).toEqual(
-      ["b", "d"],
-    );
-  });
-
-  it("não destaca nada quando nenhum bloco está visível", () => {
-    expect(cardsNoTrecho(cards, [1, 5, 18], [])).toEqual([]);
-  });
-
-  it("deixa de fora o card sem linha conhecida", () => {
-    expect(cardsNoTrecho([{ id: "x", line: null }], [1], [1])).toEqual([]);
-  });
-});
-
-describe("destaqueDoTrecho", () => {
-  const cards = [
-    { id: "a", line: 3 },
-    { id: "b", line: 20 },
-  ];
-
-  it("não destaca nada enquanto não há bloco observado", () => {
-    // Antes da hidratação a margem não sabe o que está na tela: a lista sai
-    // inteira legível, que é como ela aparece sem JavaScript.
-    expect(destaqueDoTrecho(cards, [], [])).toBeNull();
-  });
-
-  it("destaca o card do trecho visível", () => {
-    expect(destaqueDoTrecho(cards, [1, 18], [1])).toEqual(new Set(["a"]));
-  });
-
-  it("apaga todos quando o trecho visível não gera card nenhum", () => {
-    // Trecho sem card é informação: a margem apaga, não finge que todos
-    // pertencem ao que está na tela.
-    expect(destaqueDoTrecho([{ id: "c", line: 20 }], [1, 18], [1])).toEqual(
-      new Set(),
-    );
   });
 });
