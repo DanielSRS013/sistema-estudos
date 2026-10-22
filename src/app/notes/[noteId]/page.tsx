@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { marcarCardsNoCorpo } from "@/features/cards/body-marks";
 import { NoteCardsSection } from "@/features/cards/components/margin";
 import { NoteBody } from "@/features/cards/components/note-body";
 import { listCardsForNote } from "@/features/cards/queries";
@@ -83,6 +84,10 @@ async function NoteDetail({ params }: { params: Promise<{ noteId: string }> }) {
   const { module: modulo } = lesson;
   const total = cards.active.length;
 
+  // As marcas de card vêm antes do linkify: `marcarCardsNoCorpo` recorta por
+  // posição do texto cru, e linkar as tags já teria movido tudo de lugar.
+  const corpo = linkifyTags(marcarCardsNoCorpo(note.content));
+
   return (
     <article className="space-y-6">
       <header className="max-w-170 space-y-2">
@@ -123,7 +128,7 @@ async function NoteDetail({ params }: { params: Promise<{ noteId: string }> }) {
           .
         </p>
       ) : (
-        <NoteBody content={linkifyTags(note.content)} cards={cards.active}>
+        <NoteBody content={corpo} cards={cards.active}>
           <TagBlock content={note.content} />
         </NoteBody>
       )}

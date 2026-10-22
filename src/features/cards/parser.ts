@@ -190,41 +190,69 @@ function lerCloze(bloco: Bloco, emitir: Emitir, reclamar: Reclamar): void {
   });
 }
 
+const Q = "Q::";
+const A = "A::";
+
+/**
+ * O par lido de um bloco que começa por `Q::`, ou por que ele não vira card.
+ *
+ * Mora numa função só porque dois leitores dependem desta mesma decisão: `lerQA`,
+ * que emite o card, e `posicoesDeCards`, que marca a pergunta e a resposta no
+ * corpo da nota. Em duas cópias, um `Q::` sem `A::` viraria bloco na tela sem
+ * virar card — a tela prometeria um card que não existe.
+ */
+type Par =
+  | { ok: true; pergunta: string; corpo: string }
+  | { ok: false; motivo: "sem-resposta" | "vazio" };
+
+function lerPar(linhas: string[]): Par {
+  const pergunta = (linhas[0] ?? "").slice(Q.length).trim();
+  const respostas = linhas.slice(1);
+  const primeiraResposta = respostas[0];
+
+  if (primeiraResposta === undefined || !primeiraResposta.startsWith(A)) {
+    return { ok: false, motivo: "sem-resposta" };
+  }
+
+  const corpo = [
+    primeiraResposta.slice(A.length).trim(),
+    ...respostas.slice(1).map((linha) => linha.trimEnd()),
+  ]
+    .join("\n")
+    .trim();
+
+  if (pergunta === "" || corpo === "") return { ok: false, motivo: "vazio" };
+
+  return { ok: true, pergunta, corpo };
+}
+
 function lerQA(
   linhas: string[],
   primeiraLinha: number,
   emitir: Emitir,
   reclamar: Reclamar,
 ): void {
-  const cabeca = linhas[0] ?? "";
-  const pergunta = cabeca.slice("Q::".length).trim();
-  const respostas = linhas.slice(1);
-  const primeiraResposta = respostas[0];
+  const par = lerPar(linhas);
 
-  if (primeiraResposta === undefined || !primeiraResposta.startsWith("A::")) {
-    reclamar({
-      line: primeiraLinha,
-      title: "pergunta sem resposta",
-      message: "Pergunta sem resposta: escreva A:: na linha seguinte ao Q::.",
-    });
+  if (!par.ok) {
+    reclamar(
+      par.motivo === "sem-resposta"
+        ? {
+            line: primeiraLinha,
+            title: "pergunta sem resposta",
+            message:
+              "Pergunta sem resposta: escreva A:: na linha seguinte ao Q::.",
+          }
+        : {
+            line: primeiraLinha,
+            title: "pergunta ou resposta vazia",
+            message: "Pergunta ou resposta vazia: Q:: e A:: precisam de texto.",
+          },
+    );
     return;
   }
 
-  const corpo = [
-    primeiraResposta.slice("A::".length).trim(),
-    ...respostas.slice(1).map((linha) => linha.trimEnd()),
-  ]
-    .join("\n")
-    .trim();
-
-  if (pergunta === "" || corpo === "") {
-    reclamar({
-      line: primeiraLinha,
-      title: "pergunta ou resposta vazia",
-      message: "Pergunta ou resposta vazia: Q:: e A:: precisam de texto.",
-    });
-    return;
-  }
+  const { pergunta, corpo } = par;
 
   emitir({
     kind: "qa",
@@ -305,6 +333,75 @@ export function lacunasVazias(markdown: string): LacunaVazia[] {
         line: linhaDe(texto, lacuna.inicio, cloze.primeiraLinha),
       });
     }
+  }
+
+  return achadas;
+}
+
+/**
+ * Onde cada card está escrito no texto da nota, com o ordinal que ele terá.
+ *
+ * É o que a leitura precisa para sublinhar a lacuna e numerar o sobrescrito
+ * `#cN`: os recortes são do texto inteiro, não do bloco. Na lacuna, `inicio` e
+ * `fim` cercam o `{{…}}` todo e `answer` é o que entra no lugar; no par, os dois
+ * recortes são os tokens `Q::` e `A::`, que somem da tela e dão lugar aos
+ * rótulos.
+ *
+ * A ordem e o ordinal são os de `parse` porque a varredura é a mesma, bloco a
+ * bloco, lacunas antes do par. Divergir aqui faria o sobrescrito apontar para o
+ * card errado, sem nada na tela acusando — por isso `body-marks.test.ts` compara
+ * as duas listas.
+ */
+export type PosicaoCard =
+  | {
+      kind: "cloze";
+      ordinal: number;
+      inicio: number;
+      fim: number;
+      answer: string;
+    }
+  | {
+      kind: "qa";
+      ordinal: number;
+      pergunta: { inicio: number; fim: number };
+      resposta: { inicio: number; fim: number };
+    };
+
+export function posicoesDeCards(markdown: string): PosicaoCard[] {
+  const inicios = inicioDasLinhas(markdown);
+  const achadas: PosicaoCard[] = [];
+
+  for (const bloco of blocos(markdown)) {
+    const { cloze, qa } = partirBloco(bloco);
+
+    if (cloze !== null) {
+      const texto = cloze.linhas.join("\n");
+      const base = inicios[cloze.primeiraLinha - 1] ?? 0;
+
+      for (const lacuna of varrer(texto).lacunas) {
+        if (lacuna.conteudo.trim() === "") continue;
+
+        achadas.push({
+          kind: "cloze",
+          ordinal: achadas.length,
+          inicio: base + lacuna.inicio,
+          fim: base + lacuna.fim,
+          answer: partir(lacuna.conteudo).answer,
+        });
+      }
+    }
+
+    if (qa === null || !lerPar(qa.linhas).ok) continue;
+
+    const daPergunta = inicios[qa.primeiraLinha - 1] ?? 0;
+    const daResposta = inicios[qa.primeiraLinha] ?? 0;
+
+    achadas.push({
+      kind: "qa",
+      ordinal: achadas.length,
+      pergunta: { inicio: daPergunta, fim: daPergunta + Q.length },
+      resposta: { inicio: daResposta, fim: daResposta + A.length },
+    });
   }
 
   return achadas;

@@ -27,6 +27,7 @@ export function NoteBody({
     <MathMarkdown
       content={content}
       className="note-prose note-grid"
+      marcarCards
       plugin={cardsPorBloco(cards)}
       components={{
         /* Os índices chegam no `data-cards` que o plugin escreveu. São lidos

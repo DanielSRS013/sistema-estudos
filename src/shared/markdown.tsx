@@ -4,6 +4,7 @@ import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 
+import { envolverCards } from "./markdown-card-marks";
 import { envolverLacuna, type Estado } from "./markdown-cloze";
 import { envolverLacunasVazias } from "./markdown-empty-gap";
 
@@ -12,6 +13,7 @@ import { envolverLacunasVazias } from "./markdown-empty-gap";
 const remarkPlugins = [remarkGfm, remarkMath];
 const rehypePlugins = [rehypeKatex];
 const rehypeComVazias = [rehypeKatex, envolverLacunasVazias()];
+const rehypeComCards = [rehypeKatex, envolverCards()];
 const rehypeComLacuna = {
   oculta: [rehypeKatex, envolverLacuna("oculta")],
   revelada: [rehypeKatex, envolverLacuna("revelada")],
@@ -20,9 +22,14 @@ const rehypeComLacuna = {
 type Props = ComponentProps<typeof Markdown>;
 type Plugin = NonNullable<Props["rehypePlugins"]>[number];
 
-function rehypeDe(lacuna: Estado | undefined, vazias: boolean) {
+function rehypeDe(
+  lacuna: Estado | undefined,
+  vazias: boolean,
+  marcarCards: boolean,
+) {
   if (lacuna !== undefined) return rehypeComLacuna[lacuna];
   if (vazias) return rehypeComVazias;
+  if (marcarCards) return rehypeComCards;
 
   return rehypePlugins;
 }
@@ -39,6 +46,7 @@ export function MathMarkdown({
   className = "note-prose",
   vazias = false,
   lacuna,
+  marcarCards = false,
   plugin,
   components,
   children,
@@ -59,6 +67,14 @@ export function MathMarkdown({
    */
   lacuna?: Estado;
   /**
+   * Sublinha a lacuna e escreve o sobrescrito `#cN`, e troca o par `Q::`/`A::`
+   * pelo bloco Pergunta/Resposta. Exige que `content` tenha passado por
+   * `marcarCardsNoCorpo`. Só a leitura da nota pede: na face do card a lacuna
+   * tem outro tratamento, e a pré-visualização do editor mostra a nota como
+   * texto, sem os números da margem.
+   */
+  marcarCards?: boolean;
+  /**
    * Um plugin de rehype a mais, depois dos do modo. É por aqui que a leitura da
    * nota entra com o que ela sabe e `shared` não precisa saber: onde os cards
    * caem entre os blocos (`cards/by-block.ts`) e o número da lacuna no corpo.
@@ -73,7 +89,7 @@ export function MathMarkdown({
    */
   children?: React.ReactNode;
 }) {
-  const rehype = rehypeDe(lacuna, vazias);
+  const rehype = rehypeDe(lacuna, vazias, marcarCards);
 
   return (
     <div className={className}>
