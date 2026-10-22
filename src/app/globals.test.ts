@@ -619,3 +619,139 @@ describe("o editor do handoff", () => {
     expect(pagina).not.toContain("modulo.title");
   });
 });
+
+describe("as três telas de cursos do handoff", () => {
+  const cursos = readFileSync(join(raiz, "app", "courses", "page.tsx"), "utf8");
+  const curso = readFileSync(
+    join(raiz, "app", "courses", "[courseSlug]", "page.tsx"),
+    "utf8",
+  );
+  const aula = readFileSync(
+    join(raiz, "app", "lessons", "[lessonId]", "page.tsx"),
+    "utf8",
+  );
+  const forms = readFileSync(
+    join(raiz, "features", "courses", "components", "forms.tsx"),
+    "utf8",
+  );
+  const modulo = readFileSync(
+    join(raiz, "features", "courses", "components", "module-row.tsx"),
+    "utf8",
+  );
+  const notaNova = readFileSync(
+    join(raiz, "features", "notes", "components", "capture-note-button.tsx"),
+    "utf8",
+  );
+  const telas: [string, string][] = [
+    ["cursos", cursos],
+    ["curso", curso],
+    ["aula", aula],
+  ];
+
+  it("não escreve o processo de desenvolvimento na interface", () => {
+    // A sobrancelha dizia "fatia 1 — casca navegável" no alto de /courses.
+    expect(cursos).not.toMatch(/fatia \d/i);
+  });
+
+  it.each(telas)("dá ao h1 de %s os 28px com peso 500", (_nome, tela) => {
+    expect(tela).toContain("text-xl font-medium");
+    expect(tela).not.toContain("font-semibold");
+  });
+
+  it.each(telas)("tira a Mono da tela %s", (_nome, tela) => {
+    // Mono é código e sintaxe de card (SPEC §6); fio, meta e status são Sans
+    // de 13px.
+    expect(tela).not.toContain("font-mono");
+  });
+
+  it("abre o cabeçalho por botão, não por formulário sempre visível", () => {
+    // O rótulo dos dois primeiros é da página; o da aula é o default do botão
+    // que cria a nota, que o painel também usa.
+    expect(cursos).toContain("Novo curso");
+    expect(curso).toContain("Novo módulo");
+    expect(notaNova).toContain("Nova nota");
+    for (const tela of [cursos, curso]) {
+      expect(tela).toContain("CreateDisclosure");
+    }
+  });
+
+  it("expande o módulo por botão que anuncia o próprio estado", () => {
+    expect(modulo).toContain("aria-expanded");
+    for (const glifo of ["▸", "▾"]) {
+      expect(modulo).toContain(glifo);
+    }
+  });
+
+  it("renomeia inline: Enter salva, Esc cancela, blur salva", () => {
+    expect(forms).toContain("onKeyDown");
+    expect(forms).toContain("onBlur");
+    expect(forms).toContain("Escape");
+    // Os dois botões-ícone do campo de renomear saem com o resto dos ícones.
+    expect(forms).not.toContain("Salvar título");
+    expect(forms).not.toContain("Cancelar renomeação");
+  });
+
+  it("move por glifo de texto, como o resto do handoff", () => {
+    for (const glifo of ["↑", "↓"]) {
+      expect(forms).toContain(glifo);
+    }
+  });
+
+  it("marca a aula estudada por checkbox de 18px no accent", () => {
+    expect(forms).toContain('type="checkbox"');
+    expect(forms).toContain("accent-accent");
+    expect(forms).toContain("size-4.5");
+  });
+
+  it("dá ao botão de estudada o estado que o leitor de tela anuncia", () => {
+    expect(forms).toContain("aria-pressed");
+    expect(forms).toContain("Marcar como estudada");
+    expect(forms).toContain("Desmarcar como estudada");
+  });
+
+  it("junta o arquivado numa seção em vez de apagá-lo na lista", () => {
+    for (const tela of [cursos, curso]) {
+      expect(tela).toContain("Arquivados (");
+      expect(tela).toContain("archived");
+      expect(tela).not.toContain("opacity-60");
+    }
+    // Quem escreve o rótulo é o botão, usado pelas duas seções.
+    expect(forms).toContain("Restaurar");
+  });
+
+  it("lista os módulos em `ol`, que é a ordem que o usuário arruma", () => {
+    expect(curso).toContain("<ol");
+  });
+
+  it("convida a criar a primeira aula do módulo vazio", () => {
+    expect(modulo).toContain("Módulo sem aulas.");
+    expect(modulo).toContain("Criar a primeira aula");
+  });
+
+  it("escreve o convite da aula sem nota como o handoff", () => {
+    expect(aula).toContain(
+      "Esta aula ainda não tem notas. Comece pela anotação da aula:",
+    );
+    expect(aula).toContain("escrever a primeira nota");
+  });
+
+  it("anuncia o estado de estudada por `role=status`", () => {
+    expect(aula).toContain('role="status"');
+  });
+});
+
+describe("nenhum ícone de biblioteca em `src`", () => {
+  // SPEC §6, Forma: nenhum ícone decorativo; os glifos ▸ ▾ ↑ ↓ » são texto.
+  // A Fatia 20 tirou o último consumidor de `lucide-react`.
+  it("não importa `lucide-react` em arquivo nenhum", () => {
+    const comIcone = arquivosDeFonte(["app", "features", "shared"])
+      .filter(([, texto]) => texto.includes("lucide-react"))
+      .map(([caminho]) => caminho);
+    expect(comIcone).toEqual([]);
+  });
+
+  it("não guarda a dependência no `package.json`", () => {
+    const pkg = readFileSync(join(raiz, "..", "package.json"), "utf8");
+    expect(pkg).not.toContain("lucide-react");
+  });
+});

@@ -1,6 +1,5 @@
 "use client";
 
-import { FolderInput, Plus } from "lucide-react";
 import { useActionState } from "react";
 
 import { idleState, type ActionState } from "@/shared/action-state";
@@ -24,41 +23,6 @@ function Erro({ state }: { state: ActionState }) {
     <p role="alert" className="text-xs">
       {state.message}
     </p>
-  );
-}
-
-/** Cria a nota a partir da aula; a action abre o editor na nota nova. */
-export function CreateNoteForm({
-  action,
-  lessonId,
-}: {
-  action: Action;
-  lessonId: string;
-}) {
-  const [state, formAction, pending] = useActionState(action, idleState);
-
-  return (
-    <form action={formAction} className="space-y-2">
-      <input type="hidden" name="lessonId" value={lessonId} />
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          name="title"
-          placeholder="Título da nota"
-          aria-label="Título da nota"
-          autoComplete="off"
-          className={campo}
-        />
-        <button
-          type="submit"
-          disabled={pending}
-          className={cn(buttonVariants({ size: "sm" }), "shrink-0")}
-        >
-          <Plus aria-hidden />
-          Criar nota
-        </button>
-      </div>
-      <Erro state={state} />
-    </form>
   );
 }
 
@@ -100,7 +64,6 @@ export function MoveNoteForm({
             "shrink-0",
           )}
         >
-          <FolderInput aria-hidden />
           Mover nota
         </button>
       </div>
