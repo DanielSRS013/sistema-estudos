@@ -6,7 +6,7 @@ import type { NoteCard } from "../queries";
 
 /** O que o item mostra. A margem da nota e a página do conceito passam mais
  *  campos que isto — `line` lá, `note` aqui — e o item só lê o que desenha. */
-export type CardFace = Omit<NoteCard, "ordinal" | "line">;
+export type CardFace = Omit<NoteCard, "ordinal" | "line" | "dueLabel">;
 
 /**
  * Estado do FSRS em português. Cor fica de fora de propósito: SPEC §6 reserva

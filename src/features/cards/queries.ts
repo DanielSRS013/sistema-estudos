@@ -1,7 +1,9 @@
+import { connection } from "next/server";
 import { cache } from "react";
 
 import { db } from "@/db";
 
+import { dueLabel } from "./labels";
 import { cardLines, lineOf } from "./lines";
 import type { CardKind } from "./parser";
 
@@ -14,6 +16,13 @@ export type NoteCard = {
   hint: string | null;
   state: "new" | "learning" | "review" | "relearning";
   reps: number;
+  /**
+   * Vencimento já escrito para a tela: "Vence em 3 dias · 6 revisões", "Ainda
+   * não revisado", "Suspenso". A conta de dias é do dia lógico de SPEC §4 e
+   * precisa do agora da requisição — fica aqui, onde `connection()` já marcou
+   * a leitura como dinâmica, e não espalhada pelos componentes.
+   */
+  dueLabel: string;
   /** Fora da fila por decisão do usuário, com o histórico intacto. */
   suspended: boolean;
   /**
@@ -34,12 +43,20 @@ export type NoteCards = {
 /**
  * Os cards da nota com a linha de origem de cada um.
  *
+ * `connection()` pelo mesmo motivo de `listRecentNotes`: o rótulo de
+ * vencimento compara com o agora, e um `new Date()` solto durante o prerender
+ * abortaria o build com `cacheComponents` ligado.
+ *
  * Em `cache` porque a página pede a mesma lista duas vezes — a margem acima de
  * 1100px e a seção recolhida abaixo dele — e as duas devem custar uma consulta.
  */
 export const listCardsForNote = cache(async function listCardsForNote(
   noteId: string,
 ): Promise<NoteCards> {
+  await connection();
+
+  const now = new Date();
+
   const [note, rows] = await Promise.all([
     db.query.notes.findFirst({
       where: (nota, { eq }) => eq(nota.id, noteId),
@@ -58,6 +75,7 @@ export const listCardsForNote = cache(async function listCardsForNote(
         hint: true,
         state: true,
         reps: true,
+        due: true,
         suspended: true,
         archivedAt: true,
       },
@@ -78,6 +96,7 @@ export const listCardsForNote = cache(async function listCardsForNote(
         hint: row.hint,
         state: row.state,
         reps: row.reps,
+        dueLabel: dueLabel(row, now),
         suspended: row.suspended,
         line: lineOf(lines, row),
       })),
