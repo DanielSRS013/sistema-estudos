@@ -16,7 +16,7 @@ function render(content: string, cards: { line: number | null }[]): string {
   return renderToStaticMarkup(
     createElement(MathMarkdown, {
       content,
-      plugin: cardsPorBloco(cards),
+      plugins: [cardsPorBloco(cards)],
       components: {
         aside: ({ node }: { node?: { properties?: Record<string, unknown> } }) =>
           createElement(

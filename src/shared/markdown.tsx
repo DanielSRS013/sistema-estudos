@@ -47,7 +47,7 @@ export function MathMarkdown({
   vazias = false,
   lacuna,
   marcarCards = false,
-  plugin,
+  plugins,
   components,
   children,
 }: {
@@ -75,11 +75,12 @@ export function MathMarkdown({
    */
   marcarCards?: boolean;
   /**
-   * Um plugin de rehype a mais, depois dos do modo. É por aqui que a leitura da
+   * Plugins de rehype a mais, depois dos do modo. É por aqui que a leitura da
    * nota entra com o que ela sabe e `shared` não precisa saber: onde os cards
-   * caem entre os blocos (`cards/by-block.ts`) e o número da lacuna no corpo.
+   * caem entre os blocos (`cards/by-block.ts`) e qual varredura realça o código
+   * (`features/notes/code.ts`).
    */
-  plugin?: Plugin;
+  plugins?: Plugin[];
   /** Como desenhar um elemento que o plugin inseriu — o `aside` dos cards. */
   components?: Props["components"];
   /**
@@ -95,7 +96,7 @@ export function MathMarkdown({
     <div className={className}>
       <Markdown
         remarkPlugins={remarkPlugins}
-        rehypePlugins={plugin === undefined ? rehype : [...rehype, plugin]}
+        rehypePlugins={plugins === undefined ? rehype : [...rehype, ...plugins]}
         components={components}
       >
         {content}

@@ -1,4 +1,6 @@
+import { realcarCodigo } from "@/features/notes/code";
 import { MathMarkdown } from "@/shared/markdown";
+import { realcarBlocos } from "@/shared/markdown-code";
 
 import { cardsPorBloco } from "../by-block";
 import type { NoteCard } from "../queries";
@@ -28,7 +30,7 @@ export function NoteBody({
       content={content}
       className="note-prose note-grid"
       marcarCards
-      plugin={cardsPorBloco(cards)}
+      plugins={[cardsPorBloco(cards), realcarBlocos(realcarCodigo)]}
       components={{
         /* Os índices chegam no `data-cards` que o plugin escreveu. São lidos
            do nó do hast, e não das props do elemento, porque é lá que o
