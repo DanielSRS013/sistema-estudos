@@ -5,8 +5,8 @@ import { useState } from "react";
 /**
  * A seção de cards do fim da nota abaixo de 1100px, onde não há margem.
  *
- * Era `<details>/<summary>`: o resumo não emite `aria-expanded`, e o handoff
- * pede um botão com o glifo ▸/▾ e o estado anunciado. Cliente só por causa do
+ * Era um `details` com `summary`: o resumo não emite `aria-expanded`, e o
+ * handoff pede um botão com o glifo ▸/▾ e o estado anunciado. Cliente só por causa do
  * estado de abertura — os cards vêm prontos do servidor como filhos.
  */
 export function CardsDisclosure({

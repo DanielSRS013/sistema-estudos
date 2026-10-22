@@ -224,6 +224,138 @@ describe("margem de cards de SPEC.md §6", () => {
   });
 });
 
+describe("a grade da leitura da nota", () => {
+  const grade = css.slice(css.indexOf(".note-grid {"));
+
+  it("dá as duas colunas do handoff, 68ch e 248px", () => {
+    // 248, não 256: a margem tem a largura que o handoff desenha, e não o
+    // `w-64` que estava na página.
+    expect(grade).toContain(
+      "grid-template-columns: minmax(0, var(--measure)) 248px;",
+    );
+    expect(grade).toContain("column-gap: 48px;");
+  });
+
+  it("alinha as linhas pelo topo, para o card acompanhar o trecho", () => {
+    expect(grade.slice(0, grade.indexOf("}"))).toContain(
+      "align-items: start;",
+    );
+  });
+
+  it("abre a largura total sem mexer na medida da leitura", () => {
+    // A coluna de texto continua 68ch; o que cresce é a caixa, pelos 248 da
+    // margem mais os 48 do intervalo.
+    expect(grade).toContain("max-width: calc(var(--measure) + 296px);");
+  });
+
+  it("esconde a margem por padrão e a mostra só acima de 1100px", () => {
+    // Sem isso a margem apareceria embaixo do texto a 375px, em cima da seção
+    // recolhível que mostra os mesmos cards.
+    const margem = css.slice(css.indexOf(".note-cards {"));
+    expect(margem.slice(0, margem.indexOf("}"))).toContain("display: none;");
+    expect(grade).toContain("@media (min-width: 68.75rem)");
+  });
+
+  it("dá à margem o respiro e o intervalo do handoff", () => {
+    const coluna = grade.slice(grade.indexOf(".note-grid > .note-cards {"));
+    const regra = coluna.slice(0, coluna.indexOf("}"));
+    expect(regra).toContain("grid-column: 2;");
+    expect(regra).toContain("padding-top: 28px;");
+    expect(regra).toContain("gap: 12px;");
+  });
+
+  it("reparte a seção de cards a partir de 240px por card", () => {
+    const lista = css.slice(css.indexOf(".note-cards-lista {"));
+    expect(lista.slice(0, lista.indexOf("}"))).toContain(
+      "grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));",
+    );
+  });
+});
+
+describe("o card da margem de NoteCard.dc.html", () => {
+  const cards = arquivosDeFonte(["features/cards"]);
+
+  it("não volta a dizer o vínculo com o trecho por opacidade", () => {
+    // A Fatia 11 apagava a 50% o card fora da viewport; o handoff resolve por
+    // posição na grade. Opacidade de novo aqui seria dois idiomas para a mesma
+    // informação — e o apagado passaria por card suspenso.
+    const comOpacidade = cards
+      .filter(([, texto]) => /opacity-/.test(texto))
+      .map(([caminho]) => caminho);
+    expect(comOpacidade).toEqual([]);
+  });
+
+  it("não volta a esconder os cards num `details`, que não anuncia estado", () => {
+    // `<summary>` não emite `aria-expanded`; o handoff pede botão com ▸/▾.
+    const comDetails = cards
+      .filter(([, texto]) => texto.includes("<details"))
+      .map(([caminho]) => caminho);
+    expect(comDetails).toEqual([]);
+  });
+
+  it("fixa a face em Serif 15 com entrelinha 1,5", () => {
+    const face = css.slice(css.indexOf(".note-card-face {"));
+    const regra = face.slice(0, face.indexOf("}"));
+    expect(regra).toContain("font-size: var(--text-sm);");
+    expect(regra).toContain("line-height: 1.5;");
+  });
+
+  it("recua a face do card suspenso em vez de pintá-la", () => {
+    const suspensa = css.slice(css.indexOf(".note-card-face.suspensa {"));
+    expect(suspensa.slice(0, suspensa.indexOf("}"))).toContain(
+      "color: var(--ink-soft);",
+    );
+  });
+});
+
+describe("a lacuna e o par no corpo da nota", () => {
+  it("sublinha a lacuna com pontilhado de 1px, não com o filete do modo foco", () => {
+    // No corpo a resposta está à vista: o traço diz "este trecho virou card",
+    // e não "aqui falta uma palavra".
+    const cloze = css.slice(css.indexOf(".note-prose .note-cloze {"));
+    expect(cloze.slice(0, cloze.indexOf("}"))).toContain(
+      "border-bottom: 1px dotted var(--ink-soft);",
+    );
+  });
+
+  it("põe o número do card em sobrescrito, na Sans de 13px", () => {
+    const ref = css.slice(css.indexOf(".note-prose .note-ref {"));
+    const regra = ref.slice(0, ref.indexOf("}"));
+    expect(regra).toContain("vertical-align: super;");
+    expect(regra).toContain("font-size: var(--text-xs);");
+  });
+
+  it("cerca o bloco Pergunta/Resposta com os dois filetes", () => {
+    const qa = css.slice(css.indexOf(".note-prose .note-qa {"));
+    const regra = qa.slice(0, qa.indexOf("}"));
+    expect(regra).toContain("border-top: 1px solid var(--rule);");
+    expect(regra).toContain("border-bottom: 1px solid var(--rule);");
+    expect(regra).toContain("grid-template-columns: auto minmax(0, 1fr);");
+  });
+});
+
+describe("fórmula em display e realce de código", () => {
+  it("alinha a fórmula à esquerda com recuo de 24px", () => {
+    // O KaTeX centraliza por padrão, e fórmula centrada no meio de texto
+    // alinhado à esquerda abre um buraco no parágrafo.
+    const display = css.slice(css.indexOf(".note-prose .katex-display {"));
+    const regra = display.slice(0, display.indexOf("}"));
+    expect(regra).toContain("text-align: left;");
+    expect(regra).toContain("padding-left: 1.5rem;");
+  });
+
+  it("realça o código em dois tons, sem cor nenhuma", () => {
+    // As quatro classes do realce só podem usar `--ink` e `--ink-soft`: o
+    // viridis é dos botões de avaliação.
+    const realce = css.slice(css.indexOf(".note-prose pre .cod-comentario"));
+    expect(realce).toContain("color: var(--ink-soft);");
+    expect(realce).toContain("font-weight: 500;");
+    for (const token of ["--again", "--hard", "--good", "--easy"]) {
+      expect(realce).not.toContain(token);
+    }
+  });
+});
+
 describe("um idioma de foco só", () => {
   it("fixa o foco global em filete sólido de 2px no accent", () => {
     // O handoff tem uma receita de foco e só uma. O anel de 30% de alpha que

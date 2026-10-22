@@ -1,7 +1,5 @@
 import Link from "next/link";
 
-import { cn } from "@/shared/cn";
-
 import type { NoteCard } from "../queries";
 
 /** O que o item mostra. A margem da nota e a página do conceito passam mais
@@ -28,29 +26,24 @@ function Badge({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Um card com seu estado. Serve à margem da nota e à página do conceito —
- * lá o card vem de outra nota, então `nota` leva de volta à origem, e o
- * controle de suspender fica de fora: quem age é a margem.
+ * Um card com seu estado, na página do conceito: lá o card vem de outra nota,
+ * então `nota` leva de volta à origem, e o controle de suspender fica de fora.
+ *
+ * A margem da nota tinha este mesmo item e não tem mais — ela usa
+ * `note-card.tsx`, a caixa de `NoteCard.dc.html`. A Fatia 22 reescreve a página
+ * do conceito e decide se as duas voltam a ser uma.
  */
 export function CardItem({
   card,
   nota,
   controle,
-  apagado = false,
 }: {
   card: CardFace;
   nota?: { id: string; title: string };
   controle?: React.ReactNode;
-  /** Fora do trecho visível: fica mais quieto, sem sair da lista. */
-  apagado?: boolean;
 }) {
   return (
-    <li
-      className={cn(
-        "space-y-1 border-t border-rule pt-2 first:border-t-0 first:pt-0",
-        apagado && "opacity-50",
-      )}
-    >
+    <li className="space-y-1 border-t border-rule pt-2 first:border-t-0 first:pt-0">
       <div className="flex flex-wrap items-center gap-1.5">
         <Badge>{card.kind === "cloze" ? "lacuna" : "pergunta"}</Badge>
         <Badge>{ESTADO[card.state]}</Badge>
