@@ -63,6 +63,7 @@ async function CourseDetail({
       .map((modulo) => ({
         key: `m${modulo.id}`,
         id: modulo.id,
+        nome: modulo.title,
         label: `Módulo · ${modulo.title}`,
         action: setModuleArchived,
         tipo: "módulo",
@@ -73,6 +74,7 @@ async function CourseDetail({
         .map((aula) => ({
           key: `l${aula.id}`,
           id: aula.id,
+          nome: aula.title,
           label: `Aula · ${modulo.title} · ${aula.title}`,
           action: setLessonArchived,
           tipo: "aula",
@@ -107,13 +109,14 @@ async function CourseDetail({
               id={course.id}
               canUp={posicao > 0}
               canDown={posicao !== -1 && posicao < ordemDosCursos.length - 1}
-              label="curso"
+              nome={course.title}
             />
             <ArchiveButton
               action={setCourseArchived}
               id={course.id}
               archived={course.archivedAt !== null}
-              label="curso"
+              tipo="curso"
+              nome={course.title}
             />
             <CreateDisclosure
               buttonLabel="Novo módulo"
@@ -201,7 +204,8 @@ async function CourseDetail({
                   action={item.action}
                   id={item.id}
                   archived
-                  label={item.tipo}
+                  tipo={item.tipo}
+                  nome={item.nome}
                 />
               </li>
             ))}

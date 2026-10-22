@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   acao,
@@ -51,6 +51,12 @@ export function ModuleRow({
   const [renomeando, setRenomeando] = useState(false);
   const [criando, setCriando] = useState(false);
 
+  // Fechar um formulário desmonta o campo que está com o foco. Sem devolver o
+  // foco ao botão que o abriu, quem usa teclado volta ao topo do documento e
+  // tem a página inteira de Tabs pela frente para chegar de novo à linha.
+  const botaoRenomear = useRef<HTMLButtonElement>(null);
+  const botaoNovaAula = useRef<HTMLButtonElement>(null);
+
   function novaAula() {
     setAberto(true);
     setCriando(true);
@@ -65,7 +71,10 @@ export function ModuleRow({
             id={id}
             current={title}
             label="do módulo"
-            onDone={() => setRenomeando(false)}
+            onDone={() => {
+              setRenomeando(false);
+              botaoRenomear.current?.focus();
+            }}
           />
         ) : (
           <button
@@ -89,10 +98,16 @@ export function ModuleRow({
           aria-label={`Ações do módulo ${title}`}
           className="flex flex-wrap items-center gap-1"
         >
-          <button type="button" onClick={novaAula} className={acao}>
+          <button
+            ref={botaoNovaAula}
+            type="button"
+            onClick={novaAula}
+            className={acao}
+          >
             Nova aula
           </button>
           <button
+            ref={botaoRenomear}
             type="button"
             onClick={() => setRenomeando(true)}
             className={acao}
@@ -104,13 +119,14 @@ export function ModuleRow({
             id={id}
             canUp={canUp}
             canDown={canDown}
-            label="módulo"
+            nome={title}
           />
           <ArchiveButton
             action={archiveAction}
             id={id}
             archived={false}
-            label="módulo"
+            tipo="módulo"
+            nome={title}
           />
         </div>
       </div>
@@ -137,7 +153,10 @@ export function ModuleRow({
                 hidden={{ moduleId: id }}
                 placeholder="Nome da aula"
                 submitLabel="Criar aula"
-                onDone={() => setCriando(false)}
+                onDone={() => {
+                  setCriando(false);
+                  botaoNovaAula.current?.focus();
+                }}
               />
             </li>
           ) : null}

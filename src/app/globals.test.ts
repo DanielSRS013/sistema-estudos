@@ -638,6 +638,10 @@ describe("as três telas de cursos do handoff", () => {
     join(raiz, "features", "courses", "components", "module-row.tsx"),
     "utf8",
   );
+  const aulaLinha = readFileSync(
+    join(raiz, "features", "courses", "components", "lesson-row.tsx"),
+    "utf8",
+  );
   const notaNova = readFileSync(
     join(raiz, "features", "notes", "components", "capture-note-button.tsx"),
     "utf8",
@@ -686,9 +690,56 @@ describe("as três telas de cursos do handoff", () => {
     expect(forms).toContain("onKeyDown");
     expect(forms).toContain("onBlur");
     expect(forms).toContain("Escape");
+    // Quem decide é `decidirRenomeacao`, que tem teste em `form-flow.test.ts`
+    // — a trava aqui é que o componente não volte a decidir por conta.
+    expect(forms).toContain("decidirRenomeacao");
     // Os dois botões-ícone do campo de renomear saem com o resto dos ícones.
     expect(forms).not.toContain("Salvar título");
     expect(forms).not.toContain("Cancelar renomeação");
+  });
+
+  it("não deixa o formulário decidir sozinho que concluiu", () => {
+    // O estado ocioso de uma action é `{ ok: true }`: um `if (state.ok)`
+    // solto fechava o formulário na montagem e travava a página inteira.
+    expect(forms).toContain("concluiu(");
+    // `state.ok` continua decidindo se a mensagem de erro aparece; o que não
+    // pode é decidir que o formulário fecha.
+    const conclusoesSoltas = forms
+      .split(/\r?\n/)
+      .filter(
+        (linha) => /state\.ok/.test(linha) && /onDone|setAberto/.test(linha),
+      );
+    expect(conclusoesSoltas).toEqual([]);
+  });
+
+  it("devolve o foco ao botão que abriu o formulário", () => {
+    for (const arquivo of [forms, modulo, aulaLinha]) {
+      expect(arquivo).toContain("current?.focus()");
+    }
+  });
+
+  it("mantém o campo com o que foi digitado quando a gravação é recusada", () => {
+    // `defaultValue`/`reset` perdiam o texto: o React repõe o formulário ao
+    // fim da action, inclusive quando ela volta com erro.
+    expect(forms).not.toContain("defaultValue={current}");
+    expect(forms).not.toContain("form.current?.reset()");
+  });
+
+  it("deixa a caixa de estudada guardar o que o servidor gravou", () => {
+    // `checked` controlado perdia para a reposição do formulário e a caixa
+    // voltava a desmarcada depois de marcar.
+    expect(forms).toContain("defaultChecked={studied}");
+    expect(forms).not.toContain("checked={studied}");
+  });
+
+  it("nomeia ↑, ↓ e Arquivar pelo item, não pelo tipo", () => {
+    // Cinco módulos davam dez "Mover módulo para cima" iguais.
+    expect(forms).toContain("`Mover ${nome} para cima`");
+    expect(forms).toContain("`Mover ${nome} para baixo`");
+    expect(forms).toContain("Restaurar ${tipo} ${nome}");
+    for (const arquivo of [modulo, aulaLinha]) {
+      expect(arquivo).toContain("nome={title}");
+    }
   });
 
   it("move por glifo de texto, como o resto do handoff", () => {

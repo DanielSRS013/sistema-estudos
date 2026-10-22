@@ -87,7 +87,8 @@ async function CourseList() {
                   action={setCourseArchived}
                   id={course.id}
                   archived
-                  label="curso"
+                  tipo="curso"
+                  nome={course.title}
                 />
               </li>
             ))}

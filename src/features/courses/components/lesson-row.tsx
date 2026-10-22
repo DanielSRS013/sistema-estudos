@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   acao,
@@ -41,6 +41,8 @@ export function LessonRow({
   studiedAction: Action;
 }) {
   const [renomeando, setRenomeando] = useState(false);
+  // O foco volta para o botão que abriu o campo — ver `module-row.tsx`.
+  const botaoRenomear = useRef<HTMLButtonElement>(null);
 
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-rule py-1.5">
@@ -57,7 +59,10 @@ export function LessonRow({
           id={id}
           current={title}
           label="da aula"
-          onDone={() => setRenomeando(false)}
+          onDone={() => {
+            setRenomeando(false);
+            botaoRenomear.current?.focus();
+          }}
         />
       ) : (
         <Link
@@ -76,6 +81,7 @@ export function LessonRow({
         className="flex flex-wrap items-center gap-1"
       >
         <button
+          ref={botaoRenomear}
           type="button"
           onClick={() => setRenomeando(true)}
           className={acao}
@@ -87,13 +93,14 @@ export function LessonRow({
           id={id}
           canUp={canUp}
           canDown={canDown}
-          label="aula"
+          nome={title}
         />
         <ArchiveButton
           action={archiveAction}
           id={id}
           archived={false}
-          label="aula"
+          tipo="aula"
+          nome={title}
         />
       </div>
     </li>

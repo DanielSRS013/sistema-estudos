@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 
 import { idleState, type ActionState } from "@/shared/action-state";
+import { concluiu, decidirRenomeacao } from "../form-flow";
 import { cn } from "@/shared/cn";
 import { buttonVariants } from "@/shared/ui/button";
 
@@ -29,12 +30,13 @@ export const acao =
 
 /**
  * Chama `aoConcluir` quando uma submissão nova volta bem-sucedida — e só aí.
+ * Quem decide é `concluiu`, que tem teste; aqui fica só a parte que é React.
  *
- * O estado ocioso de uma Server Action é `{ ok: true }`, igual ao de sucesso,
- * então "se `state.ok`, feche" fecharia o formulário na montagem. E o retorno
- * de chamada vem de quem abriu, com identidade nova a cada render do pai: nas
- * dependências de um efeito, ele faria o efeito correr de novo sem que nada
- * tivesse acontecido. O gatilho é a troca de estado, nada mais.
+ * O retorno de chamada vem de quem abriu, com identidade nova a cada render do
+ * pai: nas dependências de um efeito, ele faria o efeito correr de novo sem
+ * que nada tivesse acontecido — e, quando o retorno fecha o formulário, isso
+ * travava a página inteira. Por isso ele entra por `ref`, fora das
+ * dependências.
  */
 function useConclusao(state: ActionState, aoConcluir: () => void) {
   const anterior = useRef<ActionState | null>(null);
@@ -45,15 +47,11 @@ function useConclusao(state: ActionState, aoConcluir: () => void) {
   });
 
   useEffect(() => {
-    if (anterior.current === null) {
-      anterior.current = state;
-      return;
-    }
+    const fechou = concluiu(anterior.current, state);
 
-    if (anterior.current !== state) {
-      anterior.current = state;
-      if (state.ok) chamada.current();
-    }
+    anterior.current = state;
+
+    if (fechou) chamada.current();
   }, [state]);
 }
 
@@ -80,6 +78,8 @@ function Hidden({ values }: { values: Record<string, string> }) {
 
 /* ─────────────────────────────── criar ───────────────────────────────── */
 
+const VAZIO = { title: "", track: "", provider: "" };
+
 export function CreateForm({
   action,
   hidden = {},
@@ -98,19 +98,33 @@ export function CreateForm({
   onDone?: () => void;
 }) {
   const [state, formAction, pending] = useActionState(action, idleState);
-  const form = useRef<HTMLFormElement>(null);
+  // Campos controlados: ao fim de uma action o React repõe o formulário no
+  // estado inicial, e numa submissão recusada ("o título precisa ter no
+  // máximo 200 caracteres") isso apagava o que a pessoa tinha acabado de
+  // digitar, junto com a especialização e a instituição. O estado sobrevive à
+  // reposição; o sucesso é que limpa.
+  const [valores, setValores] = useState(VAZIO);
 
   useConclusao(state, () => {
-    form.current?.reset();
+    setValores(VAZIO);
     onDone?.();
   });
 
+  function muda(campo_: keyof typeof VAZIO) {
+    return (event: React.ChangeEvent<HTMLInputElement>) => {
+      const valor = event.currentTarget.value;
+      setValores((atuais) => ({ ...atuais, [campo_]: valor }));
+    };
+  }
+
   return (
-    <form ref={form} action={formAction} className="w-full space-y-2">
+    <form action={formAction} className="w-full space-y-2">
       <Hidden values={hidden} />
       <div className="flex flex-wrap items-center gap-2">
         <input
           name="title"
+          value={valores.title}
+          onChange={muda("title")}
           placeholder={placeholder}
           aria-label={placeholder}
           autoComplete="off"
@@ -121,6 +135,8 @@ export function CreateForm({
           <>
             <input
               name="track"
+              value={valores.track}
+              onChange={muda("track")}
               placeholder="Especialização (opcional)"
               aria-label="Especialização (opcional)"
               autoComplete="off"
@@ -128,6 +144,8 @@ export function CreateForm({
             />
             <input
               name="provider"
+              value={valores.provider}
+              onChange={muda("provider")}
               placeholder="Instituição (opcional)"
               aria-label="Instituição (opcional)"
               autoComplete="off"
@@ -170,10 +188,12 @@ export function CreateDisclosure({
   withCourseMeta?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
+  const botao = useRef<HTMLButtonElement>(null);
 
   return (
     <div className="contents">
       <button
+        ref={botao}
         type="button"
         aria-expanded={aberto}
         onClick={() => setAberto((valor) => !valor)}
@@ -181,7 +201,17 @@ export function CreateDisclosure({
       >
         {buttonLabel}
       </button>
-      {aberto ? <CreateForm {...form} onDone={() => setAberto(false)} /> : null}
+      {aberto ? (
+        <CreateForm
+          {...form}
+          onDone={() => {
+            // Criado: o formulário some e o foco volta para o botão, em vez
+            // de cair no `<body>`.
+            setAberto(false);
+            botao.current?.focus();
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -213,24 +243,26 @@ export function RenameForm({
   onDone: () => void;
 }) {
   const [state, formAction, pending] = useActionState(action, idleState);
+  const [valor, setValor] = useState(current);
   const form = useRef<HTMLFormElement>(null);
 
   // Cada submissão devolve um estado novo: o que deu certo fecha a edição. O
-  // que falhou deixa o campo aberto, com a mensagem, para uma segunda
-  // tentativa — e `pending` já voltou a `false`, então ela é possível.
+  // que falhou deixa o campo aberto, com a mensagem e com o que foi digitado
+  // — por isso o campo é controlado, e não `defaultValue`: a reposição que o
+  // React faz ao fim da action punha o nome antigo de volta, e aí o Enter
+  // seguinte via "não mudou" e fechava sem gravar.
   useConclusao(state, onDone);
 
-  function salvar(valor: string) {
-    // Enter grava e o campo perde o foco em seguida: sem esta trava, o blur
-    // mandaria o mesmo título uma segunda vez.
-    if (pending) return;
-
-    if (valor.trim() === "" || valor === current) {
-      onDone();
-      return;
+  function salvar() {
+    switch (decidirRenomeacao({ valor, atual: current, pendente: pending })) {
+      case "ignorar":
+        return;
+      case "fechar":
+        onDone();
+        return;
+      case "enviar":
+        form.current?.requestSubmit();
     }
-
-    form.current?.requestSubmit();
   }
 
   return (
@@ -242,7 +274,8 @@ export function RenameForm({
       <Hidden values={{ id }} />
       <input
         name="title"
-        defaultValue={current}
+        value={valor}
+        onChange={(event) => setValor(event.currentTarget.value)}
         aria-label={`Novo nome ${label}`}
         autoComplete="off"
         autoFocus
@@ -254,10 +287,10 @@ export function RenameForm({
 
           if (event.key === "Enter") {
             event.preventDefault();
-            salvar(event.currentTarget.value);
+            salvar();
           }
         }}
-        onBlur={(event) => salvar(event.currentTarget.value)}
+        onBlur={salvar}
         className={campoEmEdicao}
       />
       <Erro state={state} />
@@ -267,18 +300,24 @@ export function RenameForm({
 
 /* ──────────────────────────── mover e arquivar ───────────────────────── */
 
+/**
+ * ↑ e ↓ de um item. O nome acessível leva o nome do item, não o tipo: uma
+ * tela com cinco módulos abertos daria dez botões "Mover módulo para cima"
+ * iguais na lista de quem usa leitor de tela.
+ */
 export function MoveButtons({
   action,
   id,
   canUp,
   canDown,
-  label,
+  nome,
 }: {
   action: Action;
   id: string;
   canUp: boolean;
   canDown: boolean;
-  label: string;
+  /** O nome do item, como ele aparece na linha. */
+  nome: string;
 }) {
   const [state, formAction, pending] = useActionState(action, idleState);
 
@@ -290,7 +329,7 @@ export function MoveButtons({
         name="direction"
         value="up"
         disabled={pending || !canUp}
-        aria-label={`Mover ${label} para cima`}
+        aria-label={`Mover ${nome} para cima`}
         className={acao}
       >
         <span aria-hidden="true">↑</span>
@@ -300,7 +339,7 @@ export function MoveButtons({
         name="direction"
         value="down"
         disabled={pending || !canDown}
-        aria-label={`Mover ${label} para baixo`}
+        aria-label={`Mover ${nome} para baixo`}
         className={acao}
       >
         <span aria-hidden="true">↓</span>
@@ -314,12 +353,16 @@ export function ArchiveButton({
   action,
   id,
   archived,
-  label,
+  tipo,
+  nome,
 }: {
   action: Action;
   id: string;
   archived: boolean;
-  label: string;
+  /** "curso", "módulo", "aula" — o texto do botão é só "Arquivar". */
+  tipo: string;
+  /** O nome do item: na seção de arquivados são N botões "Restaurar". */
+  nome: string;
 }) {
   const [state, formAction, pending] = useActionState(action, idleState);
 
@@ -329,7 +372,9 @@ export function ArchiveButton({
       <button
         type="submit"
         disabled={pending}
-        aria-label={archived ? `Restaurar ${label}` : `Arquivar ${label}`}
+        aria-label={
+          archived ? `Restaurar ${tipo} ${nome}` : `Arquivar ${tipo} ${nome}`
+        }
         className={acao}
       >
         {archived ? "Restaurar" : "Arquivar"}
@@ -359,10 +404,21 @@ export function StudiedCheckbox({
 }) {
   const [state, formAction] = useActionState(action, idleState);
   const form = useRef<HTMLFormElement>(null);
+  const intencao = useRef<HTMLInputElement>(null);
 
   return (
     <form ref={form} action={formAction} className="flex items-center">
-      <Hidden values={{ id, studied: studied ? "false" : "true" }} />
+      <input type="hidden" name="id" value={id} />
+      {/* O que vai para o banco é o estado da caixa no momento do clique, e
+          não o inverso do que o servidor mandou: dois cliques seguidos, antes
+          de a primeira gravação voltar, enviavam duas vezes o mesmo valor e a
+          segunda escolha se perdia. */}
+      <input
+        ref={intencao}
+        type="hidden"
+        name="studied"
+        defaultValue={studied ? "false" : "true"}
+      />
       {/* `defaultChecked`, não `checked`: ao fim de uma Server Action o React
           repõe o formulário no estado inicial, e um `checked` controlado
           voltava a desmarcar a caixa que a pessoa acabou de marcar — o banco
@@ -372,7 +428,12 @@ export function StudiedCheckbox({
         type="checkbox"
         defaultChecked={studied}
         aria-label={`Aula estudada: ${title}`}
-        onChange={() => form.current?.requestSubmit()}
+        onChange={(event) => {
+          if (intencao.current !== null) {
+            intencao.current.value = String(event.currentTarget.checked);
+          }
+          form.current?.requestSubmit();
+        }}
         className="size-4.5 shrink-0 accent-accent"
       />
       {state.ok ? null : (
