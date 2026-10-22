@@ -1,19 +1,12 @@
-import { desc, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { courses, lessons, modules, notes } from "@/db/schema";
+import { cards, courses, lessons, modules, notes } from "@/db/schema";
 
-import { ABRE, FECHA, splitHighlight, type Segmento } from "./highlight";
+import { ABRE, FECHA } from "./highlight";
+import { mesclarHits, type CardRow, type NoteRow, type SearchHit } from "./hits";
 
-export type SearchHit = {
-  id: string;
-  /** Título com os termos recortados para destaque. */
-  title: Segmento[];
-  /** Trechos do corpo onde o termo aparece. */
-  snippet: Segmento[];
-  path: string;
-  updatedAt: Date;
-};
+export type { SearchHit } from "./hits";
 
 const LIMITE = 30;
 
@@ -30,7 +23,10 @@ const OPCOES = [
   "MaxWords=24",
 ].join(",");
 
-/** Opções do título: a linha é curta, então destaca-se ela inteira. */
+/**
+ * Opções de linha curta: título da nota, face e resposta do card. A linha
+ * inteira é exibida, então destaca-se ela inteira em vez de recortar fragmento.
+ */
 const OPCOES_TITULO = [
   `StartSel=${ABRE}`,
   `StopSel=${FECHA}`,
@@ -38,44 +34,86 @@ const OPCOES_TITULO = [
 ].join(",");
 
 /**
- * Busca full-text nas notas pela coluna gerada `search_vector`, com a
- * configuração `portuguese` — SPEC §5. Sem serviço externo e sem varredura:
- * o índice GIN responde.
+ * Busca full-text em notas **e** cards pelas colunas geradas `search_vector`,
+ * com a configuração `portuguese` — SPEC §5. Sem serviço externo e sem
+ * varredura: os dois índices GIN respondem.
+ *
+ * Acento é opcional nas duas pontas. Dentro do vetor quem tira o diacrítico é
+ * `immutable_unaccent` (migration 0005); aqui ele tira do que o usuário
+ * digitou, e é por isso que "projecao" encontra "projeção". O stemmer
+ * português sozinho não faz isso — ele corta sufixo, não acento.
  *
  * `websearch_to_tsquery` aceita o que o usuário digita de verdade, incluindo
  * aspas e `or`, e não levanta erro de sintaxe com entrada solta: termo que
  * não gera consulta simplesmente não casa com nada.
  */
-export async function searchNotes(termo: string): Promise<SearchHit[]> {
+export async function searchNotesAndCards(termo: string): Promise<SearchHit[]> {
   const limpo = termo.trim();
 
   if (limpo === "") return [];
 
-  const consulta = sql`websearch_to_tsquery('portuguese', ${limpo})`;
+  const consulta = sql`websearch_to_tsquery('portuguese', immutable_unaccent(${limpo}))`;
 
-  const rows = await db
-    .select({
-      id: notes.id,
-      title: sql<string>`ts_headline('portuguese', ${notes.title}, ${consulta}, ${OPCOES_TITULO})`,
-      snippet: sql<string>`ts_headline('portuguese', ${notes.content}, ${consulta}, ${OPCOES})`,
-      updatedAt: notes.updatedAt,
-      courseTitle: courses.title,
-      moduleTitle: modules.title,
-      lessonTitle: lessons.title,
-    })
-    .from(notes)
-    .innerJoin(lessons, sql`${lessons.id} = ${notes.lessonId}`)
-    .innerJoin(modules, sql`${modules.id} = ${lessons.moduleId}`)
-    .innerJoin(courses, sql`${courses.id} = ${modules.courseId}`)
-    .where(sql`${notes.searchVector} @@ ${consulta}`)
-    .orderBy(sql`ts_rank_cd(${notes.searchVector}, ${consulta}) desc`, desc(notes.updatedAt))
-    .limit(LIMITE);
+  // O `ts_headline` não lê a coluna gerada: ele reanalisa o texto cru, cujos
+  // lexemas ainda têm o diacrítico. Com só a consulta sem acento ele não
+  // encontra o que casar e devolve o começo do texto, sem marca — a busca acha
+  // e não aponta. Daí o `||`: a consulta do destaque é a união das duas
+  // escritas, e cada uma pega o seu lado (texto acentuado com termo acentuado,
+  // texto sem acento com termo sem acento).
+  const destaque = sql`(${consulta}) || websearch_to_tsquery('portuguese', ${limpo})`;
 
-  return rows.map((row) => ({
-    id: row.id,
-    title: splitHighlight(row.title),
-    snippet: splitHighlight(row.snippet),
-    path: `${row.courseTitle} · ${row.moduleTitle} · ${row.lessonTitle}`,
-    updatedAt: row.updatedAt,
-  }));
+  const [notaRows, cardRows] = await Promise.all([
+    db
+      .select({
+        id: notes.id,
+        title: sql<string>`ts_headline('portuguese', ${notes.title}, ${destaque}, ${OPCOES_TITULO})`,
+        snippet: sql<string>`ts_headline('portuguese', ${notes.content}, ${destaque}, ${OPCOES})`,
+        kind: notes.kind,
+        updatedAt: notes.updatedAt,
+        rank: sql<number>`ts_rank_cd(${notes.searchVector}, ${consulta})`,
+        courseTitle: courses.title,
+        moduleTitle: modules.title,
+        lessonTitle: lessons.title,
+      })
+      .from(notes)
+      .innerJoin(lessons, sql`${lessons.id} = ${notes.lessonId}`)
+      .innerJoin(modules, sql`${modules.id} = ${lessons.moduleId}`)
+      .innerJoin(courses, sql`${courses.id} = ${modules.courseId}`)
+      .where(sql`${notes.searchVector} @@ ${consulta}`)
+      .limit(LIMITE),
+
+    // Card arquivado fica fora: ele saiu de circulação. Suspenso entra, com o
+    // estado dizendo "suspenso" — quem busca quer achar o que escreveu.
+    db
+      .select({
+        id: cards.id,
+        noteId: cards.noteId,
+        prompt: sql<string>`ts_headline('portuguese', ${cards.prompt}, ${destaque}, ${OPCOES_TITULO})`,
+        answer: sql<string>`ts_headline('portuguese', ${cards.answer}, ${destaque}, ${OPCOES_TITULO})`,
+        kind: cards.kind,
+        state: cards.state,
+        suspended: cards.suspended,
+        noteTitle: notes.title,
+        updatedAt: notes.updatedAt,
+        rank: sql<number>`ts_rank_cd(${cards.searchVector}, ${consulta})`,
+        courseTitle: courses.title,
+        moduleTitle: modules.title,
+        lessonTitle: lessons.title,
+      })
+      .from(cards)
+      .innerJoin(notes, sql`${notes.id} = ${cards.noteId}`)
+      .innerJoin(lessons, sql`${lessons.id} = ${notes.lessonId}`)
+      .innerJoin(modules, sql`${modules.id} = ${lessons.moduleId}`)
+      .innerJoin(courses, sql`${courses.id} = ${modules.courseId}`)
+      .where(
+        sql`${cards.searchVector} @@ ${consulta} and ${cards.archivedAt} is null`,
+      )
+      .limit(LIMITE),
+  ]);
+
+  return mesclarHits(
+    notaRows satisfies NoteRow[],
+    cardRows satisfies CardRow[],
+    LIMITE,
+  );
 }
