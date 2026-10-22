@@ -735,6 +735,15 @@ describe("as três telas de cursos do handoff", () => {
     expect(aula).toContain("escrever a primeira nota");
   });
 
+  it("não põe o botão da primeira nota dentro de um parágrafo", () => {
+    // O convite tem um botão no meio da frase, e botão de Server Action é um
+    // `<form>`: dentro de `<p>` o navegador fecha o parágrafo antes dele e a
+    // árvore do servidor deixa de bater com a do cliente.
+    const antes = aula.slice(0, aula.indexOf("Esta aula ainda não tem notas"));
+    const abertura = antes.slice(antes.lastIndexOf("<"));
+    expect(abertura.startsWith("<p")).toBe(false);
+  });
+
   it("anuncia o estado de estudada por `role=status`", () => {
     expect(aula).toContain('role="status"');
   });

@@ -70,7 +70,7 @@ async function LessonDetail({
         </div>
 
         {notas.length === 0 ? (
-          <p className="measure pt-4 text-base">
+          <div className="measure pt-4 text-base">
             Esta aula ainda não tem notas. Comece pela anotação da aula:{" "}
             <CaptureNoteButton
               action={createNote}
@@ -79,7 +79,7 @@ async function LessonDetail({
               inline
             />
             .
-          </p>
+          </div>
         ) : (
           <ul>
             {notas.map((nota) => (

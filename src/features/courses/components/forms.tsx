@@ -27,6 +27,36 @@ const campoEmEdicao =
 export const acao =
   "inline-flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded-sm border border-rule px-2 text-xs text-ink disabled:opacity-50";
 
+/**
+ * Chama `aoConcluir` quando uma submissão nova volta bem-sucedida — e só aí.
+ *
+ * O estado ocioso de uma Server Action é `{ ok: true }`, igual ao de sucesso,
+ * então "se `state.ok`, feche" fecharia o formulário na montagem. E o retorno
+ * de chamada vem de quem abriu, com identidade nova a cada render do pai: nas
+ * dependências de um efeito, ele faria o efeito correr de novo sem que nada
+ * tivesse acontecido. O gatilho é a troca de estado, nada mais.
+ */
+function useConclusao(state: ActionState, aoConcluir: () => void) {
+  const anterior = useRef<ActionState | null>(null);
+  const chamada = useRef(aoConcluir);
+
+  useEffect(() => {
+    chamada.current = aoConcluir;
+  });
+
+  useEffect(() => {
+    if (anterior.current === null) {
+      anterior.current = state;
+      return;
+    }
+
+    if (anterior.current !== state) {
+      anterior.current = state;
+      if (state.ok) chamada.current();
+    }
+  }, [state]);
+}
+
 function Erro({ state }: { state: ActionState }) {
   if (state.ok) return null;
 
@@ -70,12 +100,10 @@ export function CreateForm({
   const [state, formAction, pending] = useActionState(action, idleState);
   const form = useRef<HTMLFormElement>(null);
 
-  useEffect(() => {
-    if (state.ok) {
-      form.current?.reset();
-      onDone?.();
-    }
-  }, [state, onDone]);
+  useConclusao(state, () => {
+    form.current?.reset();
+    onDone?.();
+  });
 
   return (
     <form ref={form} action={formAction} className="w-full space-y-2">
@@ -184,28 +212,24 @@ export function RenameForm({
   label: string;
   onDone: () => void;
 }) {
-  const [state, formAction] = useActionState(action, idleState);
-  const [visto, setVisto] = useState(state);
-  const [enviando, setEnviando] = useState(false);
+  const [state, formAction, pending] = useActionState(action, idleState);
   const form = useRef<HTMLFormElement>(null);
 
-  // Ajuste em render: cada submissão devolve um estado novo. O que deu certo
-  // fecha a edição; o que falhou libera o campo para uma segunda tentativa.
-  if (visto !== state) {
-    setVisto(state);
-    setEnviando(false);
-    if (state.ok) onDone();
-  }
+  // Cada submissão devolve um estado novo: o que deu certo fecha a edição. O
+  // que falhou deixa o campo aberto, com a mensagem, para uma segunda
+  // tentativa — e `pending` já voltou a `false`, então ela é possível.
+  useConclusao(state, onDone);
 
   function salvar(valor: string) {
-    if (enviando) return;
+    // Enter grava e o campo perde o foco em seguida: sem esta trava, o blur
+    // mandaria o mesmo título uma segunda vez.
+    if (pending) return;
 
     if (valor.trim() === "" || valor === current) {
       onDone();
       return;
     }
 
-    setEnviando(true);
     form.current?.requestSubmit();
   }
 
@@ -339,9 +363,14 @@ export function StudiedCheckbox({
   return (
     <form ref={form} action={formAction} className="flex items-center">
       <Hidden values={{ id, studied: studied ? "false" : "true" }} />
+      {/* `defaultChecked`, não `checked`: ao fim de uma Server Action o React
+          repõe o formulário no estado inicial, e um `checked` controlado
+          voltava a desmarcar a caixa que a pessoa acabou de marcar — o banco
+          já tinha gravado, mas a tela dizia o contrário até o refresh. Com o
+          padrão vindo do servidor, a reposição cai no valor novo. */}
       <input
         type="checkbox"
-        checked={studied}
+        defaultChecked={studied}
         aria-label={`Aula estudada: ${title}`}
         onChange={() => form.current?.requestSubmit()}
         className="size-4.5 shrink-0 accent-accent"
