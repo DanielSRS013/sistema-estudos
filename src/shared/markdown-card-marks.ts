@@ -244,10 +244,27 @@ function montarQA(
   };
 }
 
+/** Quantas quebras de linha há no texto destes nós, descendentes incluídos. */
+function quebras(nos: No[]): number {
+  return nos.reduce(
+    (total, no) =>
+      total +
+      (no.value ?? "").split("\n").length -
+      1 +
+      quebras(no.children ?? []),
+    0,
+  );
+}
+
 /**
  * O elemento que carrega o par, trocado pelo bloco da grade — e pelo parágrafo
  * do que vinha antes dele, quando havia. `div`, e não `p`: o conteúdo é uma
  * grade de quatro células, e `p` não pode conter bloco.
+ *
+ * O bloco novo herda a posição do parágrafo, adiantada pelas quebras de linha
+ * que ficaram para trás: ele começa na linha do `Q::`. É por essa linha que
+ * `cards/by-block.ts` decide em que linha da grade o card entra — sem ela, o
+ * card do par aparecia ao lado do trecho anterior.
  */
 function partirElementoQA(no: No): No[] | null {
   const filhos = no.children;
@@ -258,12 +275,15 @@ function partirElementoQA(no: No): No[] | null {
 
   if (montado === null) return null;
 
+  const linha = no.position?.start?.line;
   const bloco = elemento("div", "note-qa", montado.celulas);
   const antes = aparar(montado.antes);
 
-  return antes.length === 0
-    ? [bloco]
-    : [{ ...no, children: antes }, bloco];
+  if (linha !== undefined) {
+    bloco.position = { start: { line: linha + quebras(montado.antes) } };
+  }
+
+  return antes.length === 0 ? [bloco] : [{ ...no, children: antes }, bloco];
 }
 
 /** Troca, entre os filhos de um nó, cada elemento que carrega um par. */

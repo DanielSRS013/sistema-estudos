@@ -60,6 +60,13 @@ export type No = {
   tagName?: string;
   properties?: Record<string, unknown>;
   children?: No[];
+  /**
+   * De onde o nó veio no Markdown. O cloze não a usa; quem a lê é a grade da
+   * leitura (`cards/by-block.ts`), que põe o card na linha do bloco — e por
+   * isso o bloco Pergunta/Resposta, que nasce de uma partição, precisa saber
+   * escrevê-la.
+   */
+  position?: { start?: { line?: number } };
 };
 
 export type Raiz = { type: "root"; children: No[] };

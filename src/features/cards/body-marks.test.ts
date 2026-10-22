@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { MathMarkdown } from "@/shared/markdown";
 import { marcasDeCard } from "@/shared/markdown-card-marks";
 
+import { cardsPorBloco } from "./by-block";
 import { marcarCardsNoCorpo } from "./body-marks";
 import { parse, posicoesDeCards } from "./parser";
 
@@ -117,6 +118,41 @@ describe("o bloco Pergunta/Resposta no corpo da nota", () => {
 
     expect(html).toContain("Q:: Pergunta sozinha?");
     expect(html).not.toContain("note-qa");
+  });
+});
+
+describe("o bloco partido e a linha da grade", () => {
+  // O par `Q::` não precisa de linha em branco antes: ele e as lacunas que o
+  // antecedem são um bloco só para o Markdown, e o bloco Pergunta/Resposta
+  // nasce de uma partição do parágrafo. Se a metade nova não carregar a linha
+  // de onde veio, os cards do par caem na linha da grade do trecho anterior —
+  // que foi o que a tela mostrou.
+  const NOTA = ["O limite é {{um}}.", "Q:: E em graus?", "A:: Muda."].join("\n");
+
+  function comCards(markdown: string): string {
+    return renderToStaticMarkup(
+      createElement(MathMarkdown, {
+        content: marcarCardsNoCorpo(markdown),
+        marcarCards: true,
+        plugins: [cardsPorBloco([{ line: 1 }, { line: 2 }])],
+        components: {
+          aside: ({ node }: { node?: { properties?: Record<string, unknown> } }) =>
+            createElement(
+              "i",
+              {},
+              `[${String(node?.properties?.["data-cards"])}]`,
+            ),
+        },
+      }),
+    );
+  }
+
+  it("deixa cada card na linha do seu trecho", () => {
+    const html = comCards(NOTA);
+
+    expect(html).toContain("</p><i>[0]</i>");
+    expect(html).toContain("</div><i>[1]</i>");
+    expect(html).not.toContain("<i>[0 1]</i>");
   });
 });
 
