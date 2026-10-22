@@ -67,8 +67,16 @@ describe("a lacuna no corpo da nota", () => {
     expect(html).not.toContain("note-cloze");
   });
 
-  it("não deixa marca de controle vazar para a tela", () => {
-    const html = corpo("Uma {{lacuna}} só.");
+  it.each([
+    "Uma {{lacuna}} só.",
+    // Lacuna dentro de fórmula: o KaTeX não lê a marca e devolve um nó de
+    // erro com o trecho no atributo `title`. A fórmula já saía quebrada assim
+    // na face do card antes desta fatia — SPEC §3.1 escreve a aninhação ao
+    // contrário —, mas caractere de uso privado não pode sobrar no DOM.
+    "Vale $x = {{2}}$ sempre.",
+    "Em bloco:\n\n$$a = {{b}}$$",
+  ])("não deixa marca de controle vazar para a tela em %j", (nota) => {
+    const html = corpo(nota);
 
     for (const marca of Object.values(marcasDeCard)) {
       expect(html).not.toContain(marca);
@@ -154,6 +162,46 @@ describe("o bloco partido e a linha da grade", () => {
     expect(html).toContain("</div><i>[1]</i>");
     expect(html).not.toContain("<i>[0 1]</i>");
   });
+
+  it("não desloca a grade quando a lacuna atravessa duas linhas", () => {
+    // Resposta longa numa coluna de 68ch quebra em duas linhas, e o `{{…}}`
+    // vai junto. A linha do card é contada no texto cru; a do bloco, no texto
+    // marcado. Se marcar encurtar o texto, as duas contagens divergem e o card
+    // aparece na margem de outro trecho — sem nada na tela acusando.
+    const nota = [
+      "Começa {{muito", // 1
+      "longa}} aqui.", // 2
+      "", // 3
+      "Segundo bloco.", // 4
+      "", // 5
+      "Terceiro com {{alvo}}.", // 6
+    ].join("\n");
+
+    const html = renderToStaticMarkup(
+      createElement(MathMarkdown, {
+        content: marcarCardsNoCorpo(nota),
+        marcarCards: true,
+        plugins: [cardsPorBloco([{ line: 1 }, { line: 6 }])],
+        components: {
+          aside: ({
+            node,
+          }: {
+            node?: { properties?: Record<string, unknown> };
+          }) =>
+            createElement(
+              "i",
+              {},
+              `[${String(node?.properties?.["data-cards"])}]`,
+            ),
+        },
+      }),
+    );
+
+    expect(html).toContain("aqui.</p><i>[0]</i>");
+    expect(html).toContain('href="#c2">2</a>.</p><i>[1]</i>');
+    // o bloco do meio não gera card: nada de margem nele
+    expect(html).not.toContain("Segundo bloco.</p><i>");
+  });
 });
 
 describe("as marcas e o parser contam a mesma coisa", () => {
@@ -166,6 +214,7 @@ describe("as marcas e o parser contam a mesma coisa", () => {
     "Vazia {{}} e válida {{c}}.",
     "Q:: Só pergunta?\n\nDepois {{d}}.",
     "Com dica {{x::dica}}.\n\nQ:: P?\nA:: R.\n\nFinal {{y}}.",
+    "Lacuna {{que atravessa\nduas linhas}} aqui.\n\nOutro bloco {{z}}.",
     "Nada aqui.",
   ];
 

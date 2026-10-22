@@ -402,9 +402,13 @@
   margin-top: 0.75rem;
 }
 
+/* Na margem a face é descendente de `.note-prose`, que dá fundo `--muted` e
+   padding ao código inline. Na face do card o handoff pede Mono e nada mais. */
 .card-face code {
   font-family: var(--font-plex-mono), ui-monospace, monospace;
   font-size: 0.9em;
+  background: none;
+  padding: 0;
 }
 
 .card-face :is(ul, ol) {

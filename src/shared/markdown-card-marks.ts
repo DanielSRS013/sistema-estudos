@@ -315,9 +315,29 @@ function trocarQA(no: No): void {
  * Sobra de marca nunca deveria existir — são escritas em par —, mas se o
  * Markdown separar o par em nós que não são irmãos, o usuário veria um
  * caractere fantasma no meio da frase. Melhor o sublinhado faltar.
+ *
+ * A limpeza inclui os atributos, e não só o texto: lacuna escrita dentro de
+ * uma fórmula (`$x = {{2}}$`, a aninhação ao contrário da que SPEC §3.1
+ * prescreve) faz o KaTeX devolver um nó de erro com o trecho copiado para o
+ * `title` — e de lá a marca iria para o DOM.
  */
+function limparValor(valor: unknown): unknown {
+  return typeof valor === "string" ? valor.replace(TODAS, "") : valor;
+}
+
 function limpar(no: No): void {
   if (no.value !== undefined) no.value = no.value.replace(TODAS, "");
+
+  const propriedades = no.properties;
+
+  if (propriedades !== undefined) {
+    no.properties = Object.fromEntries(
+      Object.entries(propriedades).map(([chave, valor]) => [
+        chave,
+        limparValor(valor),
+      ]),
+    );
+  }
 
   no.children?.forEach(limpar);
 }

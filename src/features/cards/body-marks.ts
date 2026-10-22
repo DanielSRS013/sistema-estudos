@@ -13,17 +13,30 @@ import { posicoesDeCards } from "./parser";
 /** Um trecho do texto e o que entra no lugar dele. */
 type Edicao = { inicio: number; fim: number; texto: string };
 
+function quebras(texto: string): number {
+  return texto.split("\n").length - 1;
+}
+
 function edicoesDe(markdown: string): Edicao[] {
   return posicoesDeCards(markdown).flatMap((posicao): Edicao[] => {
     // O número é o ordinal como a tela o conta: base 1, igual à âncora `#cN`.
     const numero = `${posicao.ordinal + 1}${marcasDeCard.numero}`;
 
     if (posicao.kind === "cloze") {
+      const trocado = `${marcasDeCard.lacuna}${posicao.answer}${marcasDeCard.fecha}${numero}`;
+      // A resposta sai do parser numa linha só, mas o `{{…}}` que ela substitui
+      // pode atravessar duas — e aí o texto marcado ficaria mais curto que a
+      // nota. As linhas do card são contadas no texto cru e as do bloco no
+      // marcado: encurtar aqui põe o card na margem de outro trecho. As quebras
+      // perdidas voltam depois do sobrescrito, onde são quebra leve e não mudam
+      // nem o bloco nem o que se lê.
+      const perdidas = quebras(markdown.slice(posicao.inicio, posicao.fim));
+
       return [
         {
           inicio: posicao.inicio,
           fim: posicao.fim,
-          texto: `${marcasDeCard.lacuna}${posicao.answer}${marcasDeCard.fecha}${numero}`,
+          texto: trocado + "\n".repeat(perdidas),
         },
       ];
     }

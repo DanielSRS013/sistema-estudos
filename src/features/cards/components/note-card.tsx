@@ -38,7 +38,10 @@ export function NoteCardBox({
   return (
     <article
       id={ancora ? cardAnchor(card.ordinal) : undefined}
-      className="grid gap-2 rounded-sm border border-rule bg-paper p-3"
+      /* `font-sans` explícito: na margem a caixa é filha de `.note-prose`, que
+         é serif, e na seção de baixo é filha do `body`, que é sans — sem isto o
+         mesmo card tem duas tipografias em duas larguras. */
+      className="grid gap-2 rounded-sm border border-rule bg-paper p-3 font-sans"
     >
       <div className="flex items-center justify-between gap-2 text-xs text-ink-soft">
         <span>
@@ -68,6 +71,7 @@ export function NoteCardBox({
           action={setCardSuspended}
           id={card.id}
           suspended={suspenso}
+          referencia={card.ordinal + 1}
         />
       </div>
     </article>

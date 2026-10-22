@@ -275,6 +275,27 @@ describe("a grade da leitura da nota", () => {
 describe("o card da margem de NoteCard.dc.html", () => {
   const cards = arquivosDeFonte(["features/cards"]);
 
+  it("não deixa o card herdar a serif do corpo da nota", () => {
+    // A caixa do card é filha de `.note-prose` na margem e filha do `body` na
+    // seção de baixo: sem família própria, o mesmo card sai em serif numa
+    // largura e em sans na outra. `NoteCard.dc.html` põe a sans no `article` e
+    // guarda a serif para a face.
+    const caixa = readFileSync(
+      join(raiz, "features", "cards", "components", "note-card.tsx"),
+      "utf8",
+    );
+    expect(caixa).toContain("font-sans");
+  });
+
+  it("tira o fundo do código dentro da face do card", () => {
+    // `.note-prose code` tem fundo `--muted` e padding; na face do card o
+    // handoff pede Mono sem fundo, e a margem está dentro de `.note-prose`.
+    const face = css.slice(css.indexOf(".card-face code {"));
+    const regra = face.slice(0, face.indexOf("}"));
+    expect(regra).toContain("background: none;");
+    expect(regra).toContain("padding: 0;");
+  });
+
   it("não volta a dizer o vínculo com o trecho por opacidade", () => {
     // A Fatia 11 apagava a 50% o card fora da viewport; o handoff resolve por
     // posição na grade. Opacidade de novo aqui seria dois idiomas para a mesma
