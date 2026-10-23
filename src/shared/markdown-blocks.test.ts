@@ -48,10 +48,14 @@ describe("blocos", () => {
 
     expect(blocos(indentada)).toEqual([{ linhas: ["fora"], primeiraLinha: 5 }]);
 
+    // A marca de quatro espaços não abre cerca: se abrisse, "ainda texto"
+    // seria conteúdo de código e não sobraria bloco nenhum. Ela abre bloco
+    // indentado, então a própria linha sai da varredura e o texto sem recuo
+    // depois dela é um parágrafo novo, na linha 2.
     const demais = ["    ```", "ainda texto"].join("\n");
 
     expect(blocos(demais)).toEqual([
-      { linhas: ["    ```", "ainda texto"], primeiraLinha: 1 },
+      { linhas: ["ainda texto"], primeiraLinha: 2 },
     ]);
   });
 
@@ -65,6 +69,38 @@ describe("blocos", () => {
     const markdown = ["antes", "", "```", "dentro", "", "ainda dentro"].join("\n");
 
     expect(blocos(markdown)).toEqual([{ linhas: ["antes"], primeiraLinha: 1 }]);
+  });
+
+  it("descarta o bloco indentado por quatro espaços", () => {
+    const markdown = [
+      "antes",
+      "",
+      "    codigo = 1",
+      "    outra = 2",
+      "",
+      "depois",
+    ].join("\n");
+
+    expect(blocos(markdown)).toEqual([
+      { linhas: ["antes"], primeiraLinha: 1 },
+      { linhas: ["depois"], primeiraLinha: 6 },
+    ]);
+  });
+
+  it("descarta o bloco indentado por tabulação", () => {
+    const markdown = ["\tcodigo = 1", "", "depois"].join("\n");
+
+    expect(blocos(markdown)).toEqual([{ linhas: ["depois"], primeiraLinha: 3 }]);
+  });
+
+  it("não trata como código a linha indentada que continua um parágrafo", () => {
+    // Regra do CommonMark: bloco indentado não interrompe parágrafo. A linha
+    // recuada depois de texto é continuação, e o que está nela ainda conta.
+    const markdown = ["texto", "    ainda o mesmo parágrafo"].join("\n");
+
+    expect(blocos(markdown)).toEqual([
+      { linhas: ["texto", "    ainda o mesmo parágrafo"], primeiraLinha: 1 },
+    ]);
   });
 
   it("devolve lista vazia para nota vazia ou só de brancos", () => {

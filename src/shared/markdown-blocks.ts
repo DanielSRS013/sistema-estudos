@@ -10,6 +10,15 @@
 /** Abertura ou fechamento de bloco de código cercado. */
 const CERCA = /^\s{0,3}([`]{3,}|~{3,})/;
 
+/**
+ * Recuo que faz bloco de código indentado: quatro espaços ou uma tabulação.
+ *
+ * O bloco indentado é código tanto quanto o cercado, e o Markdown o renderiza
+ * dentro de um `<pre>`. Lido como parágrafo, ele virava card do exemplo de
+ * sintaxe e as marcas da lacuna apareciam no meio do código.
+ */
+const RECUO = /^(?: {4}|\t)/;
+
 export type Bloco = {
   linhas: string[];
   /** Linha da nota onde o bloco começa, base 1. As linhas são contíguas. */
@@ -25,6 +34,9 @@ export function blocos(markdown: string): Bloco[] {
   // Cerca aberta: guarda o caractere e o comprimento, porque o fechamento
   // precisa ser pelo menos tão longo quanto a abertura.
   let cerca: { char: string; tamanho: number } | null = null;
+  // Bloco indentado aberto. Não guarda nada além do estado: o fechamento é a
+  // primeira linha que não é recuada nem em branco.
+  let recuado = false;
 
   const fechaBloco = () => {
     if (atual) encontrados.push(atual);
@@ -42,9 +54,23 @@ export function blocos(markdown: string): Bloco[] {
       return;
     }
 
+    if (recuado) {
+      // Linha em branco não fecha o bloco indentado: o recuo que vem depois
+      // dela continua o mesmo código. Fecha a primeira linha sem recuo.
+      if (linha.trim() === "" || RECUO.test(linha)) return;
+      recuado = false;
+    }
+
     if (marca) {
       fechaBloco();
       cerca = { char: marca.slice(0, 1), tamanho: marca.length };
+      return;
+    }
+
+    // Bloco indentado não interrompe parágrafo (CommonMark): com bloco aberto,
+    // a linha recuada é continuação, e o que está nela ainda conta.
+    if (atual === null && RECUO.test(linha)) {
+      recuado = true;
       return;
     }
 

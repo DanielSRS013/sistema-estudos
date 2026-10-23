@@ -126,6 +126,26 @@ describe("o que o parser ignora", () => {
     expect(cards).toEqual([]);
   });
 
+  it("não lê nada dentro de bloco de código indentado por quatro espaços", () => {
+    // O bloco indentado é código tanto quanto o cercado. Lido como parágrafo,
+    // ele gerava card do exemplo de sintaxe e as marcas da lacuna
+    // renderizavam dentro do `<pre>`.
+    const { cards, issues } = parse(
+      [
+        "Exemplo da sintaxe:",
+        "",
+        "    A capital é {{Brasília}}.",
+        "    Q:: Isto é um exemplo?",
+        "    A:: É.",
+        "",
+        "Fim.",
+      ].join("\n"),
+    );
+
+    expect(cards).toEqual([]);
+    expect(issues).toEqual([]);
+  });
+
   it("não gera card quando a chave dupla está escapada", () => {
     const { cards, issues } = parse(
       "Para escrever uma lacuna, use \\{{resposta}}.",
