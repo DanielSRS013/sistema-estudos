@@ -137,6 +137,12 @@
      o contexto mora: 1,45 em `.card-face`, 1,6 em `.note-prose pre`. */
   --leading-prose: 1.65;
 
+  /* O trecho de resultado da busca: Serif 15 com entrelinha 1,6, o degrau que
+     o handoff pede ali e em nenhum outro lugar. Ganha nome porque a escala de
+     entrelinha do Tailwind não tem 1,6 e a Fatia 13 proibiu valor arbitrário
+     em `className`. */
+  --leading-snippet: 1.6;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -518,6 +524,17 @@
 .note-card-face {
   font-size: var(--text-sm);
   line-height: 1.5;
+}
+
+/* ──────────── face do card na página do conceito (handoff §6) ───────────
+   A mesma serif, um degrau abaixo do modo foco: 17px com entrelinha 1,55. Lá o
+   card é a linha inteira da lista, não uma caixa na margem, e por isso lê em
+   corpo de texto em vez dos 15px da margem. O filete da lacuna oculta vem de
+   `.card-face`, que acompanha esta classe.                                  */
+
+.tag-card-face {
+  font-size: var(--text-base);
+  line-height: 1.55;
 }
 
 /* Card suspenso: a face inteira recua para `--ink-soft`, e o badge de estado

@@ -2,10 +2,14 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { noteTags, notes } from "@/db/schema";
+import type { NoteKind } from "@/features/notes/kind";
+import { slugify } from "@/shared/slug";
 
 export type TagNote = {
   id: string;
   title: string;
+  /** "Anotação de aula", "Resumo", "Resolução" — o meta acima do título. */
+  kind: NoteKind;
   updatedAt: Date;
   /** "Curso · Módulo · Aula", para situar a nota sem abrir. */
   path: string;
@@ -52,6 +56,7 @@ export async function getTagBySlug(slug: string): Promise<TagDetail | null> {
     .select({
       id: notes.id,
       title: notes.title,
+      kind: notes.kind,
       updatedAt: notes.updatedAt,
       lessonId: notes.lessonId,
     })
@@ -117,6 +122,7 @@ export async function getTagBySlug(slug: string): Promise<TagDetail | null> {
       .map((nota) => ({
         id: nota.id,
         title: nota.title,
+        kind: nota.kind,
         updatedAt: nota.updatedAt,
         lessonId: nota.lessonId,
         path: trilhaPorNota.get(nota.id)?.path ?? "",
@@ -125,4 +131,30 @@ export async function getTagBySlug(slug: string): Promise<TagDetail | null> {
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()),
     cards: cardsDasNotas,
   };
+}
+
+/**
+ * O conceito que a busca sem resultado oferece como saída.
+ *
+ * O handoff escreve "ou abra o conceito #projecao-vetorial", com uma tag de
+ * verdade. Montar o link com o termo digitado daria 404 na maior parte das
+ * vezes — é justamente o termo que não encontrou nada —, então a oferta é uma
+ * tag existente cujo slug contenha o que foi digitado: "projecao" oferece
+ * `#projecao-vetorial`. Sem casamento não há oferta, e a frase termina antes.
+ *
+ * `slugify` é o que torna o `like` seguro: ele só deixa passar `[a-z0-9-]`, e
+ * `%` ou `_` digitados não chegam a virar curinga.
+ */
+export async function sugerirConceito(termo: string): Promise<string | null> {
+  const alvo = slugify(termo);
+
+  if (alvo === "") return null;
+
+  const achado = await db.query.tags.findFirst({
+    where: (t, { like }) => like(t.slug, `%${alvo}%`),
+    orderBy: (t, { asc }) => [asc(t.slug)],
+    columns: { slug: true },
+  });
+
+  return achado?.slug ?? null;
 }

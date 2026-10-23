@@ -815,3 +815,166 @@ describe("nenhum ícone de biblioteca em `src`", () => {
     expect(pkg).not.toContain("lucide-react");
   });
 });
+
+describe("a busca e o conceito do handoff", () => {
+  const busca = readFileSync(join(raiz, "app", "search", "page.tsx"), "utf8");
+  const conceito = readFileSync(
+    join(raiz, "app", "tags", "[tagSlug]", "page.tsx"),
+    "utf8",
+  );
+  const cardDoConceito = readFileSync(
+    join(raiz, "features", "tags", "components", "tag-card.tsx"),
+    "utf8",
+  );
+  const telas: [string, string][] = [
+    ["busca", busca],
+    ["conceito", conceito],
+  ];
+
+  it("dá às duas telas o container do handoff, não a medida de leitura", () => {
+    // 760px e 880px; `measure` são os 68ch da coluna de leitura de nota, que
+    // não é a largura de nenhuma destas duas.
+    expect(busca).toContain("max-w-190");
+    expect(busca).toContain("gap-5");
+    expect(conceito).toContain("max-w-220");
+    expect(conceito).toContain("gap-8");
+    for (const [, tela] of telas) expect(tela).not.toContain("measure");
+  });
+
+  it.each(telas)("dá ao h1 de %s os 28px com peso 500", (_nome, tela) => {
+    expect(tela).toMatch(/<h1 className="text-xl font-medium"/);
+  });
+
+  it.each(telas)("tira a Mono da tela %s", (_nome, tela) => {
+    // Meta, caminho e contagem são Sans de 13px (SPEC §6): Mono é código e
+    // sintaxe de card.
+    expect(tela).not.toContain("font-mono");
+  });
+
+  it("não repete o título da tela numa sobrancelha", () => {
+    // Havia "busca" em Mono minúsculo acima de "Buscar nas notas".
+    expect(busca).not.toContain("Buscar nas notas");
+    expect(busca).toContain(">Busca</h1>");
+  });
+
+  it("dá à busca o marco de busca e o rótulo visível", () => {
+    expect(busca).toContain('role="search"');
+    expect(busca).toContain("Buscar em notas e cards");
+    expect(busca).not.toContain("sr-only");
+  });
+
+  it("deixa o campo de busca sozinho, sem botão e sem exemplo", () => {
+    // 17px e 44px de alvo; o `type=search` submete no Enter sem botão.
+    expect(busca).toContain('type="search"');
+    expect(busca).toContain("min-h-11");
+    expect(busca).toContain("text-base");
+    expect(busca).not.toContain("placeholder");
+    expect(busca).not.toContain("buttonVariants");
+    expect(busca).not.toMatch(/<button/);
+  });
+
+  it("anuncia a contagem de resultados como estado, com o termo", () => {
+    expect(busca).toContain('role="status"');
+    expect(busca).toContain("em notas e cards");
+    // "(primeiros 30)" dizia o limite da consulta, que o handoff não mostra.
+    expect(busca).not.toContain("primeiros 30");
+  });
+
+  it("destaca o termo com o fundo do filete, não com o accent", () => {
+    // O accent é reservado a link, foco e item ativo (SPEC §6).
+    expect(busca).toMatch(/<mark[^>]*className="[^"]*bg-rule/);
+    expect(busca).toMatch(/<mark[^>]*className="[^"]*font-semibold/);
+    expect(busca).not.toContain("bg-accent");
+    expect(busca).not.toMatch(/<mark[^>]*className="[^"]*rounded/);
+  });
+
+  it("monta o destaque por segmentos, sem HTML de banco", () => {
+    expect(busca).not.toContain("dangerouslySetInnerHTML");
+    expect(busca).toContain("splitHighlight");
+  });
+
+  it("escreve os dois textos de saída do handoff", () => {
+    // Espaço normalizado: o texto é uma frase em JSX e o formatador escolhe
+    // onde quebrar a linha dela.
+    const frases = busca.replace(/\s+/g, " ");
+    expect(frases).toContain(
+      "Digite um termo para buscar em todas as notas e cards. Acentos são opcionais.",
+    );
+    expect(frases).toContain("Tente um termo mais curto");
+    // A promessa antiga explicava a consulta em vez de dar uma saída.
+    expect(busca).not.toContain("Tente outra palavra do conceito");
+  });
+
+  it("oferece um conceito de verdade na saída sem resultado", () => {
+    // O handoff escreve "ou abra o conceito #projecao-vetorial": o `#…` é uma
+    // tag que existe, não o termo digitado remontado em link quebrado.
+    expect(busca).toContain("sugerirConceito");
+  });
+
+  it("dá à lista de resultados os dois filetes do handoff", () => {
+    expect(busca).toMatch(/<ol className="border-t border-ink"/);
+    expect(busca).toMatch(/<li[\s\S]{0,120}?border-b border-rule py-4/);
+  });
+
+  it("deixa o trecho em Serif 15 com entrelinha 1,6 e na cor do texto", () => {
+    expect(busca).toMatch(/font-serif text-sm leading-snippet/);
+    // Era `text-ink-soft`: o trecho é o resultado, não um comentário sobre ele.
+    expect(busca).not.toMatch(/font-serif[^"]*text-ink-soft/);
+  });
+
+  it("põe o meta acima do título do resultado, com o tipo à frente", () => {
+    // O título vinha primeiro e o meta embaixo; o handoff inverte os dois.
+    expect(busca).toMatch(/\{meta\(hit\)\}[\s\S]{0,240}?<Link/);
+    expect(busca).toMatch(/\$\{hit\.tipo\} ·/);
+  });
+
+  it("escreve a contagem do conceito como frase", () => {
+    expect(conceito).toContain("Citado em ");
+    expect(conceito).not.toContain("nota · ");
+  });
+
+  it("dá aos dois H2 do conceito os 21px com filete de `--ink`", () => {
+    // As duas seções passam pelo mesmo componente, então o `h2` é um só no
+    // arquivo e os dois títulos chegam por prop. Era 15px em `--ink-soft`.
+    expect(conceito).toMatch(
+      /<h2[\s\S]{0,160}?border-b border-ink pb-2 text-lg font-medium/,
+    );
+    expect(conceito).toContain('titulo="Notas"');
+    expect(conceito).toContain('titulo="Cards"');
+    expect(conceito).not.toContain("Cards do conceito");
+  });
+
+  it("mostra as duas seções do conceito mesmo vazias", () => {
+    // Antes a seção de cards só existia com `length > 0`, e a de notas era
+    // trocada por um texto que imprimia o slug onde o usuário escreveu outra
+    // coisa.
+    expect(conceito).not.toContain("length > 0");
+    expect(conceito).not.toContain("A tag continua valendo");
+  });
+
+  it("põe o tipo e o caminho acima do título da nota do conceito", () => {
+    expect(conceito).toMatch(
+      /noteKindLabel\(nota\.kind\)[\s\S]{0,80}?nota\.path[\s\S]{0,200}?<Link/,
+    );
+    expect(conceito).toContain("text-base font-medium");
+  });
+
+  it("desenha o card do conceito como o handoff, não como o item antigo", () => {
+    expect(conceito).not.toContain("CardItem");
+    expect(cardDoConceito).toContain("tag-card-face");
+    // A face não entrega a resposta: a lacuna fica oculta, como na margem.
+    expect(cardDoConceito).toContain('lacuna="oculta"');
+    expect(cardDoConceito).not.toContain("card.answer");
+    // Badge de contorno e volta para a nota de origem.
+    expect(cardDoConceito).toContain("border-ink-soft");
+    expect(cardDoConceito).toContain("cardStateLabel");
+    expect(cardDoConceito).toMatch(/href=\{`\/notes\/\$\{card\.note\.id\}`\}/);
+  });
+
+  it("guarda a entrelinha do trecho e a face do conceito no CSS", () => {
+    expect(css).toContain("--leading-snippet: 1.6;");
+    expect(css).toMatch(
+      /\.tag-card-face \{[^}]*font-size: var\(--text-base\);[^}]*line-height: 1\.55;/,
+    );
+  });
+});

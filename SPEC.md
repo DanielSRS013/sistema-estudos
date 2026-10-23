@@ -125,7 +125,7 @@ function queueFor(cards: CardState[], now: Date, limits: Limits): CardState[]
 | `/notes/[noteId]/edit` | Editor Markdown com preview |
 | `/review` | Modo foco de revisão |
 | `/tags/[tagSlug]` | Notas e cards que citam o conceito |
-| `/search` | Busca full-text em notas |
+| `/search` | Busca full-text em notas e cards |
 
 No editor, o autosave grava **900 ms** depois da última tecla, e na hora quando
 o campo perde o foco ou o usuário pede `Ctrl`/`Cmd+S`. O número é do handoff;
