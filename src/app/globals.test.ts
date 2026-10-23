@@ -679,7 +679,15 @@ describe("as três telas de cursos do handoff", () => {
   });
 
   it.each(telas)("dá ao h1 de %s os 28px com peso 500", (_nome, tela) => {
-    expect(tela).toContain("text-xl font-medium");
+    // `toContain` casava as duas classes em qualquer lugar do arquivo: extrair
+    // o tamanho do `h1` para um wrapper em volta passava pela trava com o
+    // título já no tamanho errado. O tamanho tem de estar NO `h1`.
+    //
+    // Estes três títulos levam outras classes (`tracking-tight`, e `min-w-0
+    // truncate` no do curso), por isso o par é procurado dentro do atributo e
+    // não no começo dele — ao contrário da irmã de busca e conceito, onde o
+    // `className` é só o par.
+    expect(tela).toMatch(/<h1[^>]*className="[^"]*text-xl font-medium/);
     expect(tela).not.toContain("font-semibold");
   });
 
