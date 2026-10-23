@@ -21,6 +21,16 @@ const migrations = readdirSync(join(raiz, "drizzle"))
   .map((nome) => readFileSync(join(raiz, "drizzle", nome), "utf8"))
   .join("\n");
 
+/**
+ * A expressão chama `unaccent` em vez de `immutable_unaccent`.
+ *
+ * `[^_]unaccent\(` consumia um caractere antes do nome, então a chamada no
+ * começo da expressão escapava. A alternativa é olhar para trás sem consumir.
+ */
+function chamaUnaccentDireto(expressao: string): boolean {
+  return /(?<!_)unaccent\(/.test(expressao);
+}
+
 /** O corpo de `generatedAlwaysAs` de cada coluna gerada do schema. */
 function expressoesGeradas(): string[] {
   return [...schema.matchAll(/generatedAlwaysAs\(\s*sql`([^`]*)`/g)].map(
@@ -43,7 +53,7 @@ describe("o vetor de busca tira o acento", () => {
     // `unaccent(text)` é STABLE: o Postgres recusa a coluna com
     // "generation expression is not immutable", e a migration falha no meio.
     for (const expressao of expressoesGeradas()) {
-      expect(expressao).not.toMatch(/[^_]unaccent\(/);
+      expect(chamaUnaccentDireto(expressao)).toBe(false);
     }
   });
 
@@ -52,6 +62,26 @@ describe("o vetor de busca tira o acento", () => {
     expect(expressoesGeradas().join("\n")).toContain("coalesce(content, '')");
     expect(expressoesGeradas().join("\n")).toContain("coalesce(prompt, '')");
     expect(expressoesGeradas().join("\n")).toContain("coalesce(answer, '')");
+  });
+});
+
+describe("a trava de `unaccent` direto", () => {
+  it("pega a chamada no começo da expressão", () => {
+    expect(chamaUnaccentDireto("unaccent(coalesce(title, ''))")).toBe(true);
+  });
+
+  it("pega a chamada no meio da expressão", () => {
+    expect(
+      chamaUnaccentDireto("to_tsvector('portuguese', unaccent(title))"),
+    ).toBe(true);
+  });
+
+  it("não confunde `immutable_unaccent` com ela", () => {
+    expect(
+      chamaUnaccentDireto(
+        "to_tsvector('portuguese', immutable_unaccent(title))",
+      ),
+    ).toBe(false);
   });
 });
 
