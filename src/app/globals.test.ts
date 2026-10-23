@@ -28,6 +28,13 @@ function arquivosDeFonte(pastas: readonly string[]): [string, string][] {
   );
 }
 
+// A fonte sem os comentários. Trava que proíbe um identificador precisa olhar
+// só para o código: o comentário costuma citar exatamente o que a regra
+// proíbe, para dizer por que está proibido.
+function semComentarios(fonte: string): string {
+  return fonte.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+}
+
 // As tags ainda abertas no fim do trecho, de fora para dentro. Serve às travas
 // que perguntam "dentro de que elemento isto está?" — pergunta que a tag
 // vizinha não responde.
@@ -895,7 +902,11 @@ describe("a busca e o conceito do handoff", () => {
   });
 
   it("dá à busca o marco de busca e o rótulo visível", () => {
-    expect(busca).toContain('role="search"');
+    // O marco é o próprio `<form>` — foi a decisão da Fatia 22, porque o Enter
+    // precisa navegar sem JS e `form[role=search]` é a forma canônica. A trava
+    // aceitava o atributo em qualquer elemento, inclusive num `<div>` em volta
+    // com o formulário sem marco nenhum dentro.
+    expect(busca).toMatch(/<form[^>]*role="search"/);
     expect(busca).toContain("Buscar em notas e cards");
     expect(busca).not.toContain("sr-only");
   });
@@ -961,7 +972,12 @@ describe("a busca e o conceito do handoff", () => {
   it("oferece um conceito de verdade na saída sem resultado", () => {
     // O handoff escreve "ou abra o conceito #projecao-vetorial": o `#…` é uma
     // tag que existe, não o termo digitado remontado em link quebrado.
-    expect(busca).toContain("sugerirConceito");
+    //
+    // `toContain("sugerirConceito")` só provava que a função era chamada:
+    // chamá-la e linkar o termo digitado — justamente o 404 que a Fatia 22
+    // proibiu — passava pela trava. O que importa é o `href` levar ao
+    // conceito sugerido.
+    expect(busca).toMatch(/href=\{`\/tags\/\$\{conceito\}`\}/);
   });
 
   it("dá à lista de resultados os dois filetes do handoff", () => {
@@ -1023,7 +1039,11 @@ describe("a busca e o conceito do handoff", () => {
     expect(cardDoConceito).toContain("tag-card-face");
     // A face não entrega a resposta: a lacuna fica oculta, como na margem.
     expect(cardDoConceito).toContain('lacuna="oculta"');
-    expect(cardDoConceito).not.toContain("card.answer");
+    // `not.toContain("card.answer")` prendia uma grafia: `const { answer } =
+    // card` passava e imprimia a resposta do mesmo jeito. O componente não
+    // pode tocar o campo de forma nenhuma — e a busca é no código, não nos
+    // comentários, que explicam justamente por que a resposta não vem.
+    expect(semComentarios(cardDoConceito)).not.toMatch(/\banswer\b/);
     // Badge de contorno e volta para a nota de origem.
     expect(cardDoConceito).toContain("border-ink-soft");
     expect(cardDoConceito).toContain("cardStateLabel");
