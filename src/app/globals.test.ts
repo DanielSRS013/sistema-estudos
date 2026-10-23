@@ -28,6 +28,85 @@ function arquivosDeFonte(pastas: readonly string[]): [string, string][] {
   );
 }
 
+// A fonte sem os comentários. Trava que proíbe um identificador precisa olhar
+// só para o código: o comentário costuma citar exatamente o que a regra
+// proíbe, para dizer por que está proibido.
+//
+// Apagar de `//` até o fim da linha apagaria metade de uma linha que tem `//`
+// dentro de string — uma URL. O resto da linha sumindo faz a trava passar com
+// o código proibido ainda lá, que é o pior sentido do erro, então uma linha
+// que traz aspas antes do `//` fica como está: comentário citado dentro de
+// string é raro, e preferir o falso NEGATIVO aqui seria trocar a rede por
+// enfeite.
+function semComentarios(fonte: string): string {
+  return fonte
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .split("\n")
+    .map((linha) => {
+      const corte = linha.indexOf("//");
+      if (corte < 0) return linha;
+      return /["'`]/.test(linha.slice(0, corte)) ? linha : linha.slice(0, corte);
+    })
+    .join("\n");
+}
+
+// As tags ainda abertas no fim do trecho, de fora para dentro. Serve às travas
+// que perguntam "dentro de que elemento isto está?" — pergunta que a tag
+// vizinha não responde.
+//
+// Os comentários saem antes: um `</p>` citado em comentário tirava o `p` da
+// pilha e a trava passava com o parágrafo ainda aberto.
+//
+// O `=>` de uma arrow em atributo fecharia a tag cedo na varredura, então
+// também sai; nenhum nome de elemento o contém.
+function aberturasEmAberto(fonte: string): string[] {
+  const pilha: string[] = [];
+  for (const [, barra, nome, resto] of semComentarios(fonte)
+    .replace(/=>/g, "= ")
+    .matchAll(/<(\/?)([A-Za-z][\w.]*)([^>]*)>/g)) {
+    if (barra) {
+      const i = pilha.lastIndexOf(nome ?? "");
+      if (i >= 0) pilha.splice(i);
+    } else if (!(resto ?? "").trimEnd().endsWith("/")) {
+      pilha.push(nome ?? "");
+    }
+  }
+  return pilha;
+}
+
+// Os dois helpers acima são as travas de três outras travas, e têm lógica
+// própria: se eles errarem calados, as travas que dependem deles viram enfeite.
+describe("os helpers das travas", () => {
+  it("acha o parágrafo aberto mesmo com elemento dentro", () => {
+    expect(aberturasEmAberto('<p className="x"><span>alvo')).toContain("p");
+  });
+
+  it("não acha parágrafo que já fechou", () => {
+    expect(aberturasEmAberto("<p>texto</p><div>alvo")).not.toContain("p");
+  });
+
+  it("não deixa um fechamento citado em comentário esvaziar a pilha", () => {
+    expect(aberturasEmAberto("<p>{/* quebra o </p> aqui */}alvo")).toContain(
+      "p",
+    );
+  });
+
+  it("não empilha tag que se fecha sozinha", () => {
+    expect(aberturasEmAberto("<br /><input disabled />alvo")).toEqual([]);
+  });
+
+  it("tira o comentário de bloco e o de linha", () => {
+    expect(semComentarios("/** diz answer */\nconst a = 1; // answer")).not.
+      toMatch(/\banswer\b/);
+  });
+
+  it("não corta a linha por causa de `//` dentro de string", () => {
+    expect(semComentarios('<a href="https://x/y">{card.answer}</a>')).toContain(
+      "card.answer",
+    );
+  });
+});
+
 describe("tokens de SPEC.md §6", () => {
   it.each([
     ["--paper", "#fcfcfa"],
@@ -658,7 +737,22 @@ describe("as três telas de cursos do handoff", () => {
   });
 
   it.each(telas)("dá ao h1 de %s os 28px com peso 500", (_nome, tela) => {
-    expect(tela).toContain("text-xl font-medium");
+    // `toContain` casava as duas classes em qualquer lugar do arquivo: extrair
+    // o tamanho do `h1` para um wrapper em volta passava pela trava com o
+    // título já no tamanho errado. O tamanho tem de estar NO `h1`.
+    //
+    // Estes três títulos levam outras classes (`tracking-tight`, e `min-w-0
+    // truncate` no do curso), por isso a trava lê o atributo e olha as classes
+    // uma a uma, em vez de exigir o atributo exato como a irmã de busca e
+    // conceito. Procurar o par como substring seria tolerante demais na outra
+    // direção: `text-base md:text-xl font-medium` o contém e deixaria o título
+    // em 16px fora do breakpoint, com a trava verde.
+    const classes = (/<h1[^>]*className="([^"]*)"/.exec(tela)?.[1] ?? "").split(
+      /\s+/,
+    );
+    expect(classes).toContain("font-medium");
+    expect(classes.filter((c) => /(^|:)text-(xs|sm|base|lg|\d?xl)$/.test(c))).
+      toEqual(["text-xl"]);
     expect(tela).not.toContain("font-semibold");
   });
 
@@ -790,9 +884,20 @@ describe("as três telas de cursos do handoff", () => {
     // O convite tem um botão no meio da frase, e botão de Server Action é um
     // `<form>`: dentro de `<p>` o navegador fecha o parágrafo antes dele e a
     // árvore do servidor deixa de bater com a do cliente.
+    //
+    // A trava olhava só a tag imediatamente anterior ao texto, então um `<p>`
+    // aberto com qualquer coisa dentro — um `<span>`, um `<strong>` — passava.
+    // O que importa é o parágrafo estar ABERTO no ponto do convite, e isso é a
+    // pilha de aberturas, não a vizinha.
     const antes = aula.slice(0, aula.indexOf("Esta aula ainda não tem notas"));
-    const abertura = antes.slice(antes.lastIndexOf("<"));
-    expect(abertura.startsWith("<p")).toBe(false);
+    const abertas = aberturasEmAberto(antes);
+    expect(abertas).not.toContain("p");
+    // Um componente no lugar do `<div>` podia renderizar `<p>` por dentro, e a
+    // varredura de texto não vê através dele. Hoje o convite mora em
+    // `section > div`, então exigir elemento nativo aqui não custa nada e
+    // fecha a mesma porta por outro lado: quem embrulhar o convite num
+    // componente tem de conferir à mão o que ele renderiza.
+    expect(abertas.filter((nome) => /^[A-Z]/.test(nome))).toEqual([]);
   });
 
   it("anuncia o estado de estudada por `role=status`", () => {
@@ -862,7 +967,11 @@ describe("a busca e o conceito do handoff", () => {
   });
 
   it("dá à busca o marco de busca e o rótulo visível", () => {
-    expect(busca).toContain('role="search"');
+    // O marco é o próprio `<form>` — foi a decisão da Fatia 22, porque o Enter
+    // precisa navegar sem JS e `form[role=search]` é a forma canônica. A trava
+    // aceitava o atributo em qualquer elemento, inclusive num `<div>` em volta
+    // com o formulário sem marco nenhum dentro.
+    expect(busca).toMatch(/<form[^>]*role="search"/);
     expect(busca).toContain("Buscar em notas e cards");
     expect(busca).not.toContain("sr-only");
   });
@@ -928,7 +1037,14 @@ describe("a busca e o conceito do handoff", () => {
   it("oferece um conceito de verdade na saída sem resultado", () => {
     // O handoff escreve "ou abra o conceito #projecao-vetorial": o `#…` é uma
     // tag que existe, não o termo digitado remontado em link quebrado.
-    expect(busca).toContain("sugerirConceito");
+    //
+    // Duas pontas, e as duas precisam de trava. `toContain("sugerirConceito")`
+    // só provava a chamada: chamá-la e linkar o termo digitado — o 404 que a
+    // Fatia 22 proibiu — passava. Mas só o `href` é ainda pior, porque
+    // `conceito` é nome de variável local: remontar o termo à mão e chamá-la de
+    // `conceito` casa o regex sem nenhuma tag existir do outro lado.
+    expect(busca).toMatch(/const conceito = await sugerirConceito\(/);
+    expect(busca).toMatch(/href=\{`\/tags\/\$\{conceito\}`\}/);
   });
 
   it("dá à lista de resultados os dois filetes do handoff", () => {
@@ -990,7 +1106,11 @@ describe("a busca e o conceito do handoff", () => {
     expect(cardDoConceito).toContain("tag-card-face");
     // A face não entrega a resposta: a lacuna fica oculta, como na margem.
     expect(cardDoConceito).toContain('lacuna="oculta"');
-    expect(cardDoConceito).not.toContain("card.answer");
+    // `not.toContain("card.answer")` prendia uma grafia: `const { answer } =
+    // card` passava e imprimia a resposta do mesmo jeito. O componente não
+    // pode tocar o campo de forma nenhuma — e a busca é no código, não nos
+    // comentários, que explicam justamente por que a resposta não vem.
+    expect(semComentarios(cardDoConceito)).not.toMatch(/\banswer\b/);
     // Badge de contorno e volta para a nota de origem.
     expect(cardDoConceito).toContain("border-ink-soft");
     expect(cardDoConceito).toContain("cardStateLabel");
