@@ -21,6 +21,7 @@
 // interessam.
 
 import { blocoDe } from "./lines";
+import { faixasDeBlocos } from "./parser";
 
 type No = {
   type: string;
@@ -59,34 +60,54 @@ function aside(indices: number[]): No {
 }
 
 /**
- * Plugin de rehype: depois de cada bloco que gerou card entra um `aside` com os
- * índices dos cards daquele bloco, na ordem da nota.
+ * Plugin de rehype: depois de cada unidade do texto que gerou card entra um
+ * `aside` com os índices dos cards dela, na ordem da nota.
  *
  * `cards` é a lista da margem, na mesma ordem em que a tela a desenha — o que
  * viaja no atributo é o índice nela, não o id, porque é por índice que o
- * componente do `aside` encontra o card.
+ * componente do `aside` encontra o card. `content` é o texto da nota, de onde
+ * saem as unidades.
  *
  * Card sem linha conhecida (âncora de outra versão do texto) vai para o último
  * bloco: ele continua alcançável em vez de desaparecer da tela.
  */
-export function cardsPorBloco(cards: readonly { line: number | null }[]) {
+export function cardsPorBloco(
+  cards: readonly { line: number | null }[],
+  content: string,
+) {
   return () =>
     (tree: Raiz): void => {
       if (cards.length === 0) return;
 
       const blocos = blocosDeTopo(tree);
-      const linhas = blocos.map((bloco) => bloco.linha);
-      const ultima = linhas[linhas.length - 1];
+      const ultimo = blocos[blocos.length - 1];
 
-      if (ultima === undefined) return;
+      if (ultimo === undefined) return;
 
-      const porLinha = new Map<number, number[]>();
+      const unidades = faixasDeBlocos(content);
+      const inicios = unidades.map((unidade) => unidade.primeira);
+
+      // Âncora da unidade: o último bloco de topo que cai dentro dela. É ele
+      // que fecha a linha da grade, então é depois dele que o `aside` entra.
+      const ancoras = new Map<number, No>();
+
+      for (const bloco of blocos) {
+        const unidade = unidades.find(
+          (candidata) =>
+            bloco.linha >= candidata.primeira && bloco.linha <= candidata.ultima,
+        );
+
+        if (unidade !== undefined) ancoras.set(unidade.primeira, bloco.no);
+      }
+
+      const porNo = new Map<No, number[]>();
 
       cards.forEach((card, indice) => {
-        const linha =
-          card.line === null ? ultima : blocoDe(card.line, linhas) ?? ultima;
+        const inicio = card.line === null ? null : blocoDe(card.line, inicios);
+        const no =
+          (inicio === null ? undefined : ancoras.get(inicio)) ?? ultimo.no;
 
-        porLinha.set(linha, [...(porLinha.get(linha) ?? []), indice]);
+        porNo.set(no, [...(porNo.get(no) ?? []), indice]);
       });
 
       const novos: No[] = [];
@@ -94,11 +115,7 @@ export function cardsPorBloco(cards: readonly { line: number | null }[]) {
       for (const no of tree.children) {
         novos.push(no);
 
-        const bloco = blocos.find((candidato) => candidato.no === no);
-
-        if (bloco === undefined) continue;
-
-        const indices = porLinha.get(bloco.linha);
+        const indices = porNo.get(no);
 
         if (indices !== undefined) novos.push(aside(indices));
       }

@@ -405,6 +405,43 @@ function partirBloco(bloco: Bloco): Partes {
   };
 }
 
+/** Uma faixa de linhas da nota, da abertura à última, base 1. */
+export type FaixaDeBloco = { primeira: number; ultima: number };
+
+/**
+ * As faixas de linhas que o parser lê como uma coisa só — a unidade até a linha
+ * em branco, já partida pelo `Q::`.
+ *
+ * Mora aqui porque é a mesma divisão de `parse`, e é ela que a leitura da nota
+ * usa como linha da grade (`by-block.ts`). Com a divisão medida na árvore do
+ * Markdown em vez daqui, as duas discordavam nos dois sentidos: a resposta cuja
+ * continuação troca de tipo de bloco — uma lista depois do `A::` — virava dois
+ * blocos de topo e a continuação caía fora do filete do card; e a unidade que o
+ * `Q::` parte em duas virava uma linha só, com o cloze de antes e o par
+ * caindo no mesmo lugar.
+ */
+export function faixasDeBlocos(markdown: string): FaixaDeBloco[] {
+  const faixas: FaixaDeBloco[] = [];
+
+  const juntar = (parte: Bloco | null) => {
+    if (parte === null) return;
+
+    faixas.push({
+      primeira: parte.primeiraLinha,
+      ultima: parte.primeiraLinha + parte.linhas.length - 1,
+    });
+  };
+
+  for (const bloco of blocos(markdown)) {
+    const { cloze, qa } = partirBloco(bloco);
+
+    juntar(cloze);
+    juntar(qa);
+  }
+
+  return faixas;
+}
+
 /** Onde começa cada linha da nota: índice da linha base 0 → posição no texto. */
 function inicioDasLinhas(markdown: string): number[] {
   const inicios: number[] = [];

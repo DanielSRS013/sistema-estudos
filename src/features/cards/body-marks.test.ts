@@ -142,7 +142,7 @@ describe("o bloco partido e a linha da grade", () => {
       createElement(MathMarkdown, {
         content: marcarCardsNoCorpo(markdown),
         marcarCards: true,
-        plugins: [cardsPorBloco([{ line: 1 }, { line: 2 }])],
+        plugins: [cardsPorBloco([{ line: 1 }, { line: 2 }], markdown)],
         components: {
           aside: ({ node }: { node?: { properties?: Record<string, unknown> } }) =>
             createElement(
@@ -181,7 +181,7 @@ describe("o bloco partido e a linha da grade", () => {
       createElement(MathMarkdown, {
         content: marcarCardsNoCorpo(nota),
         marcarCards: true,
-        plugins: [cardsPorBloco([{ line: 1 }, { line: 6 }])],
+        plugins: [cardsPorBloco([{ line: 1 }, { line: 6 }], nota)],
         components: {
           aside: ({
             node,

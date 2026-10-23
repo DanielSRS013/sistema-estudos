@@ -30,7 +30,7 @@ export function NoteBody({
       content={content}
       className="note-prose note-grid"
       marcarCards
-      plugins={[cardsPorBloco(cards), realcarBlocos(realcarCodigo)]}
+      plugins={[cardsPorBloco(cards, content), realcarBlocos(realcarCodigo)]}
       components={{
         /* Os índices chegam no `data-cards` que o plugin escreveu. São lidos
            do nó do hast, e não das props do elemento, porque é lá que o

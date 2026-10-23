@@ -16,7 +16,7 @@ function render(content: string, cards: { line: number | null }[]): string {
   return renderToStaticMarkup(
     createElement(MathMarkdown, {
       content,
-      plugins: [cardsPorBloco(cards)],
+      plugins: [cardsPorBloco(cards, content)],
       components: {
         aside: ({ node }: { node?: { properties?: Record<string, unknown> } }) =>
           createElement(
@@ -84,6 +84,21 @@ describe("cardsPorBloco", () => {
 
   it("não insere aside nenhum numa nota sem bloco", () => {
     expect(render("", [{ line: 1 }])).not.toContain("<i>");
+  });
+
+  it("põe o aside depois da continuação que troca de tipo de bloco", () => {
+    // O A:: lê até a linha em branco (SPEC §3.2), então a lista faz parte da
+    // resposta. Com o aside antes dela, a continuação cai na linha seguinte da
+    // grade — fora do filete do bloco que gerou o card.
+    const html = render(
+      ["Q:: Uma pergunta?", "A:: A resposta começa:", "- um", "- dois"].join(
+        "\n",
+      ),
+      [{ line: 1 }],
+    );
+
+    expect(html).toContain("</ul><i>[0]</i>");
+    expect(html).not.toContain("<i>[0]</i><ul>");
   });
 
   it("não quebra o bloco de código em dois", () => {
