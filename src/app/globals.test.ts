@@ -28,6 +28,27 @@ function arquivosDeFonte(pastas: readonly string[]): [string, string][] {
   );
 }
 
+// As tags ainda abertas no fim do trecho, de fora para dentro. Serve às travas
+// que perguntam "dentro de que elemento isto está?" — pergunta que a tag
+// vizinha não responde.
+//
+// O `=>` de uma arrow em atributo fecharia a tag cedo na varredura, então sai
+// antes; nenhum nome de elemento o contém.
+function aberturasEmAberto(fonte: string): string[] {
+  const pilha: string[] = [];
+  for (const [, barra, nome, resto] of fonte
+    .replace(/=>/g, "= ")
+    .matchAll(/<(\/?)([A-Za-z][\w.]*)([^>]*)>/g)) {
+    if (barra) {
+      const i = pilha.lastIndexOf(nome ?? "");
+      if (i >= 0) pilha.splice(i);
+    } else if (!(resto ?? "").trimEnd().endsWith("/")) {
+      pilha.push(nome ?? "");
+    }
+  }
+  return pilha;
+}
+
 describe("tokens de SPEC.md §6", () => {
   it.each([
     ["--paper", "#fcfcfa"],
@@ -790,9 +811,13 @@ describe("as três telas de cursos do handoff", () => {
     // O convite tem um botão no meio da frase, e botão de Server Action é um
     // `<form>`: dentro de `<p>` o navegador fecha o parágrafo antes dele e a
     // árvore do servidor deixa de bater com a do cliente.
+    //
+    // A trava olhava só a tag imediatamente anterior ao texto, então um `<p>`
+    // aberto com qualquer coisa dentro — um `<span>`, um `<strong>` — passava.
+    // O que importa é o parágrafo estar ABERTO no ponto do convite, e isso é a
+    // pilha de aberturas, não a vizinha.
     const antes = aula.slice(0, aula.indexOf("Esta aula ainda não tem notas"));
-    const abertura = antes.slice(antes.lastIndexOf("<"));
-    expect(abertura.startsWith("<p")).toBe(false);
+    expect(aberturasEmAberto(antes)).not.toContain("p");
   });
 
   it("anuncia o estado de estudada por `role=status`", () => {
