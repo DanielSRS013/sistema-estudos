@@ -272,6 +272,41 @@ describe("lacuna no destino de link", () => {
     });
   });
 
+  it("não confunde `](` sem link com destino de link", () => {
+    // `R]({{domínio}})` não é link: sem `[` de abertura o Markdown imprime a
+    // linha literal, e a lacuna é texto que ele lê. Tratada como destino, o
+    // card sumia e no lugar vinha um alerta sobre um link que não existe.
+    const { cards, issues } = parse("O conjunto R]({{domínio}}) aparece na prova.");
+
+    expect(issues).toEqual([]);
+    expect(cards).toHaveLength(1);
+    expect(cards[0]?.answer).toBe("domínio");
+  });
+
+  it("não deixa destino sem fechamento engolir as linhas seguintes", () => {
+    // O Markdown encerra o destino na quebra de linha: destino que não fecha
+    // não é destino, e o que vem depois é texto do parágrafo.
+    const { cards, issues } = parse(
+      [
+        "Veja [a referência](https://exemplo.org/muito-longo",
+        "A capital do Brasil é {{Brasília}}.",
+        "O maior planeta é {{Júpiter}}.",
+      ].join("\n"),
+    );
+
+    expect(issues).toEqual([]);
+    expect(cards.map((card) => card.answer)).toEqual(["Brasília", "Júpiter"]);
+  });
+
+  it("não trata parêntese desbalanceado na URL como destino aberto", () => {
+    const { cards, issues } = parse(
+      "Veja [Ruby](https://exemplo.org/wiki/Ruby_(linguagem e vale {{sempre}}.",
+    );
+
+    expect(issues).toEqual([]);
+    expect(cards.map((card) => card.answer)).toEqual(["sempre"]);
+  });
+
   it("ainda lê a lacuna que vem fora do destino, na mesma linha", () => {
     const { cards, issues } = parse(
       "Veja [a tabela](https://exemplo.org) e note que vale {{sempre}}.",
@@ -280,6 +315,24 @@ describe("lacuna no destino de link", () => {
     expect(issues).toEqual([]);
     expect(cards).toHaveLength(1);
     expect(cards[0]?.answer).toBe("sempre");
+  });
+});
+
+describe("lacuna no recuo de lista", () => {
+  it("faz card da lacuna do parágrafo recuado que continua um item", () => {
+    const { cards, issues } = parse(
+      [
+        "- Primeiro item",
+        "",
+        "    A capital do Brasil é {{Brasília}}.",
+        "",
+        "- Segundo item",
+      ].join("\n"),
+    );
+
+    expect(issues).toEqual([]);
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toMatchObject({ answer: "Brasília", line: 3 });
   });
 });
 
@@ -317,6 +370,31 @@ describe("Q:: que não abre o bloco", () => {
 
     expect(issues).toHaveLength(1);
     expect(issues[0]?.line).toBe(2);
+  });
+
+  it("não reclama da linha de lista que virou card de lacuna", () => {
+    // A lacuna manda: a linha gerou card, então a reclamação de que a pergunta
+    // não existe diria o contrário do que está na tela, na mesma linha.
+    const { cards, issues } = parse("- Q:: a capital é {{Brasília}}?");
+
+    expect(issues).toEqual([]);
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toMatchObject({ kind: "cloze", answer: "Brasília" });
+  });
+
+  it("reclama da pergunta no parágrafo recuado que continua um item de lista", () => {
+    // O recuo dentro de lista é conteúdo do item, não código: a pergunta
+    // escrita ali não virava card nem reclamação — silêncio duplo.
+    const { cards, issues } = parse(
+      ["- item", "", "    - Q:: Uma pergunta?", "    - A:: Uma resposta."].join("\n"),
+    );
+
+    expect(cards).toEqual([]);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toMatchObject({
+      line: 3,
+      title: "pergunta dentro de lista ou citação",
+    });
   });
 
   it("não reclama do Q:: que abre a linha depois de um texto", () => {

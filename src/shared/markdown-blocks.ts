@@ -19,6 +19,18 @@ const CERCA = /^\s{0,3}([`]{3,}|~{3,})/;
  */
 const RECUO = /^(?: {4}|\t)/;
 
+/**
+ * Abertura de item de lista, com o recuo de até três espaços que o CommonMark
+ * admite antes da marca.
+ *
+ * Com lista aberta, o recuo de quatro espaços é conteúdo do item — segundo
+ * parágrafo, sublista — e não bloco de código: o Markdown o renderiza dentro
+ * do `<li>`. Lido como código, a lacuna e a tag escritas ali desapareciam sem
+ * reclamação nenhuma, e a nota perdia card e vínculo com o conceito em
+ * silêncio.
+ */
+const ITEM = /^ {0,3}(?:[-*+]|\d{1,9}[.)])(?:\s|$)/;
+
 export type Bloco = {
   linhas: string[];
   /** Linha da nota onde o bloco começa, base 1. As linhas são contíguas. */
@@ -37,6 +49,8 @@ export function blocos(markdown: string): Bloco[] {
   // Bloco indentado aberto. Não guarda nada além do estado: o fechamento é a
   // primeira linha que não é recuada nem em branco.
   let recuado = false;
+  // Lista aberta: a última linha sem recuo era marca de item.
+  let listaAberta = false;
 
   const fechaBloco = () => {
     if (atual) encontrados.push(atual);
@@ -67,14 +81,23 @@ export function blocos(markdown: string): Bloco[] {
       return;
     }
 
+    const recuada = RECUO.test(linha);
+    const vazia = linha.trim() === "";
+
+    // Marca de lista abre o contexto de lista; linha de texto sem recuo o
+    // fecha. Linha em branco não fecha — é ela que separa os parágrafos de uma
+    // lista solta.
+    if (!recuada && !vazia) listaAberta = ITEM.test(linha);
+
     // Bloco indentado não interrompe parágrafo (CommonMark): com bloco aberto,
-    // a linha recuada é continuação, e o que está nela ainda conta.
-    if (atual === null && RECUO.test(linha)) {
+    // a linha recuada é continuação, e o que está nela ainda conta. Dentro de
+    // lista o recuo também não é código, e sim conteúdo do item.
+    if (atual === null && recuada && !listaAberta) {
       recuado = true;
       return;
     }
 
-    if (linha.trim() === "") {
+    if (vazia) {
       fechaBloco();
       return;
     }

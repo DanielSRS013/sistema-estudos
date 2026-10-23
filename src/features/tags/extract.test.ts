@@ -9,6 +9,21 @@ describe("extractTags", () => {
     ]);
   });
 
+  it("extrai a tag do parágrafo recuado que continua um item de lista", () => {
+    // O recuo de quatro espaços dentro de lista é conteúdo do item, não bloco
+    // de código: a tag escrita ali vale, e sem ela a nota perdia o vínculo com
+    // o conceito sem nada na tela acusando.
+    const markdown = [
+      "- Primeiro item",
+      "",
+      "    Sobre #projecao-vetorial.",
+    ].join("\n");
+
+    expect(extractTags(markdown)).toEqual([
+      { slug: "projecao-vetorial", name: "projecao-vetorial", line: 3 },
+    ]);
+  });
+
   it("extrai várias tags da mesma linha, na ordem do texto", () => {
     const tags = extractTags("conceitos: #produto-interno #projecao-vetorial");
 

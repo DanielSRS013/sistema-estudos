@@ -103,6 +103,53 @@ describe("blocos", () => {
     ]);
   });
 
+  it("não trata como código o recuo que continua um item de lista", () => {
+    // Lista solta: o parágrafo recuado depois da linha em branco é conteúdo do
+    // item — o Markdown o renderiza dentro do `<li>`, não num `<pre>`. Lido
+    // como código, a lacuna e a tag que estivessem nele desapareciam caladas.
+    const markdown = [
+      "- Primeiro item",
+      "",
+      "    Segundo parágrafo do item",
+      "",
+      "- Segundo item",
+    ].join("\n");
+
+    expect(blocos(markdown)).toEqual([
+      { linhas: ["- Primeiro item"], primeiraLinha: 1 },
+      { linhas: ["    Segundo parágrafo do item"], primeiraLinha: 3 },
+      { linhas: ["- Segundo item"], primeiraLinha: 5 },
+    ]);
+  });
+
+  it("não trata como código a sublista recuada por quatro espaços", () => {
+    const markdown = ["1. item", "", "    - sub"].join("\n");
+
+    expect(blocos(markdown)).toEqual([
+      { linhas: ["1. item"], primeiraLinha: 1 },
+      { linhas: ["    - sub"], primeiraLinha: 3 },
+    ]);
+  });
+
+  it("volta a tratar recuo como código depois que a lista termina", () => {
+    // Parágrafo sem recuo fecha a lista: o recuo seguinte é código outra vez.
+    const markdown = [
+      "- item",
+      "",
+      "parágrafo normal",
+      "",
+      "    codigo = 1",
+      "",
+      "depois",
+    ].join("\n");
+
+    expect(blocos(markdown)).toEqual([
+      { linhas: ["- item"], primeiraLinha: 1 },
+      { linhas: ["parágrafo normal"], primeiraLinha: 3 },
+      { linhas: ["depois"], primeiraLinha: 7 },
+    ]);
+  });
+
   it("devolve lista vazia para nota vazia ou só de brancos", () => {
     expect(blocos("")).toEqual([]);
     expect(blocos("\n  \n\t\n")).toEqual([]);

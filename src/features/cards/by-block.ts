@@ -100,6 +100,20 @@ export function cardsPorBloco(
         if (unidade !== undefined) ancoras.set(unidade.primeira, bloco.no);
       }
 
+      // Unidade sem bloco próprio: o `Q::` na segunda linha de um parágrafo
+      // parte a unidade em duas faixas, e a árvore tem um `<p>` só. A faixa de
+      // baixo está escrita dentro daquele nó, então herda a âncora da unidade
+      // anterior. Sem isso ela caía no último bloco da nota, e o card aparecia
+      // ao lado de um parágrafo sem relação.
+      let herdada: No | undefined;
+
+      for (const unidade of unidades) {
+        const propria = ancoras.get(unidade.primeira);
+
+        if (propria !== undefined) herdada = propria;
+        else if (herdada !== undefined) ancoras.set(unidade.primeira, herdada);
+      }
+
       const porNo = new Map<No, number[]>();
 
       cards.forEach((card, indice) => {

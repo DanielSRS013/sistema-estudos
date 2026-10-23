@@ -50,6 +50,43 @@ export type Lacuna = { inicio: number; fim: number; conteudo: string };
 type Trecho = { inicio: number; fim: number };
 
 /**
+ * Onde o destino que começa em `inicio` fecha, ou `null` quando ele não fecha
+ * na própria linha.
+ *
+ * Os parênteses são contados para que um destino com parêntese interno não
+ * feche antes da hora, e a barra invertida escapa o caractere seguinte — as
+ * mesmas duas regras de `varrer`. A quebra de linha encerra a busca porque é
+ * onde o Markdown encerra o destino: o que não fecha na linha não é link, e o
+ * que vem depois é texto do parágrafo. Sem isso, um destino aberto marcava
+ * como "em destino" todas as lacunas até o fim do bloco.
+ */
+function fimDoDestino(texto: string, inicio: number): number | null {
+  let profundidade = 0;
+  let j = inicio;
+
+  while (j < texto.length) {
+    const char = texto[j];
+
+    if (char === "\\") {
+      j += 2;
+      continue;
+    }
+
+    if (char === "\n") return null;
+
+    if (char === "(") profundidade += 1;
+    else if (char === ")") {
+      if (profundidade === 0) return j;
+      profundidade -= 1;
+    }
+
+    j += 1;
+  }
+
+  return null;
+}
+
+/**
  * Os destinos de link do texto: o que vem entre `](` e o `)` que o fecha,
  * título incluído.
  *
@@ -58,49 +95,50 @@ type Trecho = { inicio: number; fim: number };
  * nada, com o card exibindo um link quebrado e nada na tela acusando. Mesma
  * família da marca injetada onde o Markdown não lê texto.
  *
- * Os parênteses são contados para que um destino com parêntese interno não
- * feche antes da hora, e a barra invertida escapa o caractere seguinte — as
- * mesmas duas regras de `varrer`. Destino que não fecha vale até o fim do
- * texto: dentro dele ainda não há texto para o Markdown.
+ * Só é destino o `](` que fecha um `[` aberto antes dele e que acha o seu `)`
+ * na mesma linha — as duas condições do Markdown para a linha ser link. A
+ * pilha de aberturas guarda o aninhamento de `[![alt](img)](destino)`, em que
+ * os dois destinos contam. Sem exigir a abertura, `R]({{domínio}})` — texto
+ * literal, sem link nenhum — comia a lacuna e reclamava de um link inexistente.
  */
 function destinosDeLink(texto: string): Trecho[] {
   const achados: Trecho[] = [];
+  const aberturas: number[] = [];
   let i = 0;
 
   while (i < texto.length) {
-    if (texto[i] === "\\") {
+    const char = texto[i];
+
+    if (char === "\\") {
       i += 2;
       continue;
     }
 
-    if (!texto.startsWith("](", i)) {
+    if (char === "[") {
+      aberturas.push(i);
       i += 1;
       continue;
     }
 
-    const inicio = i + "](".length;
-    let j = inicio;
-    let profundidade = 0;
-
-    while (j < texto.length) {
-      const char = texto[j];
-
-      if (char === "\\") {
-        j += 2;
-        continue;
-      }
-
-      if (char === "(") profundidade += 1;
-      else if (char === ")") {
-        if (profundidade === 0) break;
-        profundidade -= 1;
-      }
-
-      j += 1;
+    if (char !== "]") {
+      i += 1;
+      continue;
     }
 
-    achados.push({ inicio, fim: j });
-    i = j + 1;
+    // O `]` fecha a abertura mais recente, seja ou não seguido de destino.
+    const abriu = aberturas.pop();
+    const fim =
+      abriu === undefined || !texto.startsWith("](", i)
+        ? null
+        : fimDoDestino(texto, i + "](".length);
+
+    if (fim === null) {
+      i += 1;
+      continue;
+    }
+
+    achados.push({ inicio: i + "](".length, fim });
+    i = fim + 1;
   }
 
   return achados;
@@ -326,10 +364,37 @@ function lerPar(linhas: string[]): Par {
   return { ok: true, pergunta, corpo };
 }
 
-/** Uma reclamação por `Q::` disfarçado, na linha em que ele está escrito. */
-function reclamarQDisfarcado(bloco: Bloco, reclamar: Reclamar): void {
+/**
+ * As linhas do bloco em que uma lacuna válida gera card — a mesma conta de
+ * `lerCloze`, que é quem emite. Vazia não entra: ela não vira card, vira
+ * reclamação própria.
+ */
+function linhasComCloze(bloco: Bloco): ReadonlySet<number> {
+  const texto = bloco.linhas.join("\n");
+
+  return new Set(
+    varrer(texto)
+      .lacunas.filter((lacuna) => lacuna.conteudo.trim() !== "")
+      .map((lacuna) => linhaDe(texto, lacuna.inicio, bloco.primeiraLinha)),
+  );
+}
+
+/**
+ * Uma reclamação por `Q::` disfarçado, na linha em que ele está escrito — e
+ * nenhuma na linha que virou card de lacuna.
+ *
+ * `- Q:: a capital é {{Brasília}}?` gera o cloze: ali a lacuna manda, e dizer
+ * na mesma linha que a pergunta não existe contradiria o card que está na
+ * tela. `comCard` traz as linhas em que `lerCloze` emite.
+ */
+function reclamarQDisfarcado(
+  bloco: Bloco,
+  comCard: ReadonlySet<number>,
+  reclamar: Reclamar,
+): void {
   bloco.linhas.forEach((linha, indice) => {
     if (!Q_DISFARCADO.test(linha)) return;
+    if (comCard.has(bloco.primeiraLinha + indice)) return;
 
     reclamar({
       line: bloco.primeiraLinha + indice,
@@ -576,7 +641,7 @@ export function parse(markdown: string): ParseResult {
 
     if (cloze !== null) {
       // Só na parte cloze: depois do corte, o que houver é corpo da resposta.
-      reclamarQDisfarcado(cloze, reclamar);
+      reclamarQDisfarcado(cloze, linhasComCloze(cloze), reclamar);
       lerCloze(cloze, emitir, reclamar);
     }
 

@@ -101,6 +101,28 @@ describe("cardsPorBloco", () => {
     expect(html).not.toContain("<i>[0]</i><ul>");
   });
 
+  it("põe o aside no parágrafo do par que não abre a unidade", () => {
+    // O `Q::` na segunda linha parte a unidade em duas, mas a árvore do
+    // Markdown tem um `<p>` só. Sem âncora própria, a segunda faixa caía no
+    // último bloco da nota — o card aparecia ao lado de um parágrafo sem
+    // relação, duas linhas da grade abaixo.
+    const html = render(
+      [
+        "Contexto:",
+        "Q:: Pergunta?",
+        "A:: Resposta.",
+        "",
+        "Meio.",
+        "",
+        "Fim.",
+      ].join("\n"),
+      [{ line: 2 }],
+    );
+
+    expect(html).toContain("A:: Resposta.</p><i>[0]</i>");
+    expect(html).not.toContain("Fim.</p><i>[0]</i>");
+  });
+
   it("não quebra o bloco de código em dois", () => {
     const html = render("```py\nx = 1\n```\n\nDepois.", [{ line: 5 }]);
 
