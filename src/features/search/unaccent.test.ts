@@ -31,20 +31,44 @@ function chamaUnaccentDireto(expressao: string): boolean {
   return /(?<!_)unaccent\(/.test(expressao);
 }
 
-/** O corpo de `generatedAlwaysAs` de cada coluna gerada do schema. */
-function expressoesGeradas(): string[] {
+/**
+ * O corpo de `generatedAlwaysAs` de cada coluna gerada, com a tabela em que
+ * ela mora — a tabela é a última declarada antes dela no arquivo.
+ *
+ * Contar as expressões não basta: duas em `notes` e nenhuma em `cards` dariam
+ * o mesmo número, e a busca pararia de achar card sem que trava alguma
+ * reclamasse.
+ */
+function colunasGeradas(): { tabela: string; expressao: string }[] {
+  const tabelas = [...schema.matchAll(/export const (\w+) = pgTable\(/g)];
   return [...schema.matchAll(/generatedAlwaysAs\(\s*sql`([^`]*)`/g)].map(
-    (m) => m[1] ?? "",
+    (coluna) => {
+      const ponto = coluna.index;
+      const antes = tabelas.filter((t) => t.index < ponto);
+      return {
+        tabela: antes[antes.length - 1]?.[1] ?? "",
+        expressao: coluna[1] ?? "",
+      };
+    },
   );
+}
+
+/** A expressão gerada da tabela, ou `undefined` se ela não tem uma só. */
+function expressaoGeradaDe(tabela: string): string | undefined {
+  const achadas = colunasGeradas().filter((c) => c.tabela === tabela);
+  return achadas.length === 1 ? achadas[0]?.expressao : undefined;
 }
 
 describe("o vetor de busca tira o acento", () => {
   it("tem uma coluna gerada em notes e outra em cards", () => {
-    expect(expressoesGeradas()).toHaveLength(2);
+    expect(colunasGeradas().map((c) => c.tabela).sort()).toEqual([
+      "cards",
+      "notes",
+    ]);
   });
 
   it("não deixa coluna gerada chamar to_tsvector sem tirar o acento", () => {
-    for (const expressao of expressoesGeradas()) {
+    for (const { expressao } of colunasGeradas()) {
       expect(expressao).toContain("immutable_unaccent(");
     }
   });
@@ -52,16 +76,23 @@ describe("o vetor de busca tira o acento", () => {
   it("não deixa coluna gerada chamar `unaccent` direto", () => {
     // `unaccent(text)` é STABLE: o Postgres recusa a coluna com
     // "generation expression is not immutable", e a migration falha no meio.
-    for (const expressao of expressoesGeradas()) {
+    for (const { expressao } of colunasGeradas()) {
       expect(chamaUnaccentDireto(expressao)).toBe(false);
     }
   });
 
-  it("varre os dois lados: título/corpo da nota e face/resposta do card", () => {
-    expect(expressoesGeradas().join("\n")).toContain("coalesce(title, '')");
-    expect(expressoesGeradas().join("\n")).toContain("coalesce(content, '')");
-    expect(expressoesGeradas().join("\n")).toContain("coalesce(prompt, '')");
-    expect(expressoesGeradas().join("\n")).toContain("coalesce(answer, '')");
+  it.each([
+    ["notes", ["coalesce(title, '')", "coalesce(content, '')"]],
+    ["cards", ["coalesce(prompt, '')", "coalesce(answer, '')"]],
+  ] as const)("varre os dois lados de %s", (tabela, colunas) => {
+    // Juntar as expressões antes de procurar deixava a mesma expressão
+    // satisfazer colunas de duas tabelas; agora cada tabela responde pela sua.
+    const expressao = expressaoGeradaDe(tabela);
+    expect(
+      expressao,
+      `${tabela} precisa de exatamente uma coluna gerada`,
+    ).toBeDefined();
+    for (const coluna of colunas) expect(expressao).toContain(coluna);
   });
 });
 
