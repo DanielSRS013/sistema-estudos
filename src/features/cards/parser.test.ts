@@ -237,3 +237,28 @@ describe("a marca da lacuna", () => {
     expect(cards[0]?.prompt).toBe(`A capital é ${LACUNA}.`);
   });
 });
+
+describe("lacuna no destino de link", () => {
+  it("não faz card da lacuna que está no destino de um link", () => {
+    // O Markdown não trata o destino como texto: a lacuna recortada deixaria o
+    // href apontando para nada, e o card mostraria um link quebrado.
+    const { cards, issues } = parse("Veja [a tabela]({{url}}) no anexo.");
+
+    expect(cards).toEqual([]);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toMatchObject({
+      line: 1,
+      title: "lacuna no destino de link",
+    });
+  });
+
+  it("ainda lê a lacuna que vem fora do destino, na mesma linha", () => {
+    const { cards, issues } = parse(
+      "Veja [a tabela](https://exemplo.org) e note que vale {{sempre}}.",
+    );
+
+    expect(issues).toEqual([]);
+    expect(cards).toHaveLength(1);
+    expect(cards[0]?.answer).toBe("sempre");
+  });
+});

@@ -38,9 +38,79 @@ const ABRE = "{{";
 const FECHA = "}}";
 const DICA = "::";
 
-export type Varredura = { lacunas: Lacuna[]; naoFecha: boolean };
+export type Varredura = {
+  lacunas: Lacuna[];
+  /** Lacunas escritas no destino de um link, que não viram card. */
+  emDestino: Lacuna[];
+  naoFecha: boolean;
+};
 
 export type Lacuna = { inicio: number; fim: number; conteudo: string };
+
+type Trecho = { inicio: number; fim: number };
+
+/**
+ * Os destinos de link do texto: o que vem entre `](` e o `)` que o fecha,
+ * título incluído.
+ *
+ * O Markdown não trata esse trecho como texto, e é por isso que ele é medido
+ * aqui: a lacuna recortada de dentro dele deixaria o `href` apontando para
+ * nada, com o card exibindo um link quebrado e nada na tela acusando. Mesma
+ * família da marca injetada onde o Markdown não lê texto.
+ *
+ * Os parênteses são contados para que um destino com parêntese interno não
+ * feche antes da hora, e a barra invertida escapa o caractere seguinte — as
+ * mesmas duas regras de `varrer`. Destino que não fecha vale até o fim do
+ * texto: dentro dele ainda não há texto para o Markdown.
+ */
+function destinosDeLink(texto: string): Trecho[] {
+  const achados: Trecho[] = [];
+  let i = 0;
+
+  while (i < texto.length) {
+    if (texto[i] === "\\") {
+      i += 2;
+      continue;
+    }
+
+    if (!texto.startsWith("](", i)) {
+      i += 1;
+      continue;
+    }
+
+    const inicio = i + "](".length;
+    let j = inicio;
+    let profundidade = 0;
+
+    while (j < texto.length) {
+      const char = texto[j];
+
+      if (char === "\\") {
+        j += 2;
+        continue;
+      }
+
+      if (char === "(") profundidade += 1;
+      else if (char === ")") {
+        if (profundidade === 0) break;
+        profundidade -= 1;
+      }
+
+      j += 1;
+    }
+
+    achados.push({ inicio, fim: j });
+    i = j + 1;
+  }
+
+  return achados;
+}
+
+function dentro(trechos: Trecho[], posicao: number): boolean {
+  return trechos.some(
+    (trecho) => posicao >= trecho.inicio && posicao < trecho.fim,
+  );
+}
 
 /**
  * Acha as lacunas de um texto. A profundidade de chaves simples é contada para
@@ -50,6 +120,8 @@ export type Lacuna = { inicio: number; fim: number; conteudo: string };
  */
 export function varrer(texto: string): Varredura {
   const lacunas: Lacuna[] = [];
+  const emDestino: Lacuna[] = [];
+  const destinos = destinosDeLink(texto);
   let naoFecha = false;
   let i = 0;
 
@@ -95,16 +167,22 @@ export function varrer(texto: string): Varredura {
       continue;
     }
 
-    lacunas.push({
+    const lacuna = {
       inicio: i,
       fim: fim + FECHA.length,
       conteudo: texto.slice(i + ABRE.length, fim),
-    });
+    };
+
+    // No destino de link a lacuna não é lacuna: fica literal, e quem reclama
+    // dela é `lerCloze`. Separar aqui faz `parse`, `posicoesDeCards` e
+    // `lacunasVazias` concordarem sem cada um repetir a conta.
+    if (dentro(destinos, lacuna.inicio)) emDestino.push(lacuna);
+    else lacunas.push(lacuna);
 
     i = fim + FECHA.length;
   }
 
-  return { lacunas, naoFecha };
+  return { lacunas, emDestino, naoFecha };
 }
 
 /** Espaços colapsados; o texto do card não guarda a quebra de linha da nota. */
@@ -140,7 +218,18 @@ type Reclamar = (issue: ParseIssue) => void;
 
 function lerCloze(bloco: Bloco, emitir: Emitir, reclamar: Reclamar): void {
   const texto = bloco.linhas.join("\n");
-  const { lacunas, naoFecha } = varrer(texto);
+  const { lacunas, emDestino, naoFecha } = varrer(texto);
+
+  emDestino.forEach((lacuna) => {
+    reclamar({
+      line: linhaDe(texto, lacuna.inicio, bloco.primeiraLinha),
+      title: "lacuna no destino de link",
+      message:
+        "A lacuna está no destino de um link, onde o Markdown não lê texto. " +
+        "Tire-a de dentro dos parênteses, ou escape a abertura para deixá-la " +
+        "literal. O resto da nota está salvo.",
+    });
+  });
 
   if (naoFecha) {
     reclamar({
