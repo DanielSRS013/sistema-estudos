@@ -20,7 +20,9 @@ function nota(over: Partial<NoteRow> = {}): NoteRow {
     id: "n1",
     title: "Projeção ortogonal",
     plainTitle: "Projeção ortogonal",
+    titleSemAcento: "Projecao ortogonal",
     snippet: "A projeção de v sobre u …",
+    snippetSemAcento: "A projecao de v sobre u …",
     kind: "lesson_note",
     updatedAt: new Date("2026-10-01T10:00:00Z"),
     rank: 0.5,
@@ -36,7 +38,9 @@ function card(over: Partial<CardRow> = {}): CardRow {
     id: "c1",
     noteId: "n9",
     prompt: "A projeção de v sobre u vale […]",
+    promptSemAcento: "A projecao de v sobre u vale […]",
     answer: "(v·u / u·u) u",
+    answerSemAcento: "(v·u / u·u) u",
     kind: "cloze",
     state: "learning",
     suspended: false,
@@ -55,7 +59,9 @@ describe("mesclarHits", () => {
     const hit = primeiro(mesclarHits([nota()], [], 30));
 
     expect(hit.origem).toBe("note");
-    expect(hit.tipo).toBe("Anotação de aula");
+    // O handoff escreve "Nota · curso · aula" e "Card · estado · de <nota>":
+    // numa lista misturada o primeiro token diz de onde o resultado veio.
+    expect(hit.tipo).toBe("Nota");
     expect(hit.estado).toBeNull();
     expect(hit.noteId).toBe("n1");
     expect(hit.path).toBe("Álgebra · Espaços · Projeções");
@@ -65,7 +71,7 @@ describe("mesclarHits", () => {
     const hit = primeiro(mesclarHits([], [card()], 30));
 
     expect(hit.origem).toBe("card");
-    expect(hit.tipo).toBe("Lacuna");
+    expect(hit.tipo).toBe("Card");
     expect(hit.estado).toBe("aprendendo");
     expect(hit.noteId).toBe("n9");
     expect(hit.noteTitle).toBe("Projeção ortogonal");
@@ -147,5 +153,92 @@ describe("mesclarHits", () => {
     const hits = mesclarHits([nota({ id: "x" })], [card({ id: "x" })], 30);
 
     expect(new Set(hits.map((h) => h.key)).size).toBe(2);
+  });
+});
+
+describe("o recuo do destaque", () => {
+  // O `ts_headline` sobre o texto cru não marca nada quando o termo veio sem
+  // acento — mas também não marca nada quando o termo simplesmente não está
+  // naquela coluna, que é o caso comum: o vetor cobre título e corpo, e o
+  // casamento pode ser só num deles. Por isso o recuo não pode olhar só a
+  // primeira string: ele só vale se a segunda ganhar alguma marca.
+  it("recua quando o texto cru não marcou e o sem acento marcou", () => {
+    const hit = primeiro(
+      mesclarHits(
+        [
+          nota({
+            title: "Limite fundamental trigonométrico",
+            titleSemAcento: `Limite fundamental ${ABRE}trigonometrico${FECHA}`,
+          }),
+        ],
+        [],
+        30,
+      ),
+    );
+
+    expect(hit.title).toEqual([
+      { texto: "Limite fundamental ", destaque: false },
+      { texto: "trigonometrico", destaque: true },
+    ]);
+  });
+
+  it("não troca o texto acentuado quando ele já marcou", () => {
+    const hit = primeiro(
+      mesclarHits(
+        [
+          nota({
+            title: `${ABRE}Projeção${FECHA} ortogonal`,
+            titleSemAcento: `${ABRE}Projecao${FECHA} ortogonal`,
+          }),
+        ],
+        [],
+        30,
+      ),
+    );
+
+    expect(hit.title).toEqual([
+      { texto: "Projeção", destaque: true },
+      { texto: " ortogonal", destaque: false },
+    ]);
+  });
+
+  it("mantém o acento quando nenhum dos dois marcou", () => {
+    // O caso comum: a nota casou pelo corpo, e o título não tem o termo. Antes
+    // do conserto este título saía sem diacrítico na tela.
+    const hit = primeiro(
+      mesclarHits(
+        [
+          nota({
+            title: "Projeção ortogonal",
+            titleSemAcento: "Projecao ortogonal",
+          }),
+        ],
+        [],
+        30,
+      ),
+    );
+
+    expect(hit.title).toEqual([{ texto: "Projeção ortogonal", destaque: false }]);
+  });
+
+  it("vale também para a resposta do card", () => {
+    const hit = primeiro(
+      mesclarHits(
+        [],
+        [
+          card({
+            answer: "a razão é um",
+            answerSemAcento: `a ${ABRE}razao${FECHA} é um`,
+          }),
+        ],
+        30,
+      ),
+    );
+
+    expect(hit.snippet).toEqual([
+      { texto: "a ", destaque: false },
+      { texto: "razao", destaque: true },
+      { texto: " é um", destaque: false },
+    ]);
   });
 });

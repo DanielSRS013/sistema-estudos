@@ -128,8 +128,36 @@ describe("o destaque do trecho", () => {
     );
   });
 
-  it("não deixa nenhum ts_headline receber só a consulta sem acento", () => {
-    expect(queries).not.toMatch(/ts_headline\([^)]*\$\{consulta\}/);
+  it("não deixa o destaque do texto cru receber só a consulta sem acento", () => {
+    // O texto como está tem os lexemas acentuados: sobre ele o destaque é
+    // sempre a união das duas escritas. A Fatia 22 abriu uma segunda chamada,
+    // sobre `immutable_unaccent(texto)` — essa sim recebe a consulta sem
+    // acento, que é a única que casa ali.
+    // Um nível de parênteses aninhado basta: o argumento mais fundo é
+    // `immutable_unaccent(${coluna})`.
+    const chamadas = [
+      ...queries.matchAll(/ts_headline\('portuguese', ((?:[^()]|\([^()]*\))*)\)/g),
+    ].map((m) => m[1] ?? "");
+    expect(chamadas.length).toBeGreaterThan(0);
+    for (const chamada of chamadas) {
+      if (chamada.includes("immutable_unaccent(")) continue;
+      expect(chamada).toContain("${destaque}");
+    }
+  });
+
+  it("traz as duas escritas de cada coluna, para a tela poder escolher", () => {
+    // O recuo não é decidido no SQL: `escolherDestaque` (`hits.ts`) é função
+    // pura e tem teste. Aqui a trava é que as duas escritas cheguem — e que
+    // nenhuma das duas seja decidida por um `case`, que avaliaria o
+    // `ts_headline` do ramo escolhido duas vezes.
+    for (const par of ["tituloNota", "corpoNota", "faceCard", "respostaCard"]) {
+      expect(queries).toContain(`${par}.comoEsta,`);
+      expect(queries).toContain(`${par}.semAcento,`);
+    }
+    expect(queries).not.toContain("case when");
+    expect(queries).toMatch(
+      /semAcento: sql<string>`ts_headline\('portuguese', immutable_unaccent\(\$\{coluna\}\), \$\{consulta\}/,
+    );
   });
 });
 
@@ -152,11 +180,11 @@ describe("o que cada consulta traz", () => {
     // Face e título são linhas curtas e `HighlightAll` serve. `cards.answer`
     // é o bloco depois do corte: pode ter parágrafos de Markdown e LaTeX, e
     // sem limite de palavras um resultado só ocupa a tela toda.
-    // O regex prende as quatro partes da mesma chamada: `[^;]*?` atravessava a
-    // linha de cima, onde a face usa `OPCOES_TITULO` com razão.
-    const opcoes = queries.match(
-      /ts_headline\('portuguese', \$\{cards\.answer\}, \$\{destaque\}, \$\{(\w+)\}\)/,
-    );
-    expect(opcoes?.[1]).toBe("OPCOES");
+    // As quatro chamadas passam por `destacar`, então o alvo é a opção que
+    // cada coluna recebe — e a face, logo acima, usa `OPCOES_TITULO` com razão.
+    const daResposta = queries.match(/destacar\(cards\.answer, (\w+)\)/);
+    const daFace = queries.match(/destacar\(cards\.prompt, (\w+)\)/);
+    expect(daResposta?.[1]).toBe("OPCOES");
+    expect(daFace?.[1]).toBe("OPCOES_TITULO");
   });
 });

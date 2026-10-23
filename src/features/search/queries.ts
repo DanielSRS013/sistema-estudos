@@ -1,4 +1,4 @@
-import { desc, sql } from "drizzle-orm";
+import { desc, sql, type SQLWrapper } from "drizzle-orm";
 
 import { db } from "@/db";
 import { cards, courses, lessons, modules, notes } from "@/db/schema";
@@ -62,15 +62,42 @@ export async function searchNotesAndCards(termo: string): Promise<SearchHit[]> {
   // texto sem acento com termo sem acento).
   const destaque = sql`(${consulta}) || websearch_to_tsquery('portuguese', ${limpo})`;
 
+  /**
+   * O trecho destacado de uma coluna, nas duas escritas.
+   *
+   * `comoEsta` é o `ts_headline` sobre o texto como ele está, com a união das
+   * duas consultas; `semAcento` é o mesmo sobre o texto sem diacrítico, onde a
+   * consulta sem acento casa. Quem escolhe é `escolherDestaque`, em
+   * `hits.ts` — função pura, com teste: a regra tem um caso de borda estreito
+   * (recuar só quando o segundo ganha marca que o primeiro não tem) e em SQL
+   * ela ficaria sem como ser provada, porque o projeto não tem harness de
+   * banco.
+   *
+   * Duas colunas em vez de um `case` com a mesma expressão nos dois ramos: o
+   * `ts_headline` reanalisa o texto cru e é a parte cara da consulta, e num
+   * `CASE` a subexpressão repetida é avaliada de novo.
+   */
+  const destacar = (coluna: SQLWrapper, opcoes: string) => ({
+    comoEsta: sql<string>`ts_headline('portuguese', ${coluna}, ${destaque}, ${opcoes})`,
+    semAcento: sql<string>`ts_headline('portuguese', immutable_unaccent(${coluna}), ${consulta}, ${opcoes})`,
+  });
+
+  const tituloNota = destacar(notes.title, OPCOES_TITULO);
+  const corpoNota = destacar(notes.content, OPCOES);
+  const faceCard = destacar(cards.prompt, OPCOES_TITULO);
+  const respostaCard = destacar(cards.answer, OPCOES);
+
   const [notaRows, cardRows] = await Promise.all([
     db
       .select({
         id: notes.id,
-        title: sql<string>`ts_headline('portuguese', ${notes.title}, ${destaque}, ${OPCOES_TITULO})`,
+        title: tituloNota.comoEsta,
+        titleSemAcento: tituloNota.semAcento,
         // O título cru, além do destacado: `noteTitle` é texto para ler, e a
         // saída do `ts_headline` carrega os caracteres de controle da marca.
         plainTitle: notes.title,
-        snippet: sql<string>`ts_headline('portuguese', ${notes.content}, ${destaque}, ${OPCOES})`,
+        snippet: corpoNota.comoEsta,
+        snippetSemAcento: corpoNota.semAcento,
         kind: notes.kind,
         updatedAt: notes.updatedAt,
         rank: sql<number>`ts_rank_cd(${notes.searchVector}, ${consulta})`,
@@ -97,10 +124,12 @@ export async function searchNotesAndCards(termo: string): Promise<SearchHit[]> {
       .select({
         id: cards.id,
         noteId: cards.noteId,
-        prompt: sql<string>`ts_headline('portuguese', ${cards.prompt}, ${destaque}, ${OPCOES_TITULO})`,
+        prompt: faceCard.comoEsta,
+        promptSemAcento: faceCard.semAcento,
         // A resposta não é linha curta — é o bloco depois do corte, com
         // parágrafos e LaTeX. Vai com o mesmo limite do corpo da nota.
-        answer: sql<string>`ts_headline('portuguese', ${cards.answer}, ${destaque}, ${OPCOES})`,
+        answer: respostaCard.comoEsta,
+        answerSemAcento: respostaCard.semAcento,
         kind: cards.kind,
         state: cards.state,
         suspended: cards.suspended,

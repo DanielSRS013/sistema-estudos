@@ -1,26 +1,32 @@
 import Link from "next/link";
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 
 import { CourseRail } from "@/features/courses/components/course-rail";
 import type { Segmento } from "@/features/search/highlight";
-import { searchNotesAndCards } from "@/features/search/queries";
+import { searchNotesAndCards, type SearchHit } from "@/features/search/queries";
+import { sugerirConceito } from "@/features/tags/queries";
 import { Carregando, Shell } from "@/shared/shell";
-import { buttonVariants } from "@/shared/ui/button";
-import { cn } from "@/shared/cn";
 
 /**
- * Os segmentos vêm do `ts_headline` já recortados — nenhuma string de banco
- * vira HTML aqui, o `<mark>` é elemento React.
+ * A mesma busca servindo a contagem e a lista. `cache` dedupa por requisição:
+ * os dois componentes esperam a mesma promessa, e o banco é consultado uma vez.
+ */
+const buscar = cache(searchNotesAndCards);
+
+/**
+ * Os segmentos vêm do `ts_headline` já recortados por `splitHighlight` —
+ * nenhuma string de banco vira HTML aqui, o `<mark>` é elemento React.
+ *
+ * O fundo é `--rule`, não o accent: SPEC §6 reserva o accent a link, foco e
+ * item ativo, e um destaque azul no meio do resultado competiria com o título,
+ * que é link de verdade. O peso 600 e o fundo do filete bastam nos dois temas.
  */
 function Trecho({ segmentos }: { segmentos: Segmento[] }) {
   return (
     <>
       {segmentos.map((segmento, i) =>
         segmento.destaque ? (
-          <mark
-            key={i}
-            className="rounded-sm bg-accent/15 px-0.5 text-ink dark:bg-accent/30"
-          >
+          <mark key={i} className="bg-rule px-0.5 font-semibold text-inherit">
             {segmento.texto}
           </mark>
         ) : (
@@ -31,11 +37,20 @@ function Trecho({ segmentos }: { segmentos: Segmento[] }) {
   );
 }
 
+/**
+ * O campo, sozinho: rótulo visível, `type=search` de 17px e alvo de 44px.
+ *
+ * Sem botão de propósito — o handoff não desenha nenhum, e um formulário com um
+ * único campo de texto submete no Enter sem JavaScript. Sem exemplo dentro do
+ * campo também: a lista de termos que ele mostrava ("projeção, autovalor…")
+ * sumia na primeira tecla, e o que a busca varre está escrito no rótulo e no
+ * texto de saída, que ficam.
+ */
 function Busca({ termo }: { termo: string }) {
   return (
-    <form action="/search" className="flex flex-wrap items-center gap-2">
-      <label htmlFor="q" className="sr-only">
-        Buscar nas notas
+    <form action="/search" role="search">
+      <label htmlFor="q" className="mb-1.5 block text-xs text-ink-soft">
+        Buscar em notas e cards
       </label>
       <input
         id="q"
@@ -43,63 +58,91 @@ function Busca({ termo }: { termo: string }) {
         type="search"
         defaultValue={termo}
         autoFocus
-        placeholder="projeção, autovalor, gradiente…"
-        className="min-w-0 flex-1 rounded-sm border border-rule bg-paper px-3 py-2 text-sm"
+        className="min-h-11 w-full rounded-sm border border-ink-soft bg-paper px-3 py-2 text-base"
       />
-      <button type="submit" className={cn(buttonVariants({ size: "sm" }))}>
-        Buscar
-      </button>
     </form>
   );
 }
 
-async function Resultados({ termo }: { termo: string }) {
-  const hits = await searchNotesAndCards(termo);
+/**
+ * "Pergunta · revisão · de Projeção escalar e vetorial" no card, "Resumo ·
+ * Álgebra linear · Vetores · Projeções" na nota — o tipo à frente nas duas.
+ *
+ * O card troca o caminho pela nota de origem, como o handoff escreve: o
+ * caminho dele é o da nota que o gerou, e repetir curso · módulo · aula *mais*
+ * a nota faria a linha de meta passar do título. O link do resultado já vai
+ * para essa nota.
+ */
+function meta(hit: SearchHit): string {
+  return hit.origem === "card"
+    ? `${hit.tipo} · ${hit.estado} · de ${hit.noteTitle}`
+    : `${hit.tipo} · ${hit.path}`;
+}
 
-  if (hits.length === 0) {
-    return (
-      <p className="font-serif text-base leading-prose text-ink-soft">
-        Nada encontrado para <span className="font-mono">{termo}</span>. Tente
-        outra palavra do conceito, ou uma só palavra em vez da frase.
-      </p>
-    );
-  }
+/** A saída que o handoff oferece quando nada casa: um conceito para abrir. */
+async function SemResultado({ termo }: { termo: string }) {
+  const conceito = await sugerirConceito(termo);
 
   return (
-    <div className="space-y-4">
-      <p className="font-mono text-xs text-ink-soft">
-        {hits.length === 1 ? "1 resultado" : `${hits.length} resultados`}
-        {hits.length === 30 ? " (primeiros 30)" : ""}
-      </p>
-      <ul className="space-y-4">
-        {hits.map((hit) => (
-          <li
-            key={hit.key}
-            className="space-y-1 border-t border-rule pt-4 first:border-t-0 first:pt-0"
+    <p className="text-base">
+      Nada encontrado para “{termo}”. Tente um termo mais curto
+      {conceito === null ? (
+        "."
+      ) : (
+        <>
+          {" ou abra o conceito "}
+          <Link href={`/tags/${conceito}`} className="text-accent underline">
+            #{conceito}
+          </Link>
+          .
+        </>
+      )}
+    </p>
+  );
+}
+
+/**
+ * A contagem, sozinha na região viva.
+ *
+ * Ela mora fora da lista por dois motivos de leitor de tela: a região precisa
+ * existir no DOM antes do texto chegar, senão a troca não é anunciada; e ela
+ * valia só quando havia resultado — quem buscava e não achava nada não ouvia
+ * nem o "0 resultados". A lista fica fora da região: anunciar trinta
+ * resultados inteiros a cada busca não é informação, é ruído.
+ */
+async function Contagem({ termo }: { termo: string }) {
+  const hits = await buscar(termo);
+
+  return (
+    <>
+      {hits.length === 1 ? "1 resultado" : `${hits.length} resultados`} para “
+      {termo}” em notas e cards
+    </>
+  );
+}
+
+async function Resultados({ termo }: { termo: string }) {
+  const hits = await buscar(termo);
+
+  if (hits.length === 0) return <SemResultado termo={termo} />;
+
+  return (
+    <ol className="border-t border-ink">
+      {hits.map((hit) => (
+        <li key={hit.key} className="grid gap-1 border-b border-rule py-4">
+          <span className="text-xs text-ink-soft">{meta(hit)}</span>
+          <Link
+            href={`/notes/${hit.noteId}`}
+            className="text-base font-medium hover:text-accent"
           >
-            <Link
-              href={`/notes/${hit.noteId}`}
-              className="font-medium hover:text-accent"
-            >
-              <Trecho segmentos={hit.title} />
-            </Link>
-            <p className="font-mono text-xs text-ink-soft">
-              {hit.estado === null ? hit.tipo : `${hit.tipo} · ${hit.estado}`}
-              {" · "}
-              {hit.path}
-            </p>
-            <p className="font-serif text-sm leading-prose text-ink-soft">
-              <Trecho segmentos={hit.snippet} />
-            </p>
-            {hit.origem === "card" ? (
-              <p className="font-mono text-xs text-ink-soft">
-                em <span className="not-italic">{hit.noteTitle}</span>
-              </p>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-    </div>
+            <Trecho segmentos={hit.title} />
+          </Link>
+          <p className="font-serif text-sm leading-snippet">
+            <Trecho segmentos={hit.snippet} />
+          </p>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -121,19 +164,22 @@ async function Painel({
       <Busca termo={termo} />
 
       {termo === "" ? (
-        <p className="font-serif text-base leading-prose text-ink-soft">
-          Digite uma palavra do conceito. A busca varre título e corpo das notas
-          e a face e a resposta dos cards, com radical em português e acento
-          opcional: “limites” encontra “limite”, e “projecao” encontra
-          “projeção”.
+        <p className="text-base">
+          Digite um termo para buscar em todas as notas e cards. Acentos são
+          opcionais.
         </p>
       ) : (
-        <Suspense
-          key={termo}
-          fallback={<Carregando>Buscando nas notas e nos cards.</Carregando>}
-        >
-          <Resultados termo={termo} />
-        </Suspense>
+        <>
+          <p role="status" className="text-xs text-ink-soft">
+            <Suspense key={termo} fallback="Buscando nas notas e nos cards.">
+              <Contagem termo={termo} />
+            </Suspense>
+          </p>
+
+          <Suspense key={termo} fallback={null}>
+            <Resultados termo={termo} />
+          </Suspense>
+        </>
       )}
     </>
   );
@@ -146,13 +192,10 @@ export default function SearchPage({
 }) {
   return (
     <Shell rail={<CourseRail />}>
-      <div className="measure space-y-6">
-        <header className="space-y-1">
-          <p className="font-mono text-xs tracking-wide text-ink-soft">busca</p>
-          <h1 className="text-xl font-semibold tracking-tight">
-            Buscar nas notas
-          </h1>
-        </header>
+      {/* 760px e intervalo de 20: a tela é lista de resultados, não coluna de
+          leitura, e por isso não usa a medida de 68ch da nota. */}
+      <div className="grid w-full max-w-190 gap-5">
+        <h1 className="text-xl font-medium">Busca</h1>
 
         <Suspense fallback={<Carregando>Abrindo a busca.</Carregando>}>
           <Painel searchParams={searchParams} />

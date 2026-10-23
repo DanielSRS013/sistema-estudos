@@ -2,11 +2,39 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { CardItem } from "@/features/cards/components/card-item";
 import { CourseRail } from "@/features/courses/components/course-rail";
+import { noteKindLabel } from "@/features/notes/kind";
+import { TagCardRow } from "@/features/tags/components/tag-card";
 import { getTagBySlug } from "@/features/tags/queries";
 import { slugify } from "@/shared/slug";
 import { Carregando, Shell } from "@/shared/shell";
+
+/** "3 notas", "1 card" — a contagem da frase do cabeçalho. */
+function contagem(n: number, singular: string, plural: string): string {
+  return `${n} ${n === 1 ? singular : plural}`;
+}
+
+function Secao({
+  id,
+  titulo,
+  children,
+}: {
+  id: string;
+  titulo: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section aria-labelledby={id}>
+      <h2
+        id={id}
+        className="border-b border-ink pb-2 text-lg font-medium"
+      >
+        {titulo}
+      </h2>
+      <ul>{children}</ul>
+    </section>
+  );
+}
 
 async function TagDetail({ params }: { params: Promise<{ tagSlug: string }> }) {
   const { tagSlug } = await params;
@@ -20,58 +48,46 @@ async function TagDetail({ params }: { params: Promise<{ tagSlug: string }> }) {
   if (!tag) notFound();
 
   return (
-    <div className="space-y-8">
-      <header className="space-y-1">
-        <p className="font-mono text-xs tracking-wide text-ink-soft">conceito</p>
-        <h1 className="text-xl font-semibold tracking-tight">#{tag.name}</h1>
+    <>
+      <header className="grid gap-1.5">
+        <p className="text-xs text-ink-soft">Conceito</p>
+        <h1 className="text-xl font-medium">#{tag.name}</h1>
         <p className="text-sm text-ink-soft">
-          {tag.notes.length === 0
-            ? "Nenhuma nota cita este conceito agora."
-            : `${tag.notes.length} ${tag.notes.length === 1 ? "nota" : "notas"} · ${tag.cards.length} ${tag.cards.length === 1 ? "card" : "cards"}`}
+          Citado em {contagem(tag.notes.length, "nota", "notas")} e{" "}
+          {contagem(tag.cards.length, "card", "cards")}
         </p>
       </header>
 
-      {tag.notes.length === 0 ? (
-        <p className="measure font-serif text-base leading-prose text-ink-soft">
-          A tag continua valendo: escreva <code className="font-mono">#{tag.slug}</code>{" "}
-          em qualquer nota e ela aparece aqui.
-        </p>
-      ) : (
-        <section className="space-y-3">
-          <h2 className="text-sm font-medium text-ink-soft">Notas</h2>
-          <ul className="space-y-3">
-            {tag.notes.map((nota) => (
-              <li
-                key={nota.id}
-                className="space-y-0.5 border-t border-rule pt-3 first:border-t-0 first:pt-0"
-              >
-                <Link
-                  href={`/notes/${nota.id}`}
-                  className="font-medium hover:text-accent"
-                >
-                  {nota.title}
-                </Link>
-                <p className="font-mono text-xs text-ink-soft">{nota.path}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {/* As duas seções ficam de pé mesmo vazias: o cabeçalho já disse que são
+          zero, e sumir com a seção faz a página parecer outra a cada visita.
+          Antes a de notas virava um texto que imprimia o slug onde o usuário
+          tinha escrito outra coisa, e a de cards simplesmente não existia. */}
+      <Secao id="notas-do-conceito" titulo="Notas">
+        {tag.notes.map((nota) => (
+          <li
+            key={nota.id}
+            className="grid gap-0.5 border-b border-rule py-3.5"
+          >
+            <span className="text-xs text-ink-soft">
+              {noteKindLabel(nota.kind)} · {nota.path}
+            </span>
+            <Link
+              href={`/notes/${nota.id}`}
+              className="text-base font-medium hover:text-accent"
+            >
+              {nota.title}
+            </Link>
+          </li>
+        ))}
+      </Secao>
 
-      {tag.cards.length > 0 ? (
-        <section className="space-y-3 border-t border-rule pt-6">
-          <h2 className="text-sm font-medium text-ink-soft">
-            Cards do conceito
-          </h2>
-          {/* Card não tem tag própria: estes são os cards das notas acima. */}
-          <ul className="space-y-3">
-            {tag.cards.map((card) => (
-              <CardItem key={card.id} card={card} nota={card.note} />
-            ))}
-          </ul>
-        </section>
-      ) : null}
-    </div>
+      {/* Card não tem tag própria: estes são os cards das notas acima. */}
+      <Secao id="cards-do-conceito" titulo="Cards">
+        {tag.cards.map((card) => (
+          <TagCardRow key={card.id} card={card} />
+        ))}
+      </Secao>
+    </>
   );
 }
 
@@ -82,7 +98,9 @@ export default function TagPage({
 }) {
   return (
     <Shell rail={<CourseRail />}>
-      <div className="measure">
+      {/* 880px e intervalo de 32, como o painel: a página do conceito é lista
+          de notas e cards, não coluna de leitura. */}
+      <div className="grid w-full max-w-220 gap-8">
         <Suspense fallback={<Carregando>Carregando o conceito.</Carregando>}>
           <TagDetail params={params} />
         </Suspense>

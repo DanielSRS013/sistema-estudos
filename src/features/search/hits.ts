@@ -9,19 +9,39 @@
 // O corte no limite acontece *depois* da mescla, de propósito: cada consulta
 // pede o limite inteiro, e quem sobra são os mais relevantes dos dois lados.
 
-import { cardKindLabel, cardStateLabel, type CardState } from "@/features/cards/labels";
+import { cardStateLabel, type CardState } from "@/features/cards/labels";
 import type { CardKind } from "@/features/cards/parser";
-import { noteKindLabel, type NoteKind } from "@/features/notes/kind";
+import type { NoteKind } from "@/features/notes/kind";
 
-import { splitHighlight, type Segmento } from "./highlight";
+import { ABRE, splitHighlight, type Segmento } from "./highlight";
+
+/**
+ * O trecho a exibir, entre o destaque sobre o texto como está e o destaque
+ * sobre o mesmo texto sem acento.
+ *
+ * O recuo existe para um caso só: termo digitado sem acento contra texto
+ * acentuado ("trigonometrico" contra "trigonométrico"), onde o `ts_headline`
+ * não casa nada e devolve o começo do texto, sem marca. Ele **só** vale quando
+ * a versão sem acento ganha o que a outra não ganhou — "não marcou" sozinho é o
+ * caso comum (o termo está na outra coluna, e o vetor cobre as duas), e recuar
+ * ali trocaria um texto certo por um texto sem diacrítico à toa.
+ */
+export function escolherDestaque(comoEsta: string, semAcento: string): string {
+  return !comoEsta.includes(ABRE) && semAcento.includes(ABRE)
+    ? semAcento
+    : comoEsta;
+}
 
 /** Uma linha da consulta de notas, com o título e o trecho já destacados. */
 export type NoteRow = {
   id: string;
   title: string;
+  /** O mesmo título destacado sobre o texto sem acento — ver `escolherDestaque`. */
+  titleSemAcento: string;
   /** O título sem as marcas do destaque — ver `plainTitle` na consulta. */
   plainTitle: string;
   snippet: string;
+  snippetSemAcento: string;
   kind: NoteKind;
   updatedAt: Date;
   rank: number;
@@ -35,7 +55,9 @@ export type CardRow = {
   id: string;
   noteId: string;
   prompt: string;
+  promptSemAcento: string;
   answer: string;
+  answerSemAcento: string;
   kind: CardKind;
   state: CardState;
   suspended: boolean;
@@ -53,7 +75,12 @@ export type SearchHit = {
   /** Para onde o resultado leva: a nota, ou a nota de origem do card. */
   noteId: string;
   origem: "note" | "card";
-  /** "Anotação de aula", "Resumo", "Lacuna", "Pergunta" — o meta do handoff. */
+  /**
+   * "Nota" ou "Card": o primeiro token do meta, como o handoff escreve ("Nota ·
+   * curso · aula", "Card · estado · de <nota>"). Numa lista misturada é o que
+   * diz de onde o resultado veio — o tipo de domínio ("Resumo", "Lacuna") não
+   * diz isso a quem está varrendo a lista.
+   */
   tipo: string;
   /** Estado do card em português; `null` numa nota, que não tem estado. */
   estado: string | null;
@@ -82,10 +109,10 @@ function daNota(row: NoteRow): SearchHit {
     key: row.id,
     noteId: row.id,
     origem: "note",
-    tipo: noteKindLabel(row.kind),
+    tipo: "Nota",
     estado: null,
-    title: splitHighlight(row.title),
-    snippet: splitHighlight(row.snippet),
+    title: splitHighlight(escolherDestaque(row.title, row.titleSemAcento)),
+    snippet: splitHighlight(escolherDestaque(row.snippet, row.snippetSemAcento)),
     path: caminho(row),
     noteTitle: row.plainTitle,
     updatedAt: row.updatedAt,
@@ -98,10 +125,10 @@ function doCard(row: CardRow): SearchHit {
     key: `card:${row.id}`,
     noteId: row.noteId,
     origem: "card",
-    tipo: cardKindLabel(row.kind),
+    tipo: "Card",
     estado: cardStateLabel({ state: row.state, suspended: row.suspended }),
-    title: splitHighlight(row.prompt),
-    snippet: splitHighlight(row.answer),
+    title: splitHighlight(escolherDestaque(row.prompt, row.promptSemAcento)),
+    snippet: splitHighlight(escolherDestaque(row.answer, row.answerSemAcento)),
     path: caminho(row),
     noteTitle: row.noteTitle,
     updatedAt: row.updatedAt,
