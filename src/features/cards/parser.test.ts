@@ -282,3 +282,53 @@ describe("lacuna no destino de link", () => {
     expect(cards[0]?.answer).toBe("sempre");
   });
 });
+
+describe("Q:: que não abre o bloco", () => {
+  it("reclama da pergunta escrita em item de lista", () => {
+    // Sem reclamação o usuário escreve a pergunta, salva, e ela simplesmente
+    // não existe: `parse` e `posicoesDeCards` concordam entre si, então nem a
+    // tela mostra inconsistência.
+    const { cards, issues } = parse(
+      ["- Q:: Uma pergunta?", "- A:: Uma resposta."].join("\n"),
+    );
+
+    expect(cards).toEqual([]);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toMatchObject({
+      line: 1,
+      title: "pergunta dentro de lista ou citação",
+    });
+  });
+
+  it("reclama da pergunta escrita em citação", () => {
+    const { cards, issues } = parse(
+      ["> Q:: Uma pergunta?", "> A:: Uma resposta."].join("\n"),
+    );
+
+    expect(cards).toEqual([]);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.title).toBe("pergunta dentro de lista ou citação");
+  });
+
+  it("aponta a linha do Q:: disfarçado, não a do bloco", () => {
+    const { issues } = parse(
+      ["Um parágrafo qualquer.", "1. Q:: Uma pergunta?"].join("\n"),
+    );
+
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.line).toBe(2);
+  });
+
+  it("não reclama do Q:: que abre a linha depois de um texto", () => {
+    // Já funcionava: o Q:: corta o bloco, o que vem antes segue cloze.
+    const { cards, issues } = parse(
+      ["Contexto da pergunta:", "Q:: Uma pergunta?", "A:: Uma resposta."].join(
+        "\n",
+      ),
+    );
+
+    expect(issues).toEqual([]);
+    expect(cards).toHaveLength(1);
+    expect(cards[0]?.kind).toBe("qa");
+  });
+});

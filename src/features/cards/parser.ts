@@ -283,6 +283,17 @@ const Q = "Q::";
 const A = "A::";
 
 /**
+ * `Q::` escondido atrás de marca de lista ou de citação.
+ *
+ * O corte do bloco é por `startsWith("Q::")`, então a pergunta escrita como
+ * item de lista ou dentro de citação não vira card — e não virava reclamação
+ * nenhuma. `parse` e `posicoesDeCards` concordavam no silêncio, então nem a
+ * tela tinha o que mostrar: o usuário escrevia a pergunta, salvava, e ela
+ * simplesmente não existia.
+ */
+const Q_DISFARCADO = /^\s*(?:(?:[-*+]|\d+[.)])\s+|>\s*)+Q::/;
+
+/**
  * O par lido de um bloco que começa por `Q::`, ou por que ele não vira card.
  *
  * Mora numa função só porque dois leitores dependem desta mesma decisão: `lerQA`,
@@ -313,6 +324,22 @@ function lerPar(linhas: string[]): Par {
   if (pergunta === "" || corpo === "") return { ok: false, motivo: "vazio" };
 
   return { ok: true, pergunta, corpo };
+}
+
+/** Uma reclamação por `Q::` disfarçado, na linha em que ele está escrito. */
+function reclamarQDisfarcado(bloco: Bloco, reclamar: Reclamar): void {
+  bloco.linhas.forEach((linha, indice) => {
+    if (!Q_DISFARCADO.test(linha)) return;
+
+    reclamar({
+      line: bloco.primeiraLinha + indice,
+      title: "pergunta dentro de lista ou citação",
+      message:
+        "Q:: tem de abrir o bloco, numa linha própria, fora de item de lista " +
+        "e de citação. Tire a marca de lista ou da citação, ou mova a " +
+        "pergunta para um parágrafo próprio. O resto da nota está salvo.",
+    });
+  });
 }
 
 function lerQA(
@@ -510,7 +537,12 @@ export function parse(markdown: string): ParseResult {
   for (const bloco of blocos(markdown)) {
     const { cloze, qa } = partirBloco(bloco);
 
-    if (cloze !== null) lerCloze(cloze, emitir, reclamar);
+    if (cloze !== null) {
+      // Só na parte cloze: depois do corte, o que houver é corpo da resposta.
+      reclamarQDisfarcado(cloze, reclamar);
+      lerCloze(cloze, emitir, reclamar);
+    }
+
     if (qa !== null) lerQA(qa.linhas, qa.primeiraLinha, emitir, reclamar);
   }
 
