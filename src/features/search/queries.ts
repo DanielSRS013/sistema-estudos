@@ -1,4 +1,4 @@
-import { desc, sql } from "drizzle-orm";
+import { desc, sql, type SQLWrapper } from "drizzle-orm";
 
 import { db } from "@/db";
 import { cards, courses, lessons, modules, notes } from "@/db/schema";
@@ -62,15 +62,36 @@ export async function searchNotesAndCards(termo: string): Promise<SearchHit[]> {
   // texto sem acento com termo sem acento).
   const destaque = sql`(${consulta}) || websearch_to_tsquery('portuguese', ${limpo})`;
 
+  /**
+   * O trecho destacado de uma coluna, com recuo.
+   *
+   * O caminho normal é o texto como está, com a união das duas escritas. Ele
+   * falha num caso: termo sem acento sobre texto acentuado — "trigonometrico"
+   * contra "trigonométrico". Nenhuma das duas consultas casa com o lexema
+   * acentuado, e o `ts_headline` sem fragmento devolve o *começo* do texto, sem
+   * marca nenhuma: a busca acha a nota e mostra a abertura dela, que não diz
+   * por que casou.
+   *
+   * Daí o recuo: se não houver marca, destaca-se o texto sem acento, onde a
+   * consulta sem acento casa. O preço é que nesse caso o trecho aparece sem os
+   * diacríticos — trecho certo com acento errado vale mais que trecho errado
+   * com acento certo, e quem cai aqui foi justamente quem digitou sem acento.
+   */
+  const destacar = (coluna: SQLWrapper, opcoes: string) => {
+    const comoEsta = sql`ts_headline('portuguese', ${coluna}, ${destaque}, ${opcoes})`;
+
+    return sql<string>`case when strpos(${comoEsta}, ${ABRE}) > 0 then ${comoEsta} else ts_headline('portuguese', immutable_unaccent(${coluna}), ${consulta}, ${opcoes}) end`;
+  };
+
   const [notaRows, cardRows] = await Promise.all([
     db
       .select({
         id: notes.id,
-        title: sql<string>`ts_headline('portuguese', ${notes.title}, ${destaque}, ${OPCOES_TITULO})`,
+        title: destacar(notes.title, OPCOES_TITULO),
         // O título cru, além do destacado: `noteTitle` é texto para ler, e a
         // saída do `ts_headline` carrega os caracteres de controle da marca.
         plainTitle: notes.title,
-        snippet: sql<string>`ts_headline('portuguese', ${notes.content}, ${destaque}, ${OPCOES})`,
+        snippet: destacar(notes.content, OPCOES),
         kind: notes.kind,
         updatedAt: notes.updatedAt,
         rank: sql<number>`ts_rank_cd(${notes.searchVector}, ${consulta})`,
@@ -97,10 +118,10 @@ export async function searchNotesAndCards(termo: string): Promise<SearchHit[]> {
       .select({
         id: cards.id,
         noteId: cards.noteId,
-        prompt: sql<string>`ts_headline('portuguese', ${cards.prompt}, ${destaque}, ${OPCOES_TITULO})`,
+        prompt: destacar(cards.prompt, OPCOES_TITULO),
         // A resposta não é linha curta — é o bloco depois do corte, com
         // parágrafos e LaTeX. Vai com o mesmo limite do corpo da nota.
-        answer: sql<string>`ts_headline('portuguese', ${cards.answer}, ${destaque}, ${OPCOES})`,
+        answer: destacar(cards.answer, OPCOES),
         kind: cards.kind,
         state: cards.state,
         suspended: cards.suspended,
