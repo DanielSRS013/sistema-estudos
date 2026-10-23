@@ -1,11 +1,17 @@
 import Link from "next/link";
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 
 import { CourseRail } from "@/features/courses/components/course-rail";
 import type { Segmento } from "@/features/search/highlight";
 import { searchNotesAndCards, type SearchHit } from "@/features/search/queries";
 import { sugerirConceito } from "@/features/tags/queries";
 import { Carregando, Shell } from "@/shared/shell";
+
+/**
+ * A mesma busca servindo a contagem e a lista. `cache` dedupa por requisição:
+ * os dois componentes esperam a mesma promessa, e o banco é consultado uma vez.
+ */
+const buscar = cache(searchNotesAndCards);
 
 /**
  * Os segmentos vêm do `ts_headline` já recortados por `splitHighlight` —
@@ -95,36 +101,48 @@ async function SemResultado({ termo }: { termo: string }) {
   );
 }
 
+/**
+ * A contagem, sozinha na região viva.
+ *
+ * Ela mora fora da lista por dois motivos de leitor de tela: a região precisa
+ * existir no DOM antes do texto chegar, senão a troca não é anunciada; e ela
+ * valia só quando havia resultado — quem buscava e não achava nada não ouvia
+ * nem o "0 resultados". A lista fica fora da região: anunciar trinta
+ * resultados inteiros a cada busca não é informação, é ruído.
+ */
+async function Contagem({ termo }: { termo: string }) {
+  const hits = await buscar(termo);
+
+  return (
+    <>
+      {hits.length === 1 ? "1 resultado" : `${hits.length} resultados`} para “
+      {termo}” em notas e cards
+    </>
+  );
+}
+
 async function Resultados({ termo }: { termo: string }) {
-  const hits = await searchNotesAndCards(termo);
+  const hits = await buscar(termo);
 
   if (hits.length === 0) return <SemResultado termo={termo} />;
 
   return (
-    <>
-      {/* `role="status"` porque a contagem é o que muda quando a busca
-          responde: sem ele quem usa leitor de tela submete e não ouve nada. */}
-      <p role="status" className="text-xs text-ink-soft">
-        {hits.length === 1 ? "1 resultado" : `${hits.length} resultados`} para “
-        {termo}” em notas e cards
-      </p>
-      <ol className="border-t border-ink">
-        {hits.map((hit) => (
-          <li key={hit.key} className="grid gap-1 border-b border-rule py-4">
-            <span className="text-xs text-ink-soft">{meta(hit)}</span>
-            <Link
-              href={`/notes/${hit.noteId}`}
-              className="text-base font-medium hover:text-accent"
-            >
-              <Trecho segmentos={hit.title} />
-            </Link>
-            <p className="font-serif text-sm leading-snippet">
-              <Trecho segmentos={hit.snippet} />
-            </p>
-          </li>
-        ))}
-      </ol>
-    </>
+    <ol className="border-t border-ink">
+      {hits.map((hit) => (
+        <li key={hit.key} className="grid gap-1 border-b border-rule py-4">
+          <span className="text-xs text-ink-soft">{meta(hit)}</span>
+          <Link
+            href={`/notes/${hit.noteId}`}
+            className="text-base font-medium hover:text-accent"
+          >
+            <Trecho segmentos={hit.title} />
+          </Link>
+          <p className="font-serif text-sm leading-snippet">
+            <Trecho segmentos={hit.snippet} />
+          </p>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -151,12 +169,17 @@ async function Painel({
           opcionais.
         </p>
       ) : (
-        <Suspense
-          key={termo}
-          fallback={<Carregando>Buscando nas notas e nos cards.</Carregando>}
-        >
-          <Resultados termo={termo} />
-        </Suspense>
+        <>
+          <p role="status" className="text-xs text-ink-soft">
+            <Suspense key={termo} fallback="Buscando nas notas e nos cards.">
+              <Contagem termo={termo} />
+            </Suspense>
+          </p>
+
+          <Suspense key={termo} fallback={null}>
+            <Resultados termo={termo} />
+          </Suspense>
+        </>
       )}
     </>
   );

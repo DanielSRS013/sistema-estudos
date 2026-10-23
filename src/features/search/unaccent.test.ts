@@ -145,13 +145,18 @@ describe("o destaque do trecho", () => {
     }
   });
 
-  it("cai para o texto sem acento quando o destaque não marcou nada", () => {
-    // Sem o recuo, quem digita "trigonometrico" acha a nota e vê o começo dela
-    // sem marca nenhuma: o `ts_headline` reanalisa o texto cru, não casa com a
-    // consulta sem acento e devolve o início por falta de fragmento.
-    expect(queries).toContain("case when strpos(");
+  it("traz as duas escritas de cada coluna, para a tela poder escolher", () => {
+    // O recuo não é decidido no SQL: `escolherDestaque` (`hits.ts`) é função
+    // pura e tem teste. Aqui a trava é que as duas escritas cheguem — e que
+    // nenhuma das duas seja decidida por um `case`, que avaliaria o
+    // `ts_headline` do ramo escolhido duas vezes.
+    for (const par of ["tituloNota", "corpoNota", "faceCard", "respostaCard"]) {
+      expect(queries).toContain(`${par}.comoEsta,`);
+      expect(queries).toContain(`${par}.semAcento,`);
+    }
+    expect(queries).not.toContain("case when");
     expect(queries).toMatch(
-      /ts_headline\('portuguese', immutable_unaccent\(\$\{coluna\}\), \$\{consulta\}/,
+      /semAcento: sql<string>`ts_headline\('portuguese', immutable_unaccent\(\$\{coluna\}\), \$\{consulta\}/,
     );
   });
 });

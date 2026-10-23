@@ -63,35 +63,41 @@ export async function searchNotesAndCards(termo: string): Promise<SearchHit[]> {
   const destaque = sql`(${consulta}) || websearch_to_tsquery('portuguese', ${limpo})`;
 
   /**
-   * O trecho destacado de uma coluna, com recuo.
+   * O trecho destacado de uma coluna, nas duas escritas.
    *
-   * O caminho normal é o texto como está, com a união das duas escritas. Ele
-   * falha num caso: termo sem acento sobre texto acentuado — "trigonometrico"
-   * contra "trigonométrico". Nenhuma das duas consultas casa com o lexema
-   * acentuado, e o `ts_headline` sem fragmento devolve o *começo* do texto, sem
-   * marca nenhuma: a busca acha a nota e mostra a abertura dela, que não diz
-   * por que casou.
+   * `comoEsta` é o `ts_headline` sobre o texto como ele está, com a união das
+   * duas consultas; `semAcento` é o mesmo sobre o texto sem diacrítico, onde a
+   * consulta sem acento casa. Quem escolhe é `escolherDestaque`, em
+   * `hits.ts` — função pura, com teste: a regra tem um caso de borda estreito
+   * (recuar só quando o segundo ganha marca que o primeiro não tem) e em SQL
+   * ela ficaria sem como ser provada, porque o projeto não tem harness de
+   * banco.
    *
-   * Daí o recuo: se não houver marca, destaca-se o texto sem acento, onde a
-   * consulta sem acento casa. O preço é que nesse caso o trecho aparece sem os
-   * diacríticos — trecho certo com acento errado vale mais que trecho errado
-   * com acento certo, e quem cai aqui foi justamente quem digitou sem acento.
+   * Duas colunas em vez de um `case` com a mesma expressão nos dois ramos: o
+   * `ts_headline` reanalisa o texto cru e é a parte cara da consulta, e num
+   * `CASE` a subexpressão repetida é avaliada de novo.
    */
-  const destacar = (coluna: SQLWrapper, opcoes: string) => {
-    const comoEsta = sql`ts_headline('portuguese', ${coluna}, ${destaque}, ${opcoes})`;
+  const destacar = (coluna: SQLWrapper, opcoes: string) => ({
+    comoEsta: sql<string>`ts_headline('portuguese', ${coluna}, ${destaque}, ${opcoes})`,
+    semAcento: sql<string>`ts_headline('portuguese', immutable_unaccent(${coluna}), ${consulta}, ${opcoes})`,
+  });
 
-    return sql<string>`case when strpos(${comoEsta}, ${ABRE}) > 0 then ${comoEsta} else ts_headline('portuguese', immutable_unaccent(${coluna}), ${consulta}, ${opcoes}) end`;
-  };
+  const tituloNota = destacar(notes.title, OPCOES_TITULO);
+  const corpoNota = destacar(notes.content, OPCOES);
+  const faceCard = destacar(cards.prompt, OPCOES_TITULO);
+  const respostaCard = destacar(cards.answer, OPCOES);
 
   const [notaRows, cardRows] = await Promise.all([
     db
       .select({
         id: notes.id,
-        title: destacar(notes.title, OPCOES_TITULO),
+        title: tituloNota.comoEsta,
+        titleSemAcento: tituloNota.semAcento,
         // O título cru, além do destacado: `noteTitle` é texto para ler, e a
         // saída do `ts_headline` carrega os caracteres de controle da marca.
         plainTitle: notes.title,
-        snippet: destacar(notes.content, OPCOES),
+        snippet: corpoNota.comoEsta,
+        snippetSemAcento: corpoNota.semAcento,
         kind: notes.kind,
         updatedAt: notes.updatedAt,
         rank: sql<number>`ts_rank_cd(${notes.searchVector}, ${consulta})`,
@@ -118,10 +124,12 @@ export async function searchNotesAndCards(termo: string): Promise<SearchHit[]> {
       .select({
         id: cards.id,
         noteId: cards.noteId,
-        prompt: destacar(cards.prompt, OPCOES_TITULO),
+        prompt: faceCard.comoEsta,
+        promptSemAcento: faceCard.semAcento,
         // A resposta não é linha curta — é o bloco depois do corte, com
         // parágrafos e LaTeX. Vai com o mesmo limite do corpo da nota.
-        answer: destacar(cards.answer, OPCOES),
+        answer: respostaCard.comoEsta,
+        answerSemAcento: respostaCard.semAcento,
         kind: cards.kind,
         state: cards.state,
         suspended: cards.suspended,

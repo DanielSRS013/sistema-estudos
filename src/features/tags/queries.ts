@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
+import { asc, eq, like } from "drizzle-orm";
 
 import { db } from "@/db";
-import { noteTags, notes } from "@/db/schema";
+import { noteTags, notes, tags } from "@/db/schema";
 import type { NoteKind } from "@/features/notes/kind";
 import { slugify } from "@/shared/slug";
 
@@ -142,6 +142,10 @@ export async function getTagBySlug(slug: string): Promise<TagDetail | null> {
  * tag existente cujo slug contenha o que foi digitado: "projecao" oferece
  * `#projecao-vetorial`. Sem casamento não há oferta, e a frase termina antes.
  *
+ * A tag precisa ter nota: tag sem nenhuma nota vinculada existe (o `#` saiu da
+ * nota, ou a nota foi apagada) e abrir uma delas leva a uma página de duas
+ * seções vazias. Quem não achou nada merece uma saída, não um segundo beco.
+ *
  * `slugify` é o que torna o `like` seguro: ele só deixa passar `[a-z0-9-]`, e
  * `%` ou `_` digitados não chegam a virar curinga.
  */
@@ -150,11 +154,13 @@ export async function sugerirConceito(termo: string): Promise<string | null> {
 
   if (alvo === "") return null;
 
-  const achado = await db.query.tags.findFirst({
-    where: (t, { like }) => like(t.slug, `%${alvo}%`),
-    orderBy: (t, { asc }) => [asc(t.slug)],
-    columns: { slug: true },
-  });
+  const [achado] = await db
+    .select({ slug: tags.slug })
+    .from(tags)
+    .innerJoin(noteTags, eq(noteTags.tagId, tags.id))
+    .where(like(tags.slug, `%${alvo}%`))
+    .orderBy(asc(tags.slug))
+    .limit(1);
 
   return achado?.slug ?? null;
 }

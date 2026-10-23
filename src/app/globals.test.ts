@@ -826,6 +826,10 @@ describe("a busca e o conceito do handoff", () => {
     join(raiz, "features", "tags", "components", "tag-card.tsx"),
     "utf8",
   );
+  const consultasDeTag = readFileSync(
+    join(raiz, "features", "tags", "queries.ts"),
+    "utf8",
+  );
   const telas: [string, string][] = [
     ["busca", busca],
     ["conceito", conceito],
@@ -878,6 +882,22 @@ describe("a busca e o conceito do handoff", () => {
     expect(busca).toContain("em notas e cards");
     // "(primeiros 30)" dizia o limite da consulta, que o handoff não mostra.
     expect(busca).not.toContain("primeiros 30");
+  });
+
+  it("mantém a região de estado de pé, inclusive sem resultado", () => {
+    // Região viva precisa estar no DOM *antes* do texto chegar, senão o leitor
+    // de tela não anuncia a troca. E ela valia só quando havia resultado: quem
+    // buscava e não achava nada não ouvia nem o "0 resultados".
+    expect(busca).toMatch(/role="status"[\s\S]{0,200}?<Suspense/);
+    expect(busca).not.toMatch(/hits\.length === 0[\s\S]{0,400}?role="status"/);
+  });
+
+  it("não oferece um conceito que não leva a lugar nenhum", () => {
+    // Tag sem nota vinculada existe (`getTagBySlug` tem o ramo), e oferecê-la
+    // manda quem não achou nada para uma página de duas seções vazias.
+    expect(consultasDeTag).toMatch(
+      /sugerirConceito[\s\S]{0,600}?noteTags/,
+    );
   });
 
   it("destaca o termo com o fundo do filete, não com o accent", () => {
@@ -948,7 +968,13 @@ describe("a busca e o conceito do handoff", () => {
     // Antes a seção de cards só existia com `length > 0`, e a de notas era
     // trocada por um texto que imprimia o slug onde o usuário escreveu outra
     // coisa.
-    expect(conceito).not.toContain("length > 0");
+    // Grafia não basta: `tag.cards.length ? <Secao …> : null` passava por uma
+    // trava que só proibisse "length > 0". Nenhuma comparação de `.length`
+    // sobrevive aqui — a contagem do cabeçalho passa o número adiante, não o
+    // compara.
+    expect(conceito).not.toMatch(/\.length\s*(?:===|!==|>|<|&&|\?)/);
+    expect(conceito).toContain('titulo="Notas"');
+    expect(conceito).toContain('titulo="Cards"');
     expect(conceito).not.toContain("A tag continua valendo");
   });
 
