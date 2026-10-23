@@ -883,6 +883,157 @@ aparecem mesmo vazias, e a 375px nem a busca nem o conceito rolam na horizontal.
 
 ---
 
+## Fatia 23 — Travas que travam
+
+Cinco travas do `pnpm check` prendem identificador em vez de uso: passam com o
+código que deviam reprovar. Vêm primeiro porque são a rede das três fatias
+seguintes. Nenhuma linha de produção muda nesta fatia — só teste.
+
+- **`<form>` dentro de `<p>`** (`globals.test.ts:789-796`): a trava fatia o
+  texto e olha `antes.slice(antes.lastIndexOf("<"))`, isto é, só a tag
+  imediatamente anterior ao convite. Um `<p>` aberto com um `<span>` dentro
+  passa. Precisa varrer as aberturas não fechadas até o texto e reprovar se `p`
+  estiver entre elas.
+- **`h1` 28/500** (`globals.test.ts:661`): `toContain("text-xl font-medium")`
+  casa as duas classes em qualquer lugar do arquivo, inclusive separadas e fora
+  do `h1`. A irmã da Fatia 22 (`:849`) já está na forma certa,
+  `/<h1 className="text-xl font-medium"/` — alinhar a de cima com ela.
+- **`unaccent` direto na coluna gerada** (`unaccent.test.ts:46`):
+  `/[^_]unaccent\(/` exige um caractere antes, então uma expressão que *começa*
+  por `unaccent(` passa — e é exatamente a que o Postgres recusa com
+  "generation expression is not immutable". Âncora de início de string ou
+  `(?<!_)` fecha.
+- **Duas colunas geradas** (`unaccent.test.ts:32-34`): `toHaveLength(2)` não diz
+  de quais tabelas; duas em `notes` e nenhuma em `cards` passam. A trava precisa
+  casar `notes` e `cards`, uma cada.
+- **Três travas de identificador** (`globals.test.ts`): `role="search"` não está
+  ancorada no `<form>` (a Fatia 22 decidiu que o marco é o próprio formulário, e
+  a trava aceita o atributo em qualquer elemento); `sugerirConceito` não está
+  ancorada no `href`, então chamar a função e jogar o resultado fora passa; e
+  `not.toContain("card.answer")` passa com `const { answer } = card`, que é a
+  grafia que um refactor naturalmente produz.
+
+**Pronto quando:** para cada uma das cinco, o commit mostra o estado que devia
+reprovar — a mutação escrita à mão no arquivo de produção — fazendo a trava
+falhar antes do conserto, e `pnpm check` limpo depois, sem nenhuma linha de
+produção alterada no diff.
+
+---
+
+## Fatia 24 — O que o parser deixa passar
+
+`src/features/cards/parser.ts` é um dos dois módulos que o `CLAUDE.md` marca
+como "bug silencioso corrompe dados do usuário sem aviso". Quatro entradas
+legítimas de Markdown saem erradas, e nenhuma reclama. Toda alteração aqui pede
+teste novo no mesmo commit.
+
+- **Lacuna no destino de um link:** `[texto]({{url}})` esvazia o `href` — o
+  parser recorta a lacuna e o link renderiza apontando para nada. Mesma família
+  da marca injetada onde o Markdown não trata texto. Lacuna em destino de link
+  não é card: ou vira reclamação (`ParseIssue`), ou o `{{…}}` fica literal.
+- **Bloco de código indentado por quatro espaços:** `shared/markdown-blocks.ts`
+  só reconhece cerca, então o bloco indentado vira parágrafo, gera card, e as
+  marcas da lacuna renderizam dentro do `<pre>`. O bloco indentado precisa
+  entrar na varredura, ao lado da cerca.
+- **`Q::` em item de lista ou citação:** não vira card e não vira reclamação.
+  `parse` e `posicoesDeCards` concordam entre si, então a tela não mostra
+  inconsistência — o usuário escreve a pergunta, salva, e ela simplesmente não
+  existe. Precisa de `ParseIssue` dizendo que `Q::` tem de abrir o bloco.
+- **Continuação da resposta que interrompe o parágrafo:** lista ou citação depois
+  do `A::` sai fora dos filetes do bloco na leitura da nota. O `A::` lê até a
+  linha em branco (SPEC §3.2); a continuação que troca de tipo de bloco rompe o
+  recorte.
+
+**Pronto quando:** cada um dos quatro tem teste em `parser.test.ts` (ou
+`by-block.test.ts`, para o filete) que falha antes do conserto, as quatro
+entradas salvam sem card errado e sem silêncio, e nenhum teste existente do
+parser muda de expectativa — se mudar, a razão entra no commit.
+
+---
+
+## Fatia 25 — O que a tela perdeu
+
+Oito itens de interface que a série de realinhamento (Fatias 14–22) deixou
+atrás. O primeiro é perda de função, os quatro seguintes são leitor de tela, os
+três últimos são o handoff cobrando o que ficou pela metade.
+
+- **Aula arquivada perde as notas** (`courses/[courseSlug]/page.tsx:202`): o
+  item da seção "Arquivados" é um `<span className="min-w-0 truncate">`. Antes
+  da fatia que criou a seção era link com `opacity-60`. Hoje, arquivar uma aula
+  torna as notas dela inalcançáveis por navegação — só a busca as acha. Volta a
+  ser link para a aula, com o recuo de cor que a seção já tem.
+- **Quatro `<nav>` anônimos** (`courses/[courseSlug]/page.tsx:88`,
+  `lessons/[lessonId]/page.tsx:40`, `notes/[noteId]/page.tsx:96`,
+  `notes/components/editor.tsx:253`): o rail já é
+  `<nav aria-label="Navegação">` (`rail.tsx:231`), então o leitor de tela lista
+  dois ou mais marcos de navegação e nomeia um. O fio de migalhas precisa de
+  rótulo próprio.
+- **`aside` repetido e seção sem `aria-controls`:** cada `aside` da margem
+  repete `aria-label="Cards do trecho"` — fiel ao handoff, mas numa nota com dez
+  blocos o leitor anuncia dez marcos idênticos; e a seção recolhível não diz o
+  que controla.
+- **Seção vazia do conceito** (`tags/[tagSlug]/page.tsx:34`):
+  `<ul>{children}</ul>` imprime lista sem item quando a seção está vazia —
+  "lista, 0 itens" no leitor de tela, e visualmente lê como falha de
+  carregamento. Uma linha neutra atende os dois sem voltar ao texto que a
+  Fatia 22 mandou tirar ("A tag continua valendo…").
+- **`autoFocus` na busca** (`search/page.tsx:60`): o foco pula o `h1` a cada
+  carregamento, então quem chega em `/search` nunca ouve de que página se trata.
+  Pré-existente a todas as fatias de busca.
+- **Campo de renomear com um tamanho só:** o handoff pede 17px/44px no módulo e
+  15px/36px na aula; hoje é uma classe de 15px sem `min-height`, e a linha
+  "pula" quando entra em edição.
+- **Formulário revelado dividindo a linha:** no cabeçalho da tela do curso o
+  formulário revelado divide a linha com ↑ ↓ Arquivar. O comentário do
+  `display: contents` descreve só o call site de `/courses`, não este.
+- **Grade abaixo de 1100px:** `min-width:0` e `grid-column:1` só existem acima
+  de 1100px, então uma tabela larga numa nota pode esticar a grade na faixa de
+  baixo.
+
+**Pronto quando:** a aula arquivada volta a levar às notas dela; cada marco de
+navegação tem nome próprio; a seção vazia do conceito não imprime lista vazia; o
+foco em `/search` começa no documento, não no campo; o campo de renomear não
+muda a altura da linha ao abrir; e uma nota com tabela larga não rola na
+horizontal a 900px nem a 375px, conferido no navegador nos dois temas.
+
+---
+
+## Fatia 26 — Tipos, ordem e a migration
+
+O resto da dívida: três itens de tipo e coerência, três de ordem e cosmético, e
+um que só morde no futuro.
+
+- **`SearchHit.estado` solto do `origem`** (`search/hits.ts:85-86`):
+  `string | null` sem amarrar ao `origem`, e a tela interpola confiando numa
+  invariante que o tipo não expressa — nota nunca tem estado, card sempre tem.
+  União discriminada sobre `origem` resolve sem `any`.
+- **`.tag-card-face` sem a irmã `.suspensa`** (`globals.css:535`,
+  `tags/components/tag-card.tsx:32`): o comentário diz "como na margem", e na
+  margem o card suspenso recua a face para `--ink-soft`
+  (`.note-card-face.suspensa`, `globals.css:542`). Ou a regra entra, ou o
+  comentário sai — hoje o código promete o que não faz.
+- **`sugerirConceito` casa numa direção só** (`tags/queries.ts:152`): o termo tem
+  de estar *dentro* do slug, então "limites" nunca acha a tag `limite` e a frase
+  de sem-resultado não sugere nada. Casar nas duas direções.
+- **Empate na ordem das notas da aula:** `listNotesForLesson` ordena por
+  `createdAt` sem desempate, então duas notas criadas no mesmo instante trocam de
+  lugar entre carregamentos. Um `asc(notes.id)` fecha. Pré-existente.
+- **Classe do seletor duplicada à mão:** a classe do seletor de tipo da nota
+  repete a constante `campo` de `note-forms.tsx` em vez de usá-la.
+- **"Salvo 18:42" paralisado:** não se mexe quando `setNoteKind` bumpa
+  `updatedAt`. Cosmético, mas mente sobre quando a nota mudou.
+- **Extensão e função fora do snapshot do drizzle:** `create extension unaccent`
+  e `immutable_unaccent(text)` vivem só no SQL da migration, não no snapshot. Um
+  rebaseline futuro recria as colunas geradas sem a função e falha no meio — e
+  falha num comando que não dá para repetir à mão sem entender por quê.
+
+**Pronto quando:** `pnpm check` limpo; a união discriminada não deixa a tela
+interpolar estado de nota; o card suspenso do conceito recua como o da margem;
+buscar "limites" sem resultado oferece a tag `limite`; e a ordem das notas de uma
+aula não muda entre dois carregamentos da mesma tela.
+
+---
+
 ## Backlog — fora da v1, não implemente
 
 Registrado para não virar escopo acidental:
