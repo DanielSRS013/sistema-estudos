@@ -53,6 +53,11 @@ describe("leitura por conceito", () => {
       prompt: `P ${s}`,
       answer: `R ${s}`,
     });
+    // Card da nota que não cita o conceito: tem de ficar de fora.
+    await semearCard(alheia.noteId, {
+      prompt: `Alheio ${s}`,
+      answer: `Alheia ${s}`,
+    });
 
     const detalhe = await getTagBySlug(`detalhe-${s}`);
     const path = `Curso ${s} · Módulo ${s} · Aula ${s}`;
@@ -81,6 +86,7 @@ describe("leitura por conceito", () => {
     ]);
     // O card herda o conceito da nota; a nota alheia não entra.
     expect(detalhe?.cards.map((c) => c.id)).toEqual([card.cardId]);
+    expect(detalhe?.cards.some((c) => c.prompt === `Alheio ${s}`)).toBe(false);
     expect(detalhe?.cards[0]?.prompt).toBe(`P ${s}`);
     expect(detalhe?.cards[0]?.note).toEqual({
       id: citada.noteId,
@@ -112,6 +118,10 @@ describe("leitura por conceito", () => {
 
     // Termo digitado com acento e caixa: o slug do conceito casa.
     expect(await sugerirConceito(`Projeção ${s}`)).toBe(
+      `projecao-${s}-vetorial`,
+    );
+    // Termo do meio do slug: a busca é "contém", não "começa com".
+    expect(await sugerirConceito(`${s}-vetorial`)).toBe(
       `projecao-${s}-vetorial`,
     );
     expect(await sugerirConceito(`zzz${s}`)).toBeNull();
