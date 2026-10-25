@@ -7,8 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "vitest",
-    "check": "next typegen && tsc --noEmit && eslint . && vitest run --passWithNoTests && next build",
+    "test": "vitest --project puro",
+    "test:db": "node scripts/db-test.mjs",
+    "check": "next typegen && tsc --noEmit && eslint . && vitest run --project puro --passWithNoTests && next build",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"

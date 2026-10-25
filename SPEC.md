@@ -254,7 +254,7 @@ como resolver, sem pedir desculpa.
 | Estilo | Tailwind + shadcn/ui |
 | Markdown | react-markdown + remark-math + rehype-katex + remark-gfm |
 | Agendamento | ts-fsrs |
-| Teste | Vitest |
+| Teste | Vitest — `pnpm check` roda o projeto `puro` (offline); `pnpm test:db` roda o projeto `db` num branch efêmero do Neon |
 | Deploy | Vercel |
 | Auth | Auth.js, provider único — **última fatia** |
 
@@ -268,6 +268,7 @@ src/
   db/
     schema.ts             fonte única do schema
     index.ts              cliente Drizzle
+    test-support/         stubs de next/cache e next/navigation, trava e guard test da suíte de banco
   features/
     courses/              { queries, actions, components }
     notes/
@@ -282,4 +283,6 @@ src/
     tags/
   shared/                 só o que duas features já usam
 drizzle/                  migrations versionadas
+scripts/
+  db-test.mjs             cria o branch efêmero do Neon e roda `pnpm test:db`
 ```
