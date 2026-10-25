@@ -91,6 +91,19 @@ export type OpcoesCard = {
   state?: CardState;
   suspended?: boolean;
   archivedAt?: Date | null;
+  // O semeador não deriva estado FSRS a partir de `state`: isso seria
+  // reimplementar o ts-fsrs aqui. Quem precisa de um card coerente diz o que
+  // quer; o que omitir fica no padrão do schema (zero / null).
+  fsrs?: Partial<{
+    stability: number;
+    difficulty: number;
+    reps: number;
+    lapses: number;
+    learningSteps: number;
+    elapsedDays: number;
+    scheduledDays: number;
+    lastReview: Date | null;
+  }>;
 };
 
 export async function semearCard(
@@ -98,9 +111,11 @@ export async function semearCard(
   opcoes: OpcoesCard = {},
 ): Promise<{ cardId: string }> {
   const s = sufixo();
+  const fsrs = opcoes.fsrs ?? {};
   const [card] = await db
     .insert(cards)
     .values({
+      ...fsrs,
       noteId,
       kind: opcoes.kind ?? "qa",
       anchorKey: opcoes.anchorKey ?? `ancora-${s}`,
@@ -135,7 +150,17 @@ export type OpcoesRevisao = {
   reviewedAt?: Date;
   durationMs?: number | null;
   undoesReviewId?: string | null;
+  // Descreve o estado gravado nas colunas `*Before` da linha de `reviews`. Não
+  // atualiza o card, e a incoerência entre os dois é permitida de propósito: o
+  // desfazer lê só as colunas `*Before`, e um teste precisa poder montar o par.
   antes?: EstadoAntes;
+  // Resultado da revisão. `reviews` é append-only, então não há como corrigir
+  // depois; o padrão (0, 0, dueBefore) é uma revisão que não reagenda nada.
+  depois?: Partial<{
+    scheduledDays: number;
+    elapsedDays: number;
+    dueAfter: Date;
+  }>;
 };
 
 export async function semearRevisao(
@@ -167,9 +192,9 @@ export async function semearRevisao(
       learningStepsBefore: antes.learningSteps ?? card.learningSteps,
       elapsedDaysBefore: antes.elapsedDays ?? card.elapsedDays,
       scheduledDaysBefore: antes.scheduledDays ?? card.scheduledDays,
-      scheduledDays: 0,
-      elapsedDays: 0,
-      dueAfter: dueBefore,
+      scheduledDays: opcoes.depois?.scheduledDays ?? 0,
+      elapsedDays: opcoes.depois?.elapsedDays ?? 0,
+      dueAfter: opcoes.depois?.dueAfter ?? dueBefore,
       durationMs: opcoes.durationMs ?? null,
       undoesReviewId: opcoes.undoesReviewId ?? null,
       reviewedAt: opcoes.reviewedAt,

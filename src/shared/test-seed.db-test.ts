@@ -52,7 +52,83 @@ describe("semeadura", () => {
     const a = await semearCard(noteId);
     const b = await semearCard(noteId);
 
-    expect(a.cardId).not.toBe(b.cardId);
+    const [ca, cb] = await Promise.all([
+      db.query.cards.findFirst({ where: (c, { eq }) => eq(c.id, a.cardId) }),
+      db.query.cards.findFirst({ where: (c, { eq }) => eq(c.id, b.cardId) }),
+    ]);
+    expect(ca?.anchorKey).toBeDefined();
+    expect(ca?.anchorKey).not.toBe(cb?.anchorKey);
+  });
+
+  it("semearCard grava o estado FSRS pedido em fsrs", async () => {
+    const { lessonId } = await semearAula();
+    const { noteId } = await semearNota(lessonId);
+    const ultima = new Date("2026-02-01T00:00:00Z");
+    const { cardId } = await semearCard(noteId, {
+      state: "review",
+      fsrs: { stability: 7.5, reps: 3, lastReview: ultima },
+    });
+    const card = await db.query.cards.findFirst({
+      where: (c, { eq }) => eq(c.id, cardId),
+    });
+    expect(card?.stability).toBe(7.5);
+    expect(card?.reps).toBe(3);
+    expect(card?.lastReview?.getTime()).toBe(ultima.getTime());
+    expect(card?.lapses).toBe(0);
+  });
+
+  it("herda as dez colunas *Before do card, cada uma com valor distinto", async () => {
+    const { lessonId } = await semearAula();
+    const { noteId } = await semearNota(lessonId);
+    const due = new Date("2026-05-01T00:00:00Z");
+    const ultima = new Date("2026-04-01T00:00:00Z");
+    const { cardId } = await semearCard(noteId, {
+      state: "relearning",
+      due,
+      fsrs: {
+        stability: 11.5,
+        difficulty: 6.25,
+        reps: 13,
+        lapses: 2,
+        learningSteps: 1,
+        elapsedDays: 17,
+        scheduledDays: 29,
+        lastReview: ultima,
+      },
+    });
+
+    const { reviewId } = await semearRevisao(cardId);
+    const r = await db.query.reviews.findFirst({
+      where: (x, { eq }) => eq(x.id, reviewId),
+    });
+
+    expect(r?.stateBefore).toBe("relearning");
+    expect(r?.stabilityBefore).toBe(11.5);
+    expect(r?.difficultyBefore).toBe(6.25);
+    expect(r?.dueBefore.getTime()).toBe(due.getTime());
+    expect(r?.lastReviewBefore?.getTime()).toBe(ultima.getTime());
+    expect(r?.repsBefore).toBe(13);
+    expect(r?.lapsesBefore).toBe(2);
+    expect(r?.learningStepsBefore).toBe(1);
+    expect(r?.elapsedDaysBefore).toBe(17);
+    expect(r?.scheduledDaysBefore).toBe(29);
+  });
+
+  it("a revisão grava o resultado pedido em depois", async () => {
+    const { lessonId } = await semearAula();
+    const { noteId } = await semearNota(lessonId);
+    const { cardId } = await semearCard(noteId);
+    const dueAfter = new Date("2026-06-10T00:00:00Z");
+
+    const { reviewId } = await semearRevisao(cardId, {
+      depois: { scheduledDays: 9, elapsedDays: 4, dueAfter },
+    });
+    const r = await db.query.reviews.findFirst({
+      where: (x, { eq }) => eq(x.id, reviewId),
+    });
+    expect(r?.scheduledDays).toBe(9);
+    expect(r?.elapsedDays).toBe(4);
+    expect(r?.dueAfter.getTime()).toBe(dueAfter.getTime());
   });
 
   it("a revisão herda o estado atual do card e aceita sobrescritas", async () => {
