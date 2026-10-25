@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { db } from "@/db";
 import { cards } from "@/db/schema";
-import { revalidacoes } from "@/db/test-support/next-cache";
+import { limparRevalidacoes, revalidacoes } from "@/db/test-support/next-cache";
 import type { ActionState } from "@/shared/action-state";
 import { semearAula, semearCard, semearNota } from "@/shared/test-seed";
 
@@ -77,14 +77,29 @@ describe("queries e actions de cards", () => {
     expect(linha?.due.getTime()).toBe(due.getTime());
     expect((await listCardsForNote(noteId)).active[0]?.suspended).toBe(true);
 
+    limparRevalidacoes();
     const retomado = await setCardSuspended(
       inicial,
       form({ id: cardId, suspended: "false" }),
     );
 
     expect(retomado).toEqual({ ok: true });
+    expect(revalidacoes).toContainEqual({ path: "/", type: "layout" });
     linha = await db.query.cards.findFirst({ where: eq(cards.id, cardId) });
     expect(linha?.suspended).toBe(false);
     expect(linha?.reps).toBe(3);
+  });
+
+  it("setCardSuspended não suspende card arquivado", async () => {
+    const { lessonId } = await semearAula();
+    const { noteId } = await semearNota(lessonId);
+    const { cardId } = await semearCard(noteId, {
+      archivedAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+
+    await setCardSuspended(inicial, form({ id: cardId, suspended: "true" }));
+
+    const linha = await db.query.cards.findFirst({ where: eq(cards.id, cardId) });
+    expect(linha?.suspended).toBe(false);
   });
 });

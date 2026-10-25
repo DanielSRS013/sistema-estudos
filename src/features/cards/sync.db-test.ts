@@ -39,7 +39,7 @@ describe("ponte parser → banco", () => {
       "Q:: Qual é a capital do Brasil?",
       "A:: Brasília.",
       "",
-      "A fórmula de Bhaskara usa {{o discriminante}} para as raízes.",
+      "A fórmula de Bhaskara usa {{o discriminante::pense em b² - 4ac}} para as raízes.",
     ].join("\n");
 
     const planejado = await gravar(noteId, texto, AGORA);
@@ -65,6 +65,7 @@ describe("ponte parser → banco", () => {
       ordinal: 1,
       prompt: "A fórmula de Bhaskara usa […] para as raízes.",
       answer: "o discriminante",
+      hint: "pense em b² - 4ac",
       archivedAt: null,
     });
     expect(linhas[1]?.anchorKey).toBe(
@@ -78,6 +79,10 @@ describe("ponte parser → banco", () => {
   it("editar o enunciado atualiza o card e preserva o histórico FSRS", async () => {
     const { lessonId } = await semearAula();
     const { noteId } = await semearNota(lessonId);
+    // Os dois prompts diferem em 6 de 50 caracteres (similaridade 0,88), e o
+    // casamento por posição em reconcile.ts exige LIMITE_SIMILARIDADE = 0,8.
+    // Mexer neste texto ou no limiar derruba o teste por similaridade, não
+    // por perda de histórico FSRS.
     const promptAntigo = "Qual é a capital do Brasil, país da América do Sul?";
     const promptNovo = "Qual é a capital do Brasil, país da América Latina?";
     const answer = "Brasília.";
@@ -282,6 +287,32 @@ describe("ponte parser → banco", () => {
     expect(nota?.content).toBe(texto);
     expect(nota?.title).toBe("Com repetição");
     expect(await cardsDaNota(noteId)).toHaveLength(1);
+  });
+
+  it("inverter a ordem dos trechos troca só o ordinal e mantém os mesmos cards", async () => {
+    const { lessonId } = await semearAula();
+    const { noteId } = await semearNota(lessonId);
+    const a = ["Q:: Primeira pergunta?", "A:: Primeira resposta."].join("\n");
+    const b = ["Q:: Segunda pergunta?", "A:: Segunda resposta."].join("\n");
+    await gravar(noteId, [a, b].join("\n\n"), AGORA);
+    const antes = await cardsDaNota(noteId);
+    const idA = antes.find((c) => c.prompt === "Primeira pergunta?")?.id;
+    const idB = antes.find((c) => c.prompt === "Segunda pergunta?")?.id;
+    expect(idA).toBeDefined();
+    expect(idB).toBeDefined();
+    expect(antes.map((c) => c.ordinal)).toEqual([0, 1]);
+
+    const planejado = await gravar(noteId, [b, a].join("\n\n"), AGORA);
+
+    expect(planejado.plan.create).toEqual([]);
+    expect(planejado.plan.archive).toEqual([]);
+    expect(planejado.plan.update).toHaveLength(2);
+    const depois = await cardsDaNota(noteId);
+    expect(depois).toHaveLength(2);
+    expect(depois.map((c) => [c.id, c.ordinal, c.prompt, c.archivedAt])).toEqual([
+      [idB, 0, "Segunda pergunta?", null],
+      [idA, 1, "Primeira pergunta?", null],
+    ]);
   });
 
   it("nota sem trecho algum grava zero card e total 0", async () => {
