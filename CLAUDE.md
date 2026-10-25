@@ -30,7 +30,10 @@ pnpm db:studio        # inspeciona o banco
    desenho está errado — conserte o desenho.
 5. **Teste que falha não se conserta mexendo no teste.** Conserte o código. Se o
    teste estiver de fato errado, diga por que antes de alterá-lo.
-6. **Não declare pronto sem rodar `pnpm check` e colar a saída.** "Deve
+6. **A suíte inteira roda antes de cada commit, e a saída vai colada.** Os dois
+   comandos: `pnpm check` (portão offline — tsc, eslint, testes puros, build) e
+   `pnpm test:db` (suíte de banco, contra branch efêmero no Neon). Vale em todo
+   commit, inclusive de documentação — não só ao declarar a fatia pronta. "Deve
    funcionar" não é verificação.
 7. **Uma fatia por vez.** Não comece a fatia seguinte sem o aceite da anterior.
    Não refatore código fora do escopo da fatia atual.
