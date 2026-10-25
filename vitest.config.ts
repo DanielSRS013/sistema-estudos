@@ -31,6 +31,7 @@ export default defineConfig({
           name: "db",
           environment: "node",
           include: ["src/**/*.db-test.ts"],
+          globalSetup: [stub("global-setup.ts")],
           setupFiles: [stub("setup.ts")],
         },
       },
