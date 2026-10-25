@@ -24,6 +24,7 @@ export default defineConfig({
           alias: {
             "next/cache": stub("next-cache.ts"),
             "next/navigation": stub("next-navigation.ts"),
+            "next/server": stub("next-server.ts"),
             "@": src,
           },
         },
