@@ -86,13 +86,15 @@ describe("queries de cursos", () => {
     // A inclusão é proposital: as setas de mover dependem da ordem de
     // `position`, que não conhece arquivamento (moveCourse também move
     // arquivados). Excluir o arquivado faria as setas errarem as pontas.
-    const primeiro = await semearAula({ courseTitle: "Zeta" });
-    const meio = await semearAula({ courseTitle: "Alfa" });
-    const ultimo = await semearAula({ courseTitle: "Mu" });
+    // Criados nesta ordem, mas com position invertida: se o orderBy perder
+    // `position`, a lista sai na ordem de criação (o desempate) e o teste falha.
+    const primeiro = await semearAula();
+    const meio = await semearAula();
+    const ultimo = await semearAula();
     const posicoes = [
-      [primeiro.courseId, 9100],
+      [primeiro.courseId, 9102],
       [meio.courseId, 9101],
-      [ultimo.courseId, 9102],
+      [ultimo.courseId, 9100],
     ] as const;
     for (const [id, position] of posicoes) {
       await db.update(courses).set({ position }).where(eq(courses.id, id));
@@ -105,7 +107,7 @@ describe("queries de cursos", () => {
     const meus = new Set([primeiro.courseId, meio.courseId, ultimo.courseId]);
     const ids = (await listCourseIds()).filter((id) => meus.has(id));
 
-    expect(ids).toEqual([primeiro.courseId, meio.courseId, ultimo.courseId]);
+    expect(ids).toEqual([ultimo.courseId, meio.courseId, primeiro.courseId]);
   });
 
   it("getLessonById traz o caminho curso · aula", async () => {

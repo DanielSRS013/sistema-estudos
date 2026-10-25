@@ -86,6 +86,7 @@ describe("actions de cursos", () => {
 
   it("renameCourse muda o título e mantém o slug", async () => {
     const { courseId, courseSlug } = await semearAula();
+    const irmao = await semearAula({ courseTitle: "Irmão intacto" });
 
     const resultado = await renameCourse(
       inicial,
@@ -96,13 +97,18 @@ describe("actions de cursos", () => {
     const curso = await cursoPorId(courseId);
     expect(curso?.title).toBe("Novo nome");
     expect(curso?.slug).toBe(courseSlug);
+    // Sem WHERE, o UPDATE renomearia todos os cursos.
+    expect((await cursoPorId(irmao.courseId))?.title).toBe("Irmão intacto");
   });
 
   it("setCourseArchived preenche e limpa archivedAt", async () => {
     const { courseId } = await semearAula();
+    const irmao = await semearAula();
 
     await setCourseArchived(inicial, form({ id: courseId, archived: "true" }));
     expect((await cursoPorId(courseId))?.archivedAt).toBeInstanceOf(Date);
+    // Sem WHERE, o UPDATE arquivaria todos os cursos.
+    expect((await cursoPorId(irmao.courseId))?.archivedAt).toBeNull();
 
     await setCourseArchived(inicial, form({ id: courseId, archived: "false" }));
     expect((await cursoPorId(courseId))?.archivedAt).toBeNull();
@@ -149,8 +155,28 @@ describe("actions de cursos", () => {
     expect(revalidacoes).toContainEqual({ path: "/", type: "layout" });
   });
 
+  it("createModule com curso inexistente devolve a frase única de falha", async () => {
+    // Viola a chave estrangeira. O console.error que aparece na saída é
+    // intencional: o helper run registra o erro e devolve a frase única.
+    const resultado = await createModule(
+      inicial,
+      form({
+        courseId: "00000000-0000-4000-8000-000000000000",
+        title: "Órfão",
+      }),
+    );
+
+    expect(resultado).toEqual({
+      ok: false,
+      message:
+        "Não foi possível salvar agora. Confira a conexão e tente de novo.",
+    });
+    expect(revalidacoes).toHaveLength(0);
+  });
+
   it("renameModule muda o título do módulo", async () => {
     const { moduleId } = await semearAula();
+    const irmao = await semearAula({ moduleTitle: "Irmão intacto" });
 
     const resultado = await renameModule(
       inicial,
@@ -159,13 +185,16 @@ describe("actions de cursos", () => {
 
     expect(resultado).toEqual({ ok: true });
     expect((await moduloPorId(moduleId))?.title).toBe("Módulo renomeado");
+    expect((await moduloPorId(irmao.moduleId))?.title).toBe("Irmão intacto");
   });
 
   it("setModuleArchived preenche e limpa archivedAt", async () => {
     const { moduleId } = await semearAula();
+    const irmao = await semearAula();
 
     await setModuleArchived(inicial, form({ id: moduleId, archived: "true" }));
     expect((await moduloPorId(moduleId))?.archivedAt).toBeInstanceOf(Date);
+    expect((await moduloPorId(irmao.moduleId))?.archivedAt).toBeNull();
 
     await setModuleArchived(inicial, form({ id: moduleId, archived: "false" }));
     expect((await moduloPorId(moduleId))?.archivedAt).toBeNull();
@@ -208,6 +237,7 @@ describe("actions de cursos", () => {
 
   it("renameLesson muda o título da aula", async () => {
     const { lessonId } = await semearAula();
+    const irmao = await semearAula({ lessonTitle: "Irmã intacta" });
 
     const resultado = await renameLesson(
       inicial,
@@ -216,13 +246,16 @@ describe("actions de cursos", () => {
 
     expect(resultado).toEqual({ ok: true });
     expect((await aulaPorId(lessonId))?.title).toBe("Aula renomeada");
+    expect((await aulaPorId(irmao.lessonId))?.title).toBe("Irmã intacta");
   });
 
   it("setLessonArchived preenche e limpa archivedAt", async () => {
     const { lessonId } = await semearAula();
+    const irmao = await semearAula();
 
     await setLessonArchived(inicial, form({ id: lessonId, archived: "true" }));
     expect((await aulaPorId(lessonId))?.archivedAt).toBeInstanceOf(Date);
+    expect((await aulaPorId(irmao.lessonId))?.archivedAt).toBeNull();
 
     await setLessonArchived(inicial, form({ id: lessonId, archived: "false" }));
     expect((await aulaPorId(lessonId))?.archivedAt).toBeNull();
@@ -248,9 +281,11 @@ describe("actions de cursos", () => {
 
   it("setLessonStudied marca e desmarca studiedOn", async () => {
     const { lessonId } = await semearAula();
+    const irmao = await semearAula();
 
     await setLessonStudied(inicial, form({ id: lessonId, studied: "true" }));
     expect((await aulaPorId(lessonId))?.studiedOn).toBeInstanceOf(Date);
+    expect((await aulaPorId(irmao.lessonId))?.studiedOn).toBeNull();
 
     await setLessonStudied(inicial, form({ id: lessonId, studied: "false" }));
     expect((await aulaPorId(lessonId))?.studiedOn).toBeNull();
