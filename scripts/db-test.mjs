@@ -65,6 +65,23 @@ async function conferirSchema() {
   }
 }
 
+// Aviso, não varredura: apagar branch é destrutivo e, com duas rodadas
+// simultâneas, um varredor derrubaria a do vizinho. Fechar a janela ou
+// kill -9 não dispara os handlers, então o branch pode ter ficado vivo (e pago).
+function avisarBranchesRemanescentes() {
+  const saida = neonctlSync(["branches", "list", "--output", "json"]);
+  const lista = JSON.parse(saida);
+  const restos = (Array.isArray(lista) ? lista : lista.branches ?? [])
+    .map((b) => b.name)
+    .filter((n) => typeof n === "string" && n.startsWith("teste-"));
+  if (restos.length > 0) {
+    console.warn(
+      `Aviso: sobraram branches de teste no Neon (cobrados): ${restos.join(", ")}. Se nenhuma outra rodada estiver em andamento, apague com: neonctl branches delete <nome> --project-id ${ids[1]} --org-id ${ids[3]}`,
+    );
+  }
+}
+
+avisarBranchesRemanescentes();
 await conferirSchema();
 
 const nome = `teste-${Date.now()}`;
