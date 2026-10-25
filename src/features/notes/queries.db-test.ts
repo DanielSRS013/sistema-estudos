@@ -126,22 +126,34 @@ describe("queries de notas", () => {
     const antiga = await semearNota(lessonId, { title: "Antiga" });
     const meio = await semearNota(lessonId, { title: "Meio" });
     const nova = await semearNota(lessonId, { title: "Nova" });
-    // Datas no futuro distante: as três são as mais recentes do banco inteiro.
-    // Ordem de edição (nova, antiga, meio) diferente da de criação.
-    await fixarDatas(nova.noteId, {
-      updatedAt: new Date("2500-03-01T00:00:00Z"),
-    });
-    await fixarDatas(antiga.noteId, {
-      updatedAt: new Date("2500-02-01T00:00:00Z"),
-    });
-    await fixarDatas(meio.noteId, {
-      updatedAt: new Date("2500-01-01T00:00:00Z"),
-    });
+    const ids = [antiga.noteId, meio.noteId, nova.noteId];
+    try {
+      // Datas no futuro distante: as três são as mais recentes do banco inteiro
+      // enquanto o teste roda. Ordem de edição (nova, antiga, meio) diferente da
+      // de criação.
+      await fixarDatas(nova.noteId, {
+        updatedAt: new Date("2500-03-01T00:00:00Z"),
+      });
+      await fixarDatas(antiga.noteId, {
+        updatedAt: new Date("2500-02-01T00:00:00Z"),
+      });
+      await fixarDatas(meio.noteId, {
+        updatedAt: new Date("2500-01-01T00:00:00Z"),
+      });
 
-    const lista = await listRecentNotes(2);
+      const lista = await listRecentNotes(2);
 
-    expect(lista.map((n) => n.id)).toEqual([nova.noteId, antiga.noteId]);
-    expect(lista[0]?.path).toBe("Curso Recente · Aula Recente");
+      expect(lista.map((n) => n.id)).toEqual([nova.noteId, antiga.noteId]);
+      expect(lista[0]?.path).toBe("Curso Recente · Aula Recente");
+    } finally {
+      // `listRecentNotes` não filtra arquivado, então arquivar o curso não
+      // tiraria as notas do topo. Recua as datas para o passado remoto: nada é
+      // apagado, e testes de outros arquivos não as veem como as mais recentes.
+      await db
+        .update(notes)
+        .set({ updatedAt: new Date("2000-01-01T00:00:00Z") })
+        .where(inArray(notes.id, ids));
+    }
   });
 
   it("lastCaptureLesson devolve a aula da nota mais recente", async () => {

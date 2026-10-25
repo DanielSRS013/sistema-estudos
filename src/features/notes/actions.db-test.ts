@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { cards, noteTags, notes, tags } from "@/db/schema";
 import { ErroDeRedirect } from "@/db/test-support/next-navigation";
 import { limparRevalidacoes, revalidacoes } from "@/db/test-support/next-cache";
+import { anchorKey } from "@/features/cards/reconcile";
 import type { ActionState } from "@/shared/action-state";
 import { semearAula, semearNota } from "@/shared/test-seed";
 
@@ -103,7 +104,10 @@ describe("actions de notas", () => {
     const destino = await semearAula();
     const { noteId } = await semearNota(origem.lessonId, { title: "Móvel" });
     const irma = await semearIrma(origem.lessonId);
-    const antes = await notaPorId(noteId);
+    // Data antiga fixada: os dois lados da comparação vêm de uma fonte só, sem
+    // depender do relógio do Neon contra o do Node.
+    const antiga = new Date("2020-01-01T00:00:00Z");
+    await db.update(notes).set({ updatedAt: antiga }).where(eq(notes.id, noteId));
 
     const resultado = await moveNote(
       inicial,
@@ -114,9 +118,7 @@ describe("actions de notas", () => {
     const depois = await notaPorId(noteId);
     expect(depois?.lessonId).toBe(destino.lessonId);
     expect(depois?.title).toBe("Móvel");
-    expect(depois?.updatedAt.getTime()).toBeGreaterThan(
-      antes?.updatedAt.getTime() ?? Infinity,
-    );
+    expect(depois?.updatedAt.getTime()).toBeGreaterThan(antiga.getTime());
     expect(caminhos()).toContain(`/lessons/${origem.lessonId}`);
     // O destino não é nomeado de propósito: `revalidatePath("/", "layout")`
     // invalida a árvore inteira abaixo da raiz, destino incluído. Só a origem
@@ -218,7 +220,24 @@ describe("actions de notas", () => {
       where: eq(cards.noteId, noteId),
     });
     expect(criados).toHaveLength(2);
-    expect(criados.map((c) => c.kind).sort()).toEqual(["cloze", "qa"]);
+    // Conteúdo inteiro, não só a contagem: um parser que trocasse pergunta e
+    // resposta, ou gravasse `answer` vazio, ainda daria 2 linhas.
+    const porKind = new Map(criados.map((c) => [c.kind, c]));
+    expect(porKind.get("cloze")).toMatchObject({
+      prompt: "A capital do Brasil é […].",
+      answer: "Brasília",
+      anchorKey: anchorKey("A capital do Brasil é […].", "Brasília"),
+    });
+    expect(porKind.get("qa")).toMatchObject({
+      prompt: "Quanto é 2 + 2?",
+      answer: "Quatro.",
+      anchorKey: anchorKey("Quanto é 2 + 2?", "Quatro."),
+    });
+    // A âncora é SHA-256 truncado de frente+verso (reconcile.ts): determinística,
+    // 32 hex, e distinta entre os dois cards.
+    const ancoras = criados.map((c) => c.anchorKey);
+    for (const ancora of ancoras) expect(ancora).toMatch(/^[0-9a-f]{32}$/);
+    expect(new Set(ancoras).size).toBe(2);
     expect(caminhos()).toContain(`/notes/${noteId}`);
     await expectIrmaIntacta(irma.noteId, irma.antes);
     expect(
