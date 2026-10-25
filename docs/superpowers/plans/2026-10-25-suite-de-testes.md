@@ -50,6 +50,8 @@ Cinco modos de falha que o spec implica e que nenhum teste de feature exercita. 
 - Produces:
   - `pnpm test:db` — roda o projeto `db` contra branch efêmero.
   - `src/db/test-support/next-cache.ts` exporta `revalidatePath(path: string, type?: string): void`, `revalidateTag(tag: string): void` e `revalidacoes: { path: string; type?: string }[]` (lista acumulada) e `limparRevalidacoes(): void`.
+
+    A chave `type` é gravada **só quando o argumento vem**: `revalidatePath("/x")` registra `{ path: "/x" }`, sem `type`. Por isso, teste de chamada com um argumento afirma por caminho (`revalidacoes.map((r) => r.path)`) e não por igualdade de objeto — `toContainEqual` trata chave ausente e `undefined` como diferentes, e isso viraria falha fantasma.
   - `src/db/test-support/next-navigation.ts` exporta `redirect(url: string): never` (lança `ErroDeRedirect`) e `class ErroDeRedirect extends Error { readonly url: string }`.
   - Variável de ambiente `ESTUDOS_TEST_BRANCH`, posta pelo script, lida pela trava.
 
@@ -149,6 +151,10 @@ git commit -m "test: dois projetos no Vitest e branch efêmero para a suíte de 
   - `semearAula(opcoes?: { courseTitle?: string; moduleTitle?: string; lessonTitle?: string; track?: string }): Promise<{ courseId: string; courseSlug: string; moduleId: string; lessonId: string }>`
   - `semearNota(lessonId: string, opcoes?: { title?: string; content?: string; kind?: "lesson_note" | "summary" | "solution" }): Promise<{ noteId: string }>`
   - `semearCard(noteId: string, opcoes?: { anchorKey?: string; ordinal?: number; kind?: "cloze" | "qa"; prompt?: string; answer?: string; due?: Date; state?: "new" | "learning" | "review" | "relearning"; suspended?: boolean; archivedAt?: Date | null }): Promise<{ cardId: string }>`
+
+  - `semearRevisao(cardId: string, opcoes?: { rating?: "again" | "hard" | "good" | "easy"; reviewedAt?: Date; durationMs?: number | null; undoesReviewId?: string | null; antes?: Partial<{ state: "new" | "learning" | "review" | "relearning"; stability: number; difficulty: number; due: Date; lastReview: Date | null; reps: number; lapses: number; learningSteps: number; elapsedDays: number; scheduledDays: number }> }): Promise<{ reviewId: string }>`
+
+    Preenche as 11 colunas `*Before` de `reviews` — todas NOT NULL — com os valores de `antes` ou, para o que `antes` omitir, com o estado atual do card lido do banco. Sem este semeador, as Tarefas 7 e 8 montariam o mesmo `INSERT` de vinte colunas à mão, em dois arquivos.
 
   Cada opção omitida ganha um padrão único por chamada (sufixo aleatório no título e no slug), para que duas chamadas no mesmo arquivo não colidam no índice único de `courses.slug`.
 
