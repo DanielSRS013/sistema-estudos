@@ -139,6 +139,11 @@ describe("avaliar (rateCard)", () => {
     // O resultado da avaliação também ficou no histórico.
     expect(linhas[0]?.dueAfter).toEqual(depois?.due);
     expect(depois?.reps).toBe(10);
+    // Colunas de resultado: o que a avaliação decidiu, igual ao que o card
+    // recebeu, e distintas entre si para que uma troca apareça.
+    expect(depois?.scheduledDays).not.toBe(depois?.elapsedDays);
+    expect(linhas[0]?.scheduledDays).toBe(depois?.scheduledDays);
+    expect(linhas[0]?.elapsedDays).toBe(depois?.elapsedDays);
   });
 
   it("rateCard guarda o estado anterior completo", async () => {
@@ -215,7 +220,8 @@ describe("desfazer (undoLast)", () => {
     const cardId = await novoCard(ESTADO);
     const original = await cardPorId(cardId);
     await rateCard({ cardId, rating: "good" });
-    expect((await cardPorId(cardId))?.reps).toBe(10);
+    const aposAvaliar = await cardPorId(cardId);
+    expect(aposAvaliar?.reps).toBe(10);
 
     const r = await undoLast();
 
@@ -246,6 +252,23 @@ describe("desfazer (undoLast)", () => {
     const reversao = linhas.find((l) => l.undoesReviewId !== null);
     expect(avaliacao).toBeDefined();
     expect(reversao?.undoesReviewId).toBe(avaliacao?.id);
+    // A reversão descreve a própria transição: o "antes" é o card como a
+    // avaliação o deixou, o "depois" é o estado restaurado.
+    expect(reversao).toMatchObject({
+      stateBefore: aposAvaliar?.state,
+      stabilityBefore: aposAvaliar?.stability,
+      difficultyBefore: aposAvaliar?.difficulty,
+      dueBefore: aposAvaliar?.due,
+      lastReviewBefore: aposAvaliar?.lastReview,
+      repsBefore: aposAvaliar?.reps,
+      lapsesBefore: aposAvaliar?.lapses,
+      learningStepsBefore: aposAvaliar?.learningSteps,
+      elapsedDaysBefore: aposAvaliar?.elapsedDays,
+      scheduledDaysBefore: aposAvaliar?.scheduledDays,
+      dueAfter: ESTADO.due,
+      scheduledDays: 13,
+      elapsedDays: 11,
+    });
   });
 
   it("a mesma avaliação não pode ser desfeita duas vezes", async () => {
@@ -270,8 +293,13 @@ describe("desfazer (undoLast)", () => {
       ok: false,
       message: "Não foi possível desfazer agora. Tente de novo.",
     });
-    // A falha veio do banco (violação de `reviews_undoes_idx`), e foi logada.
+    // A falha veio do banco: violação de `reviews_undoes_idx` (código e constraint abaixo).
     expect(erro).toHaveBeenCalledOnce();
+    // O `db.batch` do driver HTTP do Neon lança o erro do Postgres sem embrulho.
+    expect(erro.mock.calls[0]?.[0]).toMatchObject({
+      code: "23505",
+      constraint: "reviews_undoes_idx",
+    });
     // Uma avaliação, uma reversão: a segunda não deixou linha.
     const linhas = await revisoesDe(cardId);
     expect(linhas).toHaveLength(2);
