@@ -22,6 +22,7 @@ import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 
 import { db } from "@/db";
 import { SETTINGS_ID, cards, reviews, settings } from "@/db/schema";
+import { revalidacoes } from "@/db/test-support/next-cache";
 import { semearAula, semearCard, semearNota } from "@/shared/test-seed";
 
 import { rateCard, saveLimits, undoLast } from "./actions";
@@ -141,9 +142,13 @@ describe("avaliar (rateCard)", () => {
     expect(depois?.reps).toBe(10);
     // Colunas de resultado: o que a avaliação decidiu, igual ao que o card
     // recebeu, e distintas entre si para que uma troca apareça.
-    expect(depois?.scheduledDays).not.toBe(depois?.elapsedDays);
+    expect(
+      depois?.scheduledDays,
+      "Premissa do teste, não regressão da produção: se isto falhar, o FSRS passou a devolver scheduledDays igual a elapsedDays e as duas asserções seguintes deixaram de discriminar a troca de colunas. Ajuste o ESTADO semeado.",
+    ).not.toBe(depois?.elapsedDays);
     expect(linhas[0]?.scheduledDays).toBe(depois?.scheduledDays);
     expect(linhas[0]?.elapsedDays).toBe(depois?.elapsedDays);
+    expect(revalidacoes).toEqual([{ path: "/" }, { path: "/review" }]);
   });
 
   it("rateCard guarda o estado anterior completo", async () => {
@@ -196,6 +201,7 @@ describe("avaliar (rateCard)", () => {
     expect(r).toEqual({ ok: false, message: "Avaliação inválida." });
     expect(await revisoesDe(cardId)).toHaveLength(0);
     expect(await cardPorId(cardId)).toEqual(antes);
+    expect(revalidacoes).toHaveLength(0);
   });
 
   it("rateCard com cardId inexistente devolve ok: false", async () => {
@@ -209,13 +215,12 @@ describe("avaliar (rateCard)", () => {
 });
 
 describe("desfazer (undoLast)", () => {
-  // Buraco declarado: o ramo "sem histórico" (`ok: false`, "Nada para
-  // desfazer.") fica sem teste. `undoLast()` não recebe argumento e desfaz a
-  // última avaliação efetiva GLOBAL; o branch de teste é único e compartilhado,
-  // `reviews` nunca está vazia, DELETE é proibido e as avaliações dos outros
-  // arquivos são efetivas e nunca revertidas. Não é "ainda não coberto": é
-  // incobrível neste nível. A forma `ok: false` segue coberta pelo teste de
-  // desfazer duplo, abaixo.
+  // O ramo "sem histórico" (`ok: false`, "Nada para desfazer.") não é
+  // alcançável com dados reais: `undoLast()` desfaz a última avaliação efetiva
+  // GLOBAL, o branch é compartilhado, `reviews` nunca está vazia e DELETE é
+  // proibido. Mas é alcançável plantando `null` em `planta.alvo`, que o mock
+  // de `fetchUndoTarget` devolve no lugar da consulta real — e é isso que o
+  // teste "undoLast sem alvo" faz.
   it("undoLast reconstrói o card e insere a linha de reversão", async () => {
     const cardId = await novoCard(ESTADO);
     const original = await cardPorId(cardId);
@@ -229,6 +234,13 @@ describe("desfazer (undoLast)", () => {
     if (!r.ok) return;
     // Pressuposto do arquivo: a avaliação acima é a mais nova do branch.
     expect(r.card.id).toBe(cardId);
+    // A avaliação feita antes também revalidou; o desfazer acrescentou o par.
+    expect(revalidacoes).toEqual([
+      { path: "/" },
+      { path: "/review" },
+      { path: "/" },
+      { path: "/review" },
+    ]);
     // Todas as colunas do card voltaram aos valores semeados.
     expect(await cardPorId(cardId)).toEqual(original);
     expect(r.card).toMatchObject({
@@ -271,6 +283,16 @@ describe("desfazer (undoLast)", () => {
     });
   });
 
+  it("undoLast sem alvo devolve ok: false", async () => {
+    planta.alvo = null;
+
+    const r = await undoLast();
+
+    expect(r).toEqual({ ok: false, message: "Nada para desfazer." });
+    // Sem alvo não há o que revalidar: nada mudou.
+    expect(revalidacoes).toHaveLength(0);
+  });
+
   it("a mesma avaliação não pode ser desfeita duas vezes", async () => {
     // Sequencialmente, o 2º `undoLast` acharia OUTRA avaliação (a efetiva
     // anterior do branch) e a desfaria com sucesso. O índice único só é
@@ -300,6 +322,8 @@ describe("desfazer (undoLast)", () => {
       code: "23505",
       constraint: "reviews_undoes_idx",
     });
+    // A falha do 2º pedido não revalida: só o rateCard e o 1º desfazer o fizeram.
+    expect(revalidacoes).toHaveLength(4);
     // Uma avaliação, uma reversão: a segunda não deixou linha.
     const linhas = await revisoesDe(cardId);
     expect(linhas).toHaveLength(2);
@@ -318,6 +342,7 @@ describe("limites (saveLimits)", () => {
       );
 
       expect(r).toEqual({ ok: true });
+      expect(revalidacoes).toEqual([{ path: "/" }, { path: "/review" }]);
       const linhas = await linhaDeSettings();
       expect(linhas).toHaveLength(1);
       expect(linhas[0]).toMatchObject({ newPerDay: 7, reviewsPerDay: 70 });
@@ -362,6 +387,8 @@ describe("limites (saveLimits)", () => {
         message: "Revisões por dia: use um número inteiro de 0 a 9999.",
       });
       expect(await linhaDeSettings()).toEqual(antes);
+      // Só a gravação de base (5/50) revalidou; as duas recusas não.
+      expect(revalidacoes).toEqual([{ path: "/" }, { path: "/review" }]);
     } finally {
       await restaurarPadroes();
     }

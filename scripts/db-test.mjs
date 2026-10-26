@@ -112,7 +112,7 @@ try {
   const url = neonctlSync(["connection-string", nome]);
   const vitest = join(raiz, "node_modules", "vitest", "vitest.mjs");
   codigo = await new Promise((resolve) => {
-    filho = spawn(process.execPath, [vitest, "run", "--project", "db", "--no-file-parallelism"], {
+    filho = spawn(process.execPath, [vitest, "run", "--project", "db", "--no-file-parallelism", ...process.argv.slice(2)], {
       cwd: raiz,
       stdio: "inherit",
       env: { ...process.env, DATABASE_URL: url, ESTUDOS_TEST_BRANCH: nome },

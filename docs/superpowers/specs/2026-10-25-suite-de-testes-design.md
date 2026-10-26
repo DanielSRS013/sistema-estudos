@@ -94,8 +94,8 @@ interativamente se `--org-id` não vier.
 ### Stubs de request
 
 Toda action chama `revalidatePath`, e `createNote` chama `redirect`. Fora de uma
-request os dois lançam. O projeto `db` aponta `next/cache` e `next/navigation`
-para stubs locais via `resolve.alias` — não `vi.mock`, porque alias é
+request os dois lançam. O projeto `db` aponta `next/cache`, `next/navigation` e
+`next/server` para stubs locais via `resolve.alias` — não `vi.mock`, porque alias é
 determinístico e não depende de hoisting:
 
 - `revalidatePath` registra a chamada numa lista inspecionável em vez de lançar.
@@ -103,6 +103,9 @@ determinístico e não depende de hoisting:
   `/tags/[tagSlug]`, hoje verificado por ninguém.
 - `redirect` lança um sentinela reconhecível, que é o comportamento verdadeiro do
   Next. `createNote` segue testável até o fim.
+
+- `connection()` (de `next/server`) vira no-op, para que o código que a chama
+  rode no projeto `db` como numa request.
 
 Nenhum stub toca em código de produção.
 
@@ -123,8 +126,10 @@ async function agora(): Promise<Date> {
 }
 ```
 
-`connection()` vem de `next/server` e, fora de uma request, lança
-`connection was called outside a request scope`. Quatro funções dependem dele:
+`connection()` vem de `next/server` e marca a leitura de tempo para o
+`cacheComponents`. No projeto `db` o stub de `next/server` a torna no-op, então
+ela não é parede ali; a injeção existe pelo relógio determinístico em teste.
+Quatro funções dependem dele:
 `fetchQueue`, `fetchAheadQueue`, `fetchTodayLabel`, `fetchPanel`. São as
 consultas do corte da fila do dia — a lógica mais perigosa do sistema, e hoje só
 o navegador a vê.

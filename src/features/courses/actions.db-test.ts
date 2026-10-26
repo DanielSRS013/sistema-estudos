@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
@@ -70,17 +72,21 @@ describe("actions de cursos", () => {
   });
 
   it("createCourse dá slug único quando o título repete", async () => {
-    await createCourse(inicial, form({ title: "Álgebra Linear" }));
-    await createCourse(inicial, form({ title: "Álgebra Linear" }));
+    // Sufixo único no título: o slug-base nasce livre por construção, e o
+    // filtro por título não vê curso de outro arquivo.
+    const s = randomUUID().slice(0, 8);
+    const titulo = `Álgebra Linear ${s}`;
+    await createCourse(inicial, form({ title: titulo }));
+    await createCourse(inicial, form({ title: titulo }));
 
     const linhas = await db.query.courses.findMany({
-      where: eq(courses.title, "Álgebra Linear"),
+      where: eq(courses.title, titulo),
     });
 
     expect(linhas).toHaveLength(2);
     expect(linhas.map((l) => l.slug).sort()).toEqual([
-      "algebra-linear",
-      "algebra-linear-2",
+      `algebra-linear-${s}`,
+      `algebra-linear-${s}-2`,
     ]);
   });
 

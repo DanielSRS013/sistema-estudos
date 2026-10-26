@@ -113,6 +113,7 @@ describe("envolverCards: o par Pergunta/Resposta", () => {
 
     expect(rotP?.children?.[0]).toEqual(texto("Pergunta"));
     expect(rotP?.children?.[1]?.properties?.href).toBe("#c3");
+    // O \n final é efeito incidental: `aparar` não apara texto não vazio.
     expect(perg?.children).toEqual([texto("Qual a capital?\n")]);
     expect(rotR?.children).toEqual([texto("Resposta")]);
     expect(resp?.children).toEqual([texto("Brasília")]);

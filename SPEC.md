@@ -268,7 +268,7 @@ src/
   db/
     schema.ts             fonte única do schema
     index.ts              cliente Drizzle
-    test-support/         stubs de next/cache e next/navigation, trava e guard test da suíte de banco
+    test-support/         stubs de next/cache, next/navigation e next/server, trava e guard test da suíte de banco
   features/
     courses/              { queries, actions, components }
     notes/

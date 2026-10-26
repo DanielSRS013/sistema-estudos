@@ -34,6 +34,11 @@ export default defineConfig({
           // Os testes de banco fazem dezenas de round-trips ao Neon; os 5 s
           // padrão ficam a um pico de latência do estouro.
           testTimeout: 20_000,
+          // Os arquivos de banco PRECISAM rodar em série: compartilham um branch,
+          // e vários testes afirmam por diferença antes/depois ou sobre o alvo
+          // global do desfazer. Aqui, e não só na flag do script, para que valha
+          // também para quem rodar `vitest --project db` à mão.
+          poolOptions: { forks: { singleFork: true } },
           include: ["src/**/*.db-test.ts"],
           globalSetup: [stub("global-setup.ts")],
           setupFiles: [stub("setup.ts")],

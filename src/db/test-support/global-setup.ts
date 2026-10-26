@@ -10,18 +10,27 @@ export default async function setup(): Promise<void> {
     );
   }
 
+  const { count } = await import("drizzle-orm");
   const { db } = await import("../index");
   const { cards, notes, reviews } = await import("../schema");
 
+  // count(*): na main, que é o caso que a guarda pega, trazer as linhas
+  // puxaria as notas reais pela rede antes de recusar.
+  const contar = async (
+    tabela: typeof notes | typeof cards | typeof reviews,
+  ): Promise<number> => {
+    const [linha] = await db.select({ total: count() }).from(tabela);
+    return linha?.total ?? 0;
+  };
   const [n, c, r] = await Promise.all([
-    db.select().from(notes),
-    db.select().from(cards),
-    db.select().from(reviews),
+    contar(notes),
+    contar(cards),
+    contar(reviews),
   ]);
 
-  if (n.length > 0 || c.length > 0 || r.length > 0) {
+  if (n > 0 || c > 0 || r > 0) {
     throw new Error(
-      `Suíte de banco recusada: o banco apontado por DATABASE_URL já tem dados (${n.length} notas, ${c.length} cards, ${r.length} revisões). Um branch de teste nasce vazio; esta URL provavelmente é a da main. Use \`pnpm test:db\`.`,
+      `Suíte de banco recusada: o banco apontado por DATABASE_URL já tem dados (${n} notas, ${c} cards, ${r} revisões). Um branch de teste nasce vazio; esta URL provavelmente é a da main. Use \`pnpm test:db\`.`,
     );
   }
 }

@@ -97,8 +97,14 @@ describe("queries e actions de cards", () => {
       archivedAt: new Date("2026-01-01T00:00:00.000Z"),
     });
 
-    await setCardSuspended(inicial, form({ id: cardId, suspended: "true" }));
+    const r = await setCardSuspended(
+      inicial,
+      form({ id: cardId, suspended: "true" }),
+    );
 
+    // A guarda é silenciosa: o UPDATE não casa nenhuma linha e a action
+    // devolve sucesso (e revalida), em vez de ok: false ou lançar.
+    expect(r).toEqual({ ok: true });
     const linha = await db.query.cards.findFirst({ where: eq(cards.id, cardId) });
     expect(linha?.suspended).toBe(false);
   });

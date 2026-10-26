@@ -438,7 +438,7 @@ Esta é a única alteração em código de produção de todo o plano. A semânt
 
 - [ ] **Step 2: Rodar e ver falhar**
 
-Expected: FAIL com `connection was called outside a request scope` nos testes de `fetchQueue`, `fetchAheadQueue`, `fetchPanel` e `fetchTodayLabel`. É exatamente a parede que a injeção derruba — e a prova de que ela era real.
+Expected: os testes de `fetchQueue`, `fetchAheadQueue`, `fetchPanel` e `fetchTodayLabel` ainda não conseguem fixar o relógio (as funções não recebem `agora`). Nota: a falha `connection was called outside a request scope`, originalmente esperada aqui, é inalcançável, porque o stub de `next/server` (Tarefa 4) torna `connection()` no-op no projeto `db`; a injeção se justifica pelo relógio determinístico, não por essa parede.
 
 - [ ] **Step 3: Injetar o relógio em `review/queries.ts`**
 
