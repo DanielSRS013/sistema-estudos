@@ -69,6 +69,9 @@ describe("searchNotesAndCards", () => {
   });
 
   it("acha sem acento o que foi escrito com acento", async () => {
+    // Cobre o unaccent da COLUNA gerada e o config `portuguese`. NÃO detecta a
+    // falta de unaccent na CONSULTA: o vetor guardado já é sem acento, então
+    // "projecao" casa mesmo sem ele. Quem cobre a consulta é o teste seguinte.
     const m = marcador();
     const { noteId } = await semearNota(await novaAula(), {
       title: `Geometria ${m}`,
@@ -81,6 +84,9 @@ describe("searchNotesAndCards", () => {
   });
 
   it("acha com acento o que foi escrito sem acento", async () => {
+    // Cobre o unaccent da CONSULTA (queries.ts:55). NÃO REMOVER por parecer
+    // duplicata do anterior: sem ele, a remoção de immutable_unaccent da
+    // consulta ficaria sem cobertura.
     const m = marcador();
     const { noteId } = await semearNota(await novaAula(), {
       title: `Geometria ${m}`,
@@ -134,8 +140,9 @@ describe("searchNotesAndCards", () => {
   });
 
   it("termo só de espaços devolve lista vazia", async () => {
-    // Classe de entrada distinta pela mesma guarda: a produção faz `trim()`
-    // antes de comparar com "".
+    // Prega o contrato "só espaços devolve []". NÃO detecta a remoção da guarda
+    // nem do `trim()`: sem eles "   " iria ao banco, o websearch_to_tsquery
+    // daria consulta vazia, nada casaria e o resultado seguiria sendo [].
     expect(await searchNotesAndCards("   ")).toEqual([]);
   });
 });
