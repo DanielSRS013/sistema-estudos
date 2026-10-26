@@ -1050,8 +1050,8 @@ hoje e, com a mesma ênfase, o que ela não garante.
   puras (o tipo `ActionState`, o plugin hast das marcas de card, a classe do item
   do rail).
 - **O que deliberadamente não cobre:** render de componente. Nada na suíte monta
-  um componente React; a tela é verificada à mão e pelo `next build`, que só
-  garante que ela compila.
+  um componente React; o `next build` dá só o que dá: a tela compila e o
+  prerender não aborta; não diz que ela renderiza o certo.
 - **Isolamento sem limpeza.** Os arquivos `db` compartilham **um** branch e
   rodam em série (`--no-file-parallelism`). O isolamento vem do branch efêmero e
   de asserções escopadas por id; não há `DROP`, `TRUNCATE` nem `DELETE` de linha
@@ -1067,8 +1067,10 @@ hoje e, com a mesma ênfase, o que ela não garante.
   cada uma lia o relógio por conta própria e podiam cair em dias lógicos
   diferentes.
 
-**Pronto quando:** `pnpm check` e `pnpm test:db` passam limpos, e toda
-alteração em query, action, parser ou scheduler nasce com teste no mesmo commit.
+**Pronto quando:** `pnpm check` passa limpo com 45 arquivos / 604 testes no
+projeto `puro`; `pnpm test:db` passa limpo com 13 arquivos / 109 testes contra o
+branch efêmero; e a fronteira da cobertura é a descrita acima — render de
+componente fica de fora.
 
 ---
 
