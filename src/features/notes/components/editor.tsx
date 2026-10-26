@@ -250,7 +250,10 @@ export function Editor({
     <div className="grid gap-4" onKeyDown={atalho}>
       <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
         <div className="grid min-w-0 gap-1">
-          <nav className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-ink-soft">
+          <nav
+            aria-label="Migalhas"
+            className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-ink-soft"
+          >
             <Link href={trilha.courseHref} className="text-accent hover:underline">
               {trilha.courseTitle}
             </Link>

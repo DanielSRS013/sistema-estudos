@@ -17,10 +17,15 @@ function contagem(n: number, singular: string, plural: string): string {
 function Secao({
   id,
   titulo,
+  vazio,
+  total,
   children,
 }: {
   id: string;
   titulo: string;
+  /** A linha neutra que entra no lugar da lista quando não há item. */
+  vazio: string;
+  total: number;
   children: React.ReactNode;
 }) {
   return (
@@ -31,7 +36,15 @@ function Secao({
       >
         {titulo}
       </h2>
-      <ul>{children}</ul>
+      {/* Sem item, não sai `<ul>`: uma lista de zero itens é anunciada como
+          "lista, 0 itens" e, na tela, lê como carregamento que falhou. */}
+      {total === 0 ? (
+        <p className="border-b border-rule py-3.5 text-sm text-ink-soft">
+          {vazio}
+        </p>
+      ) : (
+        <ul>{children}</ul>
+      )}
     </section>
   );
 }
@@ -62,7 +75,12 @@ async function TagDetail({ params }: { params: Promise<{ tagSlug: string }> }) {
           zero, e sumir com a seção faz a página parecer outra a cada visita.
           Antes a de notas virava um texto que imprimia o slug onde o usuário
           tinha escrito outra coisa, e a de cards simplesmente não existia. */}
-      <Secao id="notas-do-conceito" titulo="Notas">
+      <Secao
+        id="notas-do-conceito"
+        titulo="Notas"
+        total={tag.notes.length}
+        vazio="Nenhuma nota com este conceito."
+      >
         {tag.notes.map((nota) => (
           <li
             key={nota.id}
@@ -82,7 +100,12 @@ async function TagDetail({ params }: { params: Promise<{ tagSlug: string }> }) {
       </Secao>
 
       {/* Card não tem tag própria: estes são os cards das notas acima. */}
-      <Secao id="cards-do-conceito" titulo="Cards">
+      <Secao
+        id="cards-do-conceito"
+        titulo="Cards"
+        total={tag.cards.length}
+        vazio="Nenhum card nas notas com este conceito."
+      >
         {tag.cards.map((card) => (
           <TagCardRow key={card.id} card={card} />
         ))}

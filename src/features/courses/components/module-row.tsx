@@ -71,6 +71,7 @@ export function ModuleRow({
             id={id}
             current={title}
             label="do módulo"
+            tamanho="modulo"
             onDone={() => {
               setRenomeando(false);
               botaoRenomear.current?.focus();

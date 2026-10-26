@@ -59,6 +59,7 @@ export function LessonRow({
           id={id}
           current={title}
           label="da aula"
+          tamanho="aula"
           onDone={() => {
             setRenomeando(false);
             botaoRenomear.current?.focus();
@@ -67,7 +68,7 @@ export function LessonRow({
       ) : (
         <Link
           href={`/lessons/${id}`}
-          className="min-w-0 flex-1 basis-50 truncate rounded-sm py-1.5 text-sm hover:text-accent"
+          className="min-w-0 flex-1 basis-50 truncate rounded-sm text-sm leading-9 hover:text-accent"
         >
           {title}
         </Link>

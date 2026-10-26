@@ -93,7 +93,10 @@ async function NoteDetail({ params }: { params: Promise<{ noteId: string }> }) {
       <header className="max-w-170 space-y-2">
         {/* Dois níveis, curso · aula, ambos links: o módulo fica de fora, como
             no fio do editor. */}
-        <nav className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs text-ink-soft">
+        <nav
+          aria-label="Migalhas"
+          className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs text-ink-soft"
+        >
           <Link href={`/courses/${modulo.course.slug}`} className="text-accent">
             {modulo.course.title}
           </Link>

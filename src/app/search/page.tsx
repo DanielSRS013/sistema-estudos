@@ -45,6 +45,10 @@ function Trecho({ segmentos }: { segmentos: Segmento[] }) {
  * campo também: a lista de termos que ele mostrava ("projeção, autovalor…")
  * sumia na primeira tecla, e o que a busca varre está escrito no rótulo e no
  * texto de saída, que ficam.
+ *
+ * Sem `autoFocus`: ele punha o cursor no campo antes de o documento ser lido,
+ * e quem chega em `/search` por link nunca ouvia de que página se trata. O
+ * campo é o primeiro elemento focável da coluna — um Tab chega nele.
  */
 function Busca({ termo }: { termo: string }) {
   return (
@@ -57,7 +61,6 @@ function Busca({ termo }: { termo: string }) {
         name="q"
         type="search"
         defaultValue={termo}
-        autoFocus
         className="min-h-11 w-full rounded-sm border border-ink-soft bg-paper px-3 py-2 text-base"
       />
     </form>
