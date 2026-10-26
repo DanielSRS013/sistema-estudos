@@ -1034,6 +1034,44 @@ aula não muda entre dois carregamentos da mesma tela.
 
 ---
 
+## A suíte de testes — infraestrutura, não fatia
+
+Não é fatia de produto, então não leva número. Registra o que a suíte garante
+hoje e, com a mesma ênfase, o que ela não garante.
+
+- **Dois comandos, dois projetos do vitest.** `pnpm check` é o portão offline:
+  `tsc`, `eslint`, o projeto `puro` (`*.test.ts`, sem I/O — 45 arquivos, 604
+  testes) e `next build`. `pnpm test:db` roda o projeto `db` (`*.db-test.ts` —
+  13 arquivos, 109 testes) contra um branch efêmero do Neon, Postgres de
+  verdade, nunca mock de driver (`scripts/db-test.mjs`).
+- **O que cobre:** queries e actions de cursos, notas, cards, tags, revisão e
+  busca contra o banco real; a ponte parser→banco dos cards; o corte do dia da
+  fila de revisão; a busca acento-insensível sobre o `tsvector`; e três lacunas
+  puras (o tipo `ActionState`, o plugin hast das marcas de card, a classe do item
+  do rail).
+- **O que deliberadamente não cobre:** render de componente. Nada na suíte monta
+  um componente React; a tela é verificada à mão e pelo `next build`, que só
+  garante que ela compila.
+- **Isolamento sem limpeza.** Os arquivos `db` compartilham **um** branch e
+  rodam em série (`--no-file-parallelism`). O isolamento vem do branch efêmero e
+  de asserções escopadas por id; não há `DROP`, `TRUNCATE` nem `DELETE` de linha
+  de `cards`/`reviews` na suíte. `testTimeout` de 20s vale só para o projeto
+  `db` (`vitest.config.ts`): cada teste faz dezenas de idas e voltas HTTP ao
+  Neon.
+- **Única mudança de produção:** o relógio injetado em
+  `src/features/review/queries.ts`. `agoraDoRequest()` é exportada e
+  `fetchQueue`, `fetchAheadQueue`, `fetchTodayLabel` e `fetchPanel` recebem
+  `agora: Date` como primeiro parâmetro, para o corte do dia sair de baixo de
+  `connection()` e entrar em teste. Efeito colateral: `fetchPanel` e `fetchQueue`
+  passaram a compartilhar um só instante — antes, perto do corte das 04:00,
+  cada uma lia o relógio por conta própria e podiam cair em dias lógicos
+  diferentes.
+
+**Pronto quando:** `pnpm check` e `pnpm test:db` passam limpos, e toda
+alteração em query, action, parser ou scheduler nasce com teste no mesmo commit.
+
+---
+
 ## Backlog — fora da v1, não implemente
 
 Registrado para não virar escopo acidental:

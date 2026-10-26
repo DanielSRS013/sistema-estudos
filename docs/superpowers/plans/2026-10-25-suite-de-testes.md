@@ -154,7 +154,7 @@ git commit -m "test: dois projetos no Vitest e branch efêmero para a suíte de 
 
   - `semearRevisao(cardId: string, opcoes?: { rating?: "again" | "hard" | "good" | "easy"; reviewedAt?: Date; durationMs?: number | null; undoesReviewId?: string | null; antes?: Partial<{ state: "new" | "learning" | "review" | "relearning"; stability: number; difficulty: number; due: Date; lastReview: Date | null; reps: number; lapses: number; learningSteps: number; elapsedDays: number; scheduledDays: number }> }): Promise<{ reviewId: string }>`
 
-    Preenche as 11 colunas `*Before` de `reviews` — todas NOT NULL — com os valores de `antes` ou, para o que `antes` omitir, com o estado atual do card lido do banco. Sem este semeador, as Tarefas 7 e 8 montariam o mesmo `INSERT` de vinte colunas à mão, em dois arquivos.
+    Preenche as 10 colunas `*Before` de `reviews` (`src/db/schema.ts:214-223`) — todas NOT NULL, exceto `lastReviewBefore`, que é anulável e precisa poder receber `null` — com os valores de `antes` ou, para o que `antes` omitir, com o estado atual do card lido do banco. Sem este semeador, as Tarefas 7 e 8 montariam o mesmo `INSERT` de vinte colunas à mão, em dois arquivos.
 
   Cada opção omitida ganha um padrão único por chamada (sufixo aleatório no título e no slug), para que duas chamadas no mesmo arquivo não colidam no índice único de `courses.slug`.
 
@@ -515,7 +515,7 @@ A coluna `search_vector` é gerada pelo banco sobre `immutable_unaccent`, então
 - [ ] **Step 1: Escrever o teste**
 
 - `"acha a nota pelo título e pelo conteúdo"`.
-- `"acha sem acento o que foi escrito com acento"` — nota com "projeção", busca por "projecao". É a razão de existir da migration 0005.
+- `"acha sem acento o que foi escrito com acento"` — nota com "projeção", busca por "projecao". Prova o unaccent da **coluna** `search_vector` (gerada com `immutable_unaccent`, migration 0005), não o da consulta: passaria mesmo sem `immutable_unaccent` na consulta. Quem prova o da consulta é a direção inversa (nota "projecao", busca "projeção"), acrescentada na Tarefa 9.
 - `"o stemmer português casa plural com singular"` — "normas" acha "norma".
 - `"varre cards também, não só notas"` — semeia card e busca pelo enunciado.
 - `"termo vazio devolve lista vazia, sem varrer o banco"`.
