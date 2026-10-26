@@ -116,7 +116,11 @@ async function CourseDetail({
           <h1 className="min-w-0 truncate text-xl font-medium tracking-tight">
             {course.title}
           </h1>
-          <div className="flex flex-wrap items-center gap-2">
+          {/* `flex-1` e `justify-end`: as ações continuam encostadas na
+              direita, e o formulário revelado pelo "Novo módulo" — que
+              `display: contents` faz item deste flex — nasce com a largura da
+              linha, em vez da largura do punhado de botões. */}
+          <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
             {/* Reordenar e arquivar o curso moram aqui: a lista de /courses
                 virou só nome e meta, e a tela do curso é a que fala dele. */}
             <MoveButtons
@@ -133,17 +137,14 @@ async function CourseDetail({
               tipo="curso"
               nome={course.title}
             />
+            <CreateDisclosure
+              buttonLabel="Novo módulo"
+              action={createModule}
+              hidden={{ courseId: course.id }}
+              placeholder="Nome do módulo"
+              submitLabel="Criar módulo"
+            />
           </div>
-          {/* Fora do grupo de ações, e não dentro: `display: contents` só
-              achata um nível, e lá o formulário revelado nascia com a largura
-              do grupo, dividindo a linha com ↑ ↓ Arquivar. */}
-          <CreateDisclosure
-            buttonLabel="Novo módulo"
-            action={createModule}
-            hidden={{ courseId: course.id }}
-            placeholder="Nome do módulo"
-            submitLabel="Criar módulo"
-          />
         </div>
 
         <p className="text-xs text-ink-soft">

@@ -180,9 +180,9 @@ export function CreateForm({
  *
  * `display: contents` deixa o botão e o formulário serem itens do flex do
  * cabeçalho: o botão fica na linha do `h1` e o formulário, com largura cheia,
- * cai para a linha de baixo. Como ele achata um nível só, o componente tem de
- * ser filho direto do flex do cabeçalho — em `/courses`, ao lado do `h1`; na
- * tela do curso, ao lado do grupo de ações, e não dentro dele.
+ * cai para a linha de baixo. Como ele achata um nível só, o flex que o recebe é
+ * que precisa ter a largura da linha: em `/courses` é o próprio cabeçalho; na
+ * tela do curso é o grupo de ações, e por isso ele é `flex-1`.
  */
 export function CreateDisclosure({
   buttonLabel,
