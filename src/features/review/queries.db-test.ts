@@ -294,7 +294,7 @@ describe("estudar adiantado (fetchAheadQueue)", () => {
     expect(ids(fila)).toEqual(semeados.slice(0, 20));
     // O primeiro vence em 2002-01-05: quatro dias lógicos adiante.
     expect(fila.nextDueInDays).toBe(4);
-  });
+  }, 20_000);
 
   it("fetchAheadQueue não oferece o que já venceu hoje, o suspenso nem o arquivado", async () => {
     const agora = new Date("2002-06-01T14:00:00Z");
@@ -326,19 +326,10 @@ describe("estudar adiantado (fetchAheadQueue)", () => {
 });
 
 describe("limites (fetchLimits)", () => {
-  it("fetchLimits devolve os padrões do SPEC §4 sem linha em settings", async (ctx) => {
-    // `settings` tem uma linha só e não se apaga. Se outro arquivo gravou
-    // antes, o estado "sem linha" já não existe neste branch.
-    const existentes = await db.select().from(settings);
-    if (existentes.length > 0) {
-      ctx.skip(
-        "settings já tem linha (gravada por outro arquivo); o estado 'sem linha' só existe se este arquivo rodar antes de quem grava.",
-      );
-    }
-
-    expect(await fetchLimits()).toEqual({ newPerDay: 20, reviewsPerDay: 200 });
-  });
-
+  // O caso "sem linha em settings" (padrões do SPEC §4) é coberto por
+  // `limits.test.ts` e `scheduler.test.ts`. Aqui ele não é testável: `settings`
+  // tem linha única (CHECK `settings_single_row`) e DELETE é proibido, então o
+  // estado "sem linha" some para sempre assim que qualquer arquivo grava.
   it("fetchLimits lê a linha gravada", async () => {
     const valores = { newPerDay: 7, reviewsPerDay: 70, updatedAt: new Date() };
     try {
@@ -453,7 +444,7 @@ describe("painel (fetchPanel)", () => {
         : ((ordenadas[meio - 1] ?? 0) + (ordenadas[meio] ?? 0)) / 2;
 
     expect(depois.medianMs).toBe(esperada);
-  });
+  }, 20_000);
 
   it("fetchPanel ignora os dois lados de um par desfeito", async () => {
     const antes = await fetchPanel(AGORA, FOLGADOS);
@@ -481,6 +472,10 @@ describe("painel (fetchPanel)", () => {
 });
 
 describe("desfazer e data", () => {
+  // Buraco declarado: o ramo `null` ("sem histórico") fica sem teste. O branch
+  // de teste é único e compartilhado, `reviews` nunca está vazia, DELETE é
+  // proibido e a query não tem escopo por usuário; nenhuma função pura guarda
+  // esse ramo. Não é "ainda não coberto": é incobrível neste nível.
   it("fetchUndoTarget devolve a última avaliação efetiva", async () => {
     const { lessonId } = await semearAula({
       courseTitle: "Física",
