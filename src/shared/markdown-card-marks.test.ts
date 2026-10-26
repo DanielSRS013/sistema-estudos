@@ -118,6 +118,26 @@ describe("envolverCards: o par Pergunta/Resposta", () => {
     expect(resp?.children).toEqual([texto("Brasília")]);
   });
 
+  // Esta forma vem de quebra DURA (dois espaços no fim da linha do `Q::`, ou
+  // barra invertida): o pipeline não tem `remark-breaks`, então só a quebra
+  // dura vira nó `break` e, no hast, um elemento `br`. É alcançável por um
+  // usuário. O teste prega o comportamento OBSERVADO hoje (o `br` fica dentro
+  // da célula da pergunta), não um comportamento que se tenha decidido desejar.
+  it("com quebra dura (br) entre Q:: e A::, mantém o br na célula da pergunta", () => {
+    const p = el("p", [
+      texto(`${M.pergunta}3${M.numero}Qual a capital?`),
+      el("br"),
+      texto(`${M.resposta}Brasília`),
+    ]);
+    const [bloco] = aplicar(raiz(p)).children;
+    const [, perg, , resp] = bloco?.children ?? [];
+
+    expect(classe(bloco)).toBe("note-qa");
+    expect(bloco?.children).toHaveLength(4);
+    expect(perg?.children).toEqual([texto("Qual a capital?"), el("br")]);
+    expect(resp?.children).toEqual([texto("Brasília")]);
+  });
+
   it("herda a linha do Q::, adiantada pelas quebras do que vinha antes", () => {
     const p = el(
       "p",
