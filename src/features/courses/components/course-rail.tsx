@@ -1,5 +1,9 @@
 import { SignOut } from "@/features/auth/components/sign-out";
-import { fetchLimits, fetchQueue } from "@/features/review/queries";
+import {
+  agoraDoRequest,
+  fetchLimits,
+  fetchQueue,
+} from "@/features/review/queries";
 import { ThemeToggle } from "@/features/theme/components/theme-toggle";
 
 import { fetchRail } from "../queries";
@@ -14,8 +18,12 @@ import { Rail } from "./rail";
  * existem, sem consulta nova.
  */
 export async function CourseRail() {
+  const agora = await agoraDoRequest();
   const limits = await fetchLimits();
-  const [courses, fila] = await Promise.all([fetchRail(), fetchQueue(limits)]);
+  const [courses, fila] = await Promise.all([
+    fetchRail(),
+    fetchQueue(agora, limits),
+  ]);
 
   return (
     <Rail

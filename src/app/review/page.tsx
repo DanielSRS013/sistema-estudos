@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { ReviewSession } from "@/features/review/components/session";
 import {
+  agoraDoRequest,
   fetchAheadQueue,
   fetchLimits,
   fetchQueue,
@@ -22,9 +23,10 @@ async function Fila({
   const ahead = adiantado === "1";
   // O modo adiantado ignora os limites de propósito (SPEC §4 corta a fila do
   // dia, não o estudo pedido na mão).
+  const agora = await agoraDoRequest();
   const fila = ahead
-    ? await fetchAheadQueue()
-    : await fetchQueue(await fetchLimits());
+    ? await fetchAheadQueue(agora)
+    : await fetchQueue(agora, await fetchLimits());
 
   return (
     <ReviewSession

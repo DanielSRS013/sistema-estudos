@@ -12,6 +12,7 @@ import { saveLimits } from "@/features/review/actions";
 import { LimitsForm } from "@/features/review/components/limits-form";
 import { durationLabel } from "@/features/review/duration";
 import {
+  agoraDoRequest,
   fetchLimits,
   fetchPanel,
   fetchTodayLabel,
@@ -90,8 +91,9 @@ function Metricas({ painel }: { painel: Panel }) {
 /* ──────────────────────── as duas caixas e as métricas ───────────────── */
 
 async function Hoje() {
+  const agora = await agoraDoRequest();
   const [painel, aula] = await Promise.all([
-    fetchLimits().then(fetchPanel),
+    fetchLimits().then((limits) => fetchPanel(agora, limits)),
     lastCaptureLesson(),
   ]);
 
@@ -188,7 +190,9 @@ async function Recentes() {
 /* ───────────────────────────── painel inteiro ────────────────────────── */
 
 async function DataDeHoje() {
-  return <span className="text-sm text-ink-soft">{await fetchTodayLabel()}</span>;
+  const agora = await agoraDoRequest();
+
+  return <span className="text-sm text-ink-soft">{fetchTodayLabel(agora)}</span>;
 }
 
 async function Limites() {

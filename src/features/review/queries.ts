@@ -166,8 +166,12 @@ async function candidatos(now: Date): Promise<QueueCard[]> {
  * O relógio desta requisição. `connection()` marca a leitura como de tempo de
  * requisição: com `cacheComponents` ligado, um `new Date()` solto durante o
  * prerender aborta o build, porque o valor mudaria entre renders.
+ *
+ * Quem lê a fila chama isto uma vez, dentro da requisição, e repassa o
+ * instante: as leituras abaixo recebem `agora` em vez de buscá-lo, o que as
+ * deixa testáveis com um relógio fixo.
  */
-async function agora(): Promise<Date> {
+export async function agoraDoRequest(): Promise<Date> {
   await connection();
 
   return new Date();
@@ -177,8 +181,11 @@ async function agora(): Promise<Date> {
  * A fila de agora. Os limites do dia descontam o que já foi estudado hoje:
  * reabrir o `/review` depois de 20 cards novos não oferece outros 20.
  */
-export async function fetchQueue(limits: Limits = DEFAULT_LIMITS): Promise<Queue> {
-  const now = await agora();
+export async function fetchQueue(
+  agora: Date,
+  limits: Limits = DEFAULT_LIMITS,
+): Promise<Queue> {
+  const now = agora;
 
   const [todos, feitos] = await Promise.all([candidatos(now), countToday(now)]);
 
@@ -217,8 +224,8 @@ const ADIANTADO_MAX = 20;
  * Estudar adiantado: os próximos a vencer, antes da hora. Não mexe nos
  * limites do dia — é um pedido explícito do usuário, não a fila de hoje.
  */
-export async function fetchAheadQueue(): Promise<Queue> {
-  const now = await agora();
+export async function fetchAheadQueue(agora: Date): Promise<Queue> {
+  const now = agora;
 
   const rows = await db
     .select({
@@ -328,14 +335,15 @@ async function countToday(
 }
 
 /** A data que o cabeçalho do painel mostra ao lado de "Hoje". */
-export async function fetchTodayLabel(): Promise<string> {
-  return panelDateLabel(await agora());
+export function fetchTodayLabel(agora: Date): string {
+  return panelDateLabel(agora);
 }
 
 export async function fetchPanel(
+  agora: Date,
   limits: Limits = DEFAULT_LIMITS,
 ): Promise<Panel> {
-  const now = await agora();
+  const now = agora;
 
   const [contagens, feitos, dias, fila, mediana] = await Promise.all([
     db
@@ -351,7 +359,7 @@ export async function fetchPanel(
       .where(and(isNull(cards.archivedAt), eq(cards.suspended, false))),
     countToday(now),
     db.selectDistinct({ dia: diaLogico }).from(reviews).where(efetiva),
-    fetchQueue(limits),
+    fetchQueue(now, limits),
     medianDuration(),
   ]);
 
