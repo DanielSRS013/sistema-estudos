@@ -59,13 +59,30 @@ async function novaNota(): Promise<string> {
 }
 
 /**
+ * "Avaliação de verdade": não é reversão e não foi desfeita. Escrita aqui de
+ * propósito, e não importada, para que o oráculo do teste seja independente do
+ * predicado `efetiva` da produção.
+ */
+function efetivaNoTeste() {
+  const revertida = alias(reviews, "revertida");
+  return and(
+    isNull(reviews.undoesReviewId),
+    notExists(
+      db
+        .select({ um: sql`1` })
+        .from(revertida)
+        .where(eq(revertida.undoesReviewId, reviews.id)),
+    ),
+  );
+}
+
+/**
  * Quantos cards novos já foram estudados desde `inicio`, direto do banco. É o
  * `F` que a produção desconta do limite; medi-lo aqui, com um instante
  * literal, é o que deixa o teste do corte independente do que outros arquivos
  * gravaram.
  */
 async function novosEstudadosDesde(inicio: Date): Promise<number> {
-  const revertida = alias(reviews, "revertida");
   const [linha] = await db
     .select({ n: sql<number>`count(*)`.mapWith(Number) })
     .from(reviews)
@@ -73,13 +90,7 @@ async function novosEstudadosDesde(inicio: Date): Promise<number> {
       and(
         gte(reviews.reviewedAt, inicio),
         eq(reviews.stateBefore, "new"),
-        isNull(reviews.undoesReviewId),
-        notExists(
-          db
-            .select({ um: sql`1` })
-            .from(revertida)
-            .where(eq(revertida.undoesReviewId, reviews.id)),
-        ),
+        efetivaNoTeste(),
       ),
     );
   return linha?.n ?? 0;
@@ -238,6 +249,8 @@ describe("fila do dia (fetchQueue)", () => {
     // Limites zero esvaziam a fila sem depender do que existe no branch.
     const fila = await fetchQueue(agora, { newPerDay: 0, reviewsPerDay: 0 });
 
+    // A lista vazia é setup (os limites zero a garantem), não prova. A
+    // asserção de verdade é o `nextDueInDays` abaixo.
     expect(fila.cards).toEqual([]);
     expect(fila.nextDueInDays).toBe(3);
   });
@@ -294,7 +307,7 @@ describe("estudar adiantado (fetchAheadQueue)", () => {
     expect(ids(fila)).toEqual(semeados.slice(0, 20));
     // O primeiro vence em 2002-01-05: quatro dias lógicos adiante.
     expect(fila.nextDueInDays).toBe(4);
-  }, 20_000);
+  });
 
   it("fetchAheadQueue não oferece o que já venceu hoje, o suspenso nem o arquivado", async () => {
     const agora = new Date("2002-06-01T14:00:00Z");
@@ -418,22 +431,10 @@ describe("painel (fetchPanel)", () => {
     expect(depois.streakDays).toBe(3);
 
     // Mediana de todas as avaliações efetivas com duração, calculada aqui.
-    const revertida = alias(reviews, "revertida");
     const medidas = await db
       .select({ ms: reviews.durationMs })
       .from(reviews)
-      .where(
-        and(
-          sql`${reviews.durationMs} is not null`,
-          isNull(reviews.undoesReviewId),
-          notExists(
-            db
-              .select({ um: sql`1` })
-              .from(revertida)
-              .where(eq(revertida.undoesReviewId, reviews.id)),
-          ),
-        ),
-      );
+      .where(and(sql`${reviews.durationMs} is not null`, efetivaNoTeste()));
     const ordenadas = medidas
       .map((m) => m.ms ?? 0)
       .sort((x, y) => x - y);
@@ -444,7 +445,7 @@ describe("painel (fetchPanel)", () => {
         : ((ordenadas[meio - 1] ?? 0) + (ordenadas[meio] ?? 0)) / 2;
 
     expect(depois.medianMs).toBe(esperada);
-  }, 20_000);
+  });
 
   it("fetchPanel ignora os dois lados de um par desfeito", async () => {
     const antes = await fetchPanel(AGORA, FOLGADOS);
@@ -489,6 +490,8 @@ describe("desfazer e data", () => {
 
     // Sem `reviewedAt`: vale o relógio do banco, que anda para frente a cada
     // INSERT. Assim estas linhas são mais novas que qualquer outra do branch.
+    // Pressuposto: nenhum arquivo semeia `reviewedAt` no futuro; senão o alvo
+    // do desfazer passa a ser essa linha e este teste cai sem apontar a causa.
     const efetiva = await semearRevisao(alvo, {
       rating: "hard",
       antes: {
@@ -529,6 +532,9 @@ describe("desfazer e data", () => {
     });
   });
 
+  // Exclusivo deste teste: `fetchTodayLabel` é SÍNCRONA e repassa `agora`
+  // (contrato criado na T7, que nada mais fixa). O formato da data em si é
+  // coberto por `panel-date.test.ts`; não apagar achando que duplica.
   it("fetchTodayLabel formata a data do painel", () => {
     expect(fetchTodayLabel(AGORA)).toBe("Terça-feira, 10 de março");
     // 02h de São Paulo ainda é o dia lógico anterior.

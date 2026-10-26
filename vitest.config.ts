@@ -31,6 +31,9 @@ export default defineConfig({
         test: {
           name: "db",
           environment: "node",
+          // Os testes de banco fazem dezenas de round-trips ao Neon; os 5 s
+          // padrão ficam a um pico de latência do estouro.
+          testTimeout: 20_000,
           include: ["src/**/*.db-test.ts"],
           globalSetup: [stub("global-setup.ts")],
           setupFiles: [stub("setup.ts")],
