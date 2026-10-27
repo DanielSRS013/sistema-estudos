@@ -1045,7 +1045,7 @@ Não é fatia de produto, então não leva número. Registra o que a suíte gara
 hoje e, com a mesma ênfase, o que ela não garante.
 
 - **Dois comandos, dois projetos do vitest.** `pnpm check` é o portão offline:
-  `tsc`, `eslint`, o projeto `puro` (`*.test.ts`, sem I/O — 45 arquivos, 604
+  `tsc`, `eslint`, o projeto `puro` (`*.test.ts`, sem I/O — 45 arquivos, 613
   testes) e `next build`. `pnpm test:db` roda o projeto `db` (`*.db-test.ts` —
   13 arquivos, 110 testes) contra um branch efêmero do Neon, Postgres de
   verdade, nunca mock de driver (`scripts/db-test.mjs`).
@@ -1072,7 +1072,7 @@ hoje e, com a mesma ênfase, o que ela não garante.
   cada uma lia o relógio por conta própria e podiam cair em dias lógicos
   diferentes.
 
-**Pronto quando:** `pnpm check` passa limpo com 45 arquivos / 604 testes no
+**Pronto quando:** `pnpm check` passa limpo com 45 arquivos / 613 testes no
 projeto `puro`; `pnpm test:db` passa limpo com 13 arquivos / 110 testes contra o
 branch efêmero; e a fronteira da cobertura é a descrita acima — render de
 componente fica de fora.

@@ -116,11 +116,17 @@ async function CourseDetail({
           <h1 className="min-w-0 truncate text-xl font-medium tracking-tight">
             {course.title}
           </h1>
-          {/* `flex-1` e `justify-end`: as ações continuam encostadas na
+          {/* `flex-auto` e `justify-end`: as ações continuam encostadas na
               direita, e o formulário revelado pelo "Novo módulo" — que
-              `display: contents` faz item deste flex — nasce com a largura da
-              linha, em vez da largura do punhado de botões. */}
-          <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
+              `display: contents` faz item deste flex — ganha a largura do
+              grupo, que agora é a da linha, e não a do punhado de botões.
+
+              `flex-auto`, e não `flex-1`: os dois crescem igual, mas `flex-1`
+              zera o `flex-basis`, e com isso o tamanho que a quebra de linha
+              considera vira o min-content do grupo — a largura de um botão. A
+              375px o grupo passava a caber ao lado de um título curto, e os
+              botões se empilhavam em duas ou três fileiras. */}
+          <div className="flex flex-auto flex-wrap items-center justify-end gap-2">
             {/* Reordenar e arquivar o curso moram aqui: a lista de /courses
                 virou só nome e meta, e a tela do curso é a que fala dele. */}
             <MoveButtons

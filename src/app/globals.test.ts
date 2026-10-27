@@ -1124,3 +1124,134 @@ describe("a busca e o conceito do handoff", () => {
     );
   });
 });
+
+describe("o que a tela tinha perdido (Fatia 25)", () => {
+  const curso = readFileSync(
+    join(raiz, "app", "courses", "[courseSlug]", "page.tsx"),
+    "utf8",
+  );
+  const busca = readFileSync(join(raiz, "app", "search", "page.tsx"), "utf8");
+  const conceito = readFileSync(
+    join(raiz, "app", "tags", "[tagSlug]", "page.tsx"),
+    "utf8",
+  );
+  const nota = readFileSync(
+    join(raiz, "app", "notes", "[noteId]", "page.tsx"),
+    "utf8",
+  );
+  const corpoDaNota = readFileSync(
+    join(raiz, "features", "cards", "components", "note-body.tsx"),
+    "utf8",
+  );
+  const secaoDeCards = readFileSync(
+    join(raiz, "features", "cards", "components", "cards-disclosure.tsx"),
+    "utf8",
+  );
+  const forms = readFileSync(
+    join(raiz, "features", "courses", "components", "forms.tsx"),
+    "utf8",
+  );
+  const aulaLinha = readFileSync(
+    join(raiz, "features", "courses", "components", "lesson-row.tsx"),
+    "utf8",
+  );
+  const modulo = readFileSync(
+    join(raiz, "features", "courses", "components", "module-row.tsx"),
+    "utf8",
+  );
+
+  it("nomeia todo marco de navegação", () => {
+    // O rail já era `<nav aria-label="Navegação">`, então um fio de migalhas
+    // sem nome fazia o leitor de tela listar dois marcos e nomear um. A busca
+    // é por `<nav` sem `aria-label` até o `>`: `[^>]` casa quebra de linha, o
+    // que cobre o atributo na linha de baixo.
+    for (const [caminho, fonte] of arquivosDeFonte(["app", "features"])) {
+      expect([caminho, /<nav(?![^>]*aria-label)/.test(fonte)]).toEqual([
+        caminho,
+        false,
+      ]);
+    }
+  });
+
+  it("não rouba o foco do documento ao abrir a busca", () => {
+    // Com `autoFocus` o cursor caía no campo antes de o `h1` ser lido, e quem
+    // chega em `/search` por link nunca ouvia de que página se trata.
+    expect(semComentarios(busca)).not.toContain("autoFocus");
+  });
+
+  it("não faz da margem de cards um marco repetido", () => {
+    // Dentro de conteúdo de seccionamento, um `aside` sem nome acessível não
+    // vira marco — e é por isso que o `<article>` da nota é parte da trava: se
+    // ele virar `<div>`, os dez marcos anônimos voltam calados.
+    const aside = corpoDaNota.slice(corpoDaNota.indexOf("<aside"));
+    expect(aside.slice(0, aside.indexOf(">"))).not.toContain("aria-label");
+    const antes = nota.slice(0, nota.indexOf("<NoteBody"));
+    expect(aberturasEmAberto(antes)).toContain("article");
+  });
+
+  it("faz a seção de cards dizer o que ela controla", () => {
+    // `aria-controls` tem de apontar para um elemento que existe nos dois
+    // estados, então a lista fica no DOM e se esconde por `hidden` — e a regra
+    // de CSS é o que faz `hidden` vencer o `display: grid` da lista.
+    expect(secaoDeCards).toContain("aria-controls");
+    expect(secaoDeCards).toMatch(/hidden=\{!/);
+    expect(css).toMatch(
+      /\.note-cards-lista\[hidden\] \{[^}]*display: none;/,
+    );
+  });
+
+  it("não imprime lista de zero itens na tela do conceito", () => {
+    // "lista, 0 itens" no leitor de tela, e falha de carregamento na tela.
+    expect(conceito).toContain("total === 0");
+    expect(conceito).toContain("Nenhuma nota com este conceito.");
+    expect(conceito).toContain("Nenhum card nas notas com este conceito.");
+  });
+
+  it("deixa a aula arquivada levar de volta às notas dela", () => {
+    // Módulo não tem tela própria e segue texto; aula tem, e arquivar não pode
+    // tornar as notas dela inalcançáveis por navegação.
+    expect(curso).toContain("href: string | null;");
+    expect(curso).toMatch(/href: `\/lessons\/\$\{aula\.id\}`/);
+    expect(curso).toMatch(/item\.href === null \?/);
+  });
+
+  it("dá ao campo de renomear o tamanho da linha que ele substitui", () => {
+    // 17px/44px no módulo e 15px/36px na aula: sem a altura mínima, a linha
+    // encolhia ao entrar em edição.
+    expect(forms).toContain(
+      "min-w-0 flex-1 min-h-11 rounded-sm border border-accent bg-paper px-2 py-1 text-base text-ink",
+    );
+    expect(forms).toContain(
+      "min-w-0 flex-1 min-h-9 rounded-sm border border-accent bg-paper px-2 py-1 text-sm text-ink",
+    );
+    expect(modulo).toContain('tamanho="modulo"');
+    expect(aulaLinha).toContain('tamanho="aula"');
+    // O nome da aula tem de medir os mesmos 36px, ou a linha pula de qualquer
+    // jeito. Os 36 vêm da entrelinha, e não de um flex com `items-center`,
+    // porque `truncate` não corta dentro de contêiner flex.
+    expect(aulaLinha).toContain("leading-9");
+    expect(aulaLinha).toMatch(/truncate[^"]*leading-9|leading-9[^"]*truncate/);
+  });
+
+  it("não deixa o grupo de ações do curso encolher até o min-content", () => {
+    // `flex-1` é `flex: 1 1 0%`: o tamanho hipotético do grupo na quebra de
+    // linha vira o min-content (a largura de um botão), e a 375px o grupo
+    // passava a caber ao lado de um título curto, empilhando os botões em duas
+    // ou três fileiras. `flex-auto` cresce igual e mantém o max-content, que é
+    // o que faz a linha quebrar cedo.
+    expect(curso).toContain("flex flex-auto flex-wrap items-center justify-end");
+    expect(curso).not.toContain("flex flex-1 flex-wrap");
+  });
+
+  it("deixa a grade da nota de uma coluna só fora da media query", () => {
+    // Abaixo de 1100px a grade é de uma coluna; a regra passa a dizer isso em
+    // vez de depender de cada bloco largo ser contêiner de rolagem.
+    const regra = css.indexOf(".note-grid > * {");
+    const query = css.indexOf("@media (min-width: 68.75rem)");
+    expect(regra).toBeGreaterThan(0);
+    expect(regra).toBeLessThan(query);
+    const corpo = css.slice(regra, css.indexOf("}", regra));
+    expect(corpo).toContain("grid-column: 1;");
+    expect(corpo).toContain("min-width: 0;");
+  });
+});
