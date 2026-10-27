@@ -988,7 +988,12 @@ três últimos são o handoff cobrando o que ficou pela metade.
   `display: contents` descreve só o call site de `/courses`, não este.
 - **Grade abaixo de 1100px:** `min-width:0` e `grid-column:1` só existem acima
   de 1100px, então uma tabela larga numa nota pode esticar a grade na faixa de
-  baixo.
+  baixo. A conferência da Fatia 25 não reproduziu o estiramento: `.note-prose
+  table`, `pre` e `.katex-display` já são contêineres de rolagem, e o tamanho
+  mínimo automático de um contêiner de rolagem é zero. As duas declarações
+  saíram da media query assim mesmo — abaixo de 1100px a grade é de uma coluna
+  só, e a regra passa a dizer isso explicitamente em vez de depender da
+  propriedade de rolagem de cada bloco.
 
 **Pronto quando:** a aula arquivada volta a levar às notas dela; cada marco de
 navegação tem nome próprio; a seção vazia do conceito não imprime lista vazia; o
@@ -1040,9 +1045,9 @@ Não é fatia de produto, então não leva número. Registra o que a suíte gara
 hoje e, com a mesma ênfase, o que ela não garante.
 
 - **Dois comandos, dois projetos do vitest.** `pnpm check` é o portão offline:
-  `tsc`, `eslint`, o projeto `puro` (`*.test.ts`, sem I/O — 45 arquivos, 604
+  `tsc`, `eslint`, o projeto `puro` (`*.test.ts`, sem I/O — 45 arquivos, 613
   testes) e `next build`. `pnpm test:db` roda o projeto `db` (`*.db-test.ts` —
-  13 arquivos, 109 testes) contra um branch efêmero do Neon, Postgres de
+  13 arquivos, 110 testes) contra um branch efêmero do Neon, Postgres de
   verdade, nunca mock de driver (`scripts/db-test.mjs`).
 - **O que cobre:** queries e actions de cursos, notas, cards, tags, revisão e
   busca contra o banco real; a ponte parser→banco dos cards; o corte do dia da
@@ -1067,8 +1072,8 @@ hoje e, com a mesma ênfase, o que ela não garante.
   cada uma lia o relógio por conta própria e podiam cair em dias lógicos
   diferentes.
 
-**Pronto quando:** `pnpm check` passa limpo com 45 arquivos / 604 testes no
-projeto `puro`; `pnpm test:db` passa limpo com 13 arquivos / 109 testes contra o
+**Pronto quando:** `pnpm check` passa limpo com 45 arquivos / 613 testes no
+projeto `puro`; `pnpm test:db` passa limpo com 13 arquivos / 110 testes contra o
 branch efêmero; e a fronteira da cobertura é a descrita acima — render de
 componente fica de fora.
 

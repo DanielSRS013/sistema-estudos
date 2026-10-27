@@ -477,6 +477,14 @@
   align-items: start;
 }
 
+/* Fora da media query de propósito: abaixo de 1100px a grade é de uma coluna
+   só, e sem `min-width: 0` um bloco largo — uma tabela, um bloco de código sem
+   quebra — estica a faixa inteira e põe a página para rolar na horizontal. */
+.note-grid > * {
+  grid-column: 1;
+  min-width: 0;
+}
+
 /* Abaixo de 1100px a margem some — SPEC §6 — e a grade volta a ser uma coluna
    só. Os mesmos cards aparecem na seção recolhível do fim da nota. */
 .note-cards {
@@ -490,11 +498,6 @@
     /* a medida da leitura continua 68ch; a largura total abre para os 248px
        da margem mais os 48px de intervalo */
     max-width: calc(var(--measure) + 296px);
-  }
-
-  .note-grid > * {
-    grid-column: 1;
-    min-width: 0;
   }
 
   .note-grid > .note-cards {
@@ -515,6 +518,12 @@
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
   gap: 12px;
   padding-top: 8px;
+}
+
+/* A lista recolhida fica no DOM por causa do `aria-controls` do botão; o
+   `display: grid` acima venceria o `[hidden]` da folha do navegador. */
+.note-cards-lista[hidden] {
+  display: none;
 }
 
 /* ──────────────── face do card na margem (NoteCard.dc.html) ─────────────

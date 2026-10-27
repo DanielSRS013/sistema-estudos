@@ -8,6 +8,10 @@ import { useState } from "react";
  * Era um `details` com `summary`: o resumo não emite `aria-expanded`, e o
  * handoff pede um botão com o glifo ▸/▾ e o estado anunciado. Cliente só por causa do
  * estado de abertura — os cards vêm prontos do servidor como filhos.
+ *
+ * A lista fica sempre no DOM, escondida por `hidden`: é o que deixa o
+ * `aria-controls` do botão apontar para um elemento que existe nos dois
+ * estados, em vez de para um id que só aparece depois do clique.
  */
 export function CardsDisclosure({
   total,
@@ -17,12 +21,14 @@ export function CardsDisclosure({
   children: React.ReactNode;
 }) {
   const [aberto, setAberto] = useState(false);
+  const lista = "cards-desta-nota";
 
   return (
     <>
       <button
         type="button"
         aria-expanded={aberto}
+        aria-controls={lista}
         onClick={() => setAberto((estava) => !estava)}
         className="flex min-h-11 items-center gap-2 text-sm font-medium text-ink"
       >
@@ -32,7 +38,9 @@ export function CardsDisclosure({
         Cards desta nota ({total})
       </button>
 
-      {aberto ? <div className="note-cards-lista">{children}</div> : null}
+      <div id={lista} hidden={!aberto} className="note-cards-lista">
+        {children}
+      </div>
     </>
   );
 }

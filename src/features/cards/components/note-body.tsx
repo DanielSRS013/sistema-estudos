@@ -43,7 +43,11 @@ export function NoteBody({
             .map(Number);
 
           return (
-            <aside className="note-cards" aria-label="Cards do trecho">
+            // Sem `aria-label`: dentro do `<article>` da nota, um `aside`
+            // sem nome não vira marco. Com ele, uma nota de dez blocos
+            // anunciava dez marcos "Cards do trecho" idênticos, e os cards
+            // já se alcançam pela seção do fim da nota.
+            <aside className="note-cards">
               {indices.map((indice) => {
                 const card = cards[indice];
 

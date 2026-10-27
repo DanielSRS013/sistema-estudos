@@ -16,9 +16,17 @@ export type Action = (
 const campo =
   "min-w-0 flex-1 rounded-sm border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft";
 
-/** Campo em edição: o filete vira accent enquanto o cursor está nele. */
-const campoEmEdicao =
-  "min-w-0 flex-1 rounded-sm border border-accent bg-paper px-2 py-1 text-sm text-ink";
+/**
+ * Campo em edição: o filete vira accent enquanto o cursor está nele, e o
+ * tamanho é o do nome que ele substitui — 17px/44px no módulo, 15px/36px na
+ * aula. Sem a altura mínima, a linha encolhia ao entrar em edição.
+ */
+const campoEmEdicao = {
+  modulo:
+    "min-w-0 flex-1 min-h-11 rounded-sm border border-accent bg-paper px-2 py-1 text-base text-ink",
+  aula:
+    "min-w-0 flex-1 min-h-9 rounded-sm border border-accent bg-paper px-2 py-1 text-sm text-ink",
+} as const;
 
 /**
  * Botão de ação de linha: 13px, filete `--rule`, alvo de 32px. É o degrau
@@ -172,7 +180,9 @@ export function CreateForm({
  *
  * `display: contents` deixa o botão e o formulário serem itens do flex do
  * cabeçalho: o botão fica na linha do `h1` e o formulário, com largura cheia,
- * cai para a linha de baixo.
+ * cai para a linha de baixo. Como ele achata um nível só, o flex que o recebe é
+ * que precisa ter a largura da linha: em `/courses` é o próprio cabeçalho; na
+ * tela do curso é o grupo de ações, e por isso ele é `flex-1`.
  */
 export function CreateDisclosure({
   buttonLabel,
@@ -222,6 +232,9 @@ export function CreateDisclosure({
  * O campo de renomear, no lugar do nome. Quem abre é o botão "Renomear" da
  * linha, então o estado de edição mora no pai e chega por `onDone`.
  *
+ * O `tamanho` é o da linha que o campo ocupa: o nome do módulo é 17px numa
+ * linha de 44px, o da aula é 15px numa de 36px.
+ *
  * Enter salva, Esc cancela, sair do campo salva — as três do handoff. Enter é
  * interceptado em vez de deixar o envio nativo acontecer: sem isso, teclar
  * Enter num nome que não mudou gravaria o mesmo título de novo. O campo não
@@ -233,6 +246,7 @@ export function RenameForm({
   id,
   current,
   label,
+  tamanho,
   onDone,
 }: {
   action: Action;
@@ -240,6 +254,8 @@ export function RenameForm({
   current: string;
   /** "do módulo", "da aula", "do curso" — entra no nome acessível. */
   label: string;
+  /** A linha em que o campo entra, e de quem ele herda altura e corpo. */
+  tamanho: keyof typeof campoEmEdicao;
   onDone: () => void;
 }) {
   const [state, formAction, pending] = useActionState(action, idleState);
@@ -291,7 +307,7 @@ export function RenameForm({
           }
         }}
         onBlur={salvar}
-        className={campoEmEdicao}
+        className={campoEmEdicao[tamanho]}
       />
       <Erro state={state} />
     </form>
