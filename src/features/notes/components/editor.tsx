@@ -17,7 +17,10 @@ import {
 } from "../status";
 
 import { linkifyTags } from "@/features/tags/linkify";
+import { cn } from "@/shared/cn";
 import { MathMarkdown } from "@/shared/markdown";
+
+import { cascaDeCampo } from "./campo";
 
 /** Janela de silêncio antes de gravar. SPEC §5: 900ms, como o handoff. */
 const DEBOUNCE_MS = 900;
@@ -72,7 +75,10 @@ function SeletorDeTipo({
         // o tipo dele é `string`, e asserção não é verificação.
         if (isNoteKind(event.target.value)) onChange(event.target.value);
       }}
-      className="w-fit justify-self-start rounded-md border border-rule bg-paper px-2 py-1 text-xs text-ink-soft"
+      className={cn(
+        cascaDeCampo,
+        "w-fit justify-self-start px-2 py-1 text-xs text-ink-soft",
+      )}
     >
       {noteKindOptions().map((option) => (
         <option key={option.value} value={option.value}>
@@ -185,6 +191,9 @@ export function Editor({
       }
 
       tipoGravado.current = escolhido;
+      // A troca é uma edição da nota: o indicador passa a marcar esta hora, e
+      // não a do último texto gravado.
+      setStatus({ kind: "saved", at: new Date(result.savedAt) });
     },
     [noteId],
   );

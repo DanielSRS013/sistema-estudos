@@ -163,11 +163,16 @@ describe("actions de notas", () => {
 
     const resultado = await setNoteKind({ id: noteId, kind: "summary" });
 
-    expect(resultado).toEqual({ ok: true });
+    expect(resultado.ok).toBe(true);
     const depois = await notaPorId(noteId);
     expect(depois?.kind).toBe("summary");
     expect(depois?.updatedAt.getTime()).toBeGreaterThan(
       new Date("2020-01-01T00:00:00Z").getTime(),
+    );
+    // A hora que volta é a que foi gravada, não a do navegador: é dela que o
+    // indicador "Salvo 18:42" do editor passa a viver depois de uma troca.
+    expect(resultado.ok && resultado.savedAt).toBe(
+      depois?.updatedAt.toISOString(),
     );
     expect(caminhos()).toEqual(
       expect.arrayContaining([`/notes/${noteId}`, `/lessons/${lessonId}`, "/"]),

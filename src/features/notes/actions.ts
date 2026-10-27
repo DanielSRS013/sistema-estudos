@@ -96,14 +96,28 @@ export async function moveNote(
   return { ok: true };
 }
 
+export type KindResult =
+  | {
+      ok: true;
+      /** O `updatedAt` que esta troca gravou, para o indicador do editor. */
+      savedAt: string;
+    }
+  | { ok: false; message: string };
+
 /**
  * Troca o tipo da nota. Não é um formulário: o seletor do editor manda o valor
  * novo na hora, como o autosave manda o texto.
  *
  * Grava `updatedAt` junto, como `moveNote` já faz — toda alteração da linha da
  * nota conta como edição dela, e é esse campo que ordena o painel.
+ *
+ * E devolve a hora que gravou, pelo mesmo motivo de `saveNote`: o indicador do
+ * editor mostra a última edição da nota, e uma troca de tipo é uma edição. Com
+ * `ActionState` seco o "Salvo 18:42" ficava parado no horário do texto
+ * enquanto a linha da nota já tinha mudado — mentindo justamente no campo que
+ * ordena o painel.
  */
-export async function setNoteKind(input: unknown): Promise<ActionState> {
+export async function setNoteKind(input: unknown): Promise<KindResult> {
   const parsed = setNoteKindSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -112,6 +126,7 @@ export async function setNoteKind(input: unknown): Promise<ActionState> {
   }
 
   const { id, kind } = parsed.data;
+  const updatedAt = new Date();
 
   try {
     const nota = await db.query.notes.findFirst({
@@ -121,10 +136,7 @@ export async function setNoteKind(input: unknown): Promise<ActionState> {
 
     if (!nota) return { ok: false, message: "Nota não encontrada." };
 
-    await db
-      .update(notes)
-      .set({ kind, updatedAt: new Date() })
-      .where(eq(notes.id, id));
+    await db.update(notes).set({ kind, updatedAt }).where(eq(notes.id, id));
 
     // O tipo aparece no meta da leitura e na linha da aula; o painel ordena
     // por `updatedAt`.
@@ -136,7 +148,7 @@ export async function setNoteKind(input: unknown): Promise<ActionState> {
     return { ok: false, message: FALHA_GENERICA };
   }
 
-  return { ok: true };
+  return { ok: true, savedAt: updatedAt.toISOString() };
 }
 
 /* ────────────────────────────── autosave ─────────────────────────────── */

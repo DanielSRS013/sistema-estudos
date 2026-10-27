@@ -15,6 +15,20 @@ function primeiro(hits: readonly SearchHit[]): SearchHit {
   return hit;
 }
 
+// A união é discriminada por `origem`: `estado` só existe no lado do card.
+// Estes dois estreitam para o lado certo e falham alto se vier o outro.
+function soNota(hits: readonly SearchHit[]) {
+  const hit = primeiro(hits);
+  if (hit.origem !== "note") throw new Error("esperava um hit de nota");
+  return hit;
+}
+
+function soCard(hits: readonly SearchHit[]) {
+  const hit = primeiro(hits);
+  if (hit.origem !== "card") throw new Error("esperava um hit de card");
+  return hit;
+}
+
 function nota(over: Partial<NoteRow> = {}): NoteRow {
   return {
     id: "n1",
@@ -56,21 +70,21 @@ function card(over: Partial<CardRow> = {}): CardRow {
 
 describe("mesclarHits", () => {
   it("leva a nota com o tipo em português e sem estado", () => {
-    const hit = primeiro(mesclarHits([nota()], [], 30));
+    const hit = soNota(mesclarHits([nota()], [], 30));
 
-    expect(hit.origem).toBe("note");
     // O handoff escreve "Nota · curso · aula" e "Card · estado · de <nota>":
     // numa lista misturada o primeiro token diz de onde o resultado veio.
     expect(hit.tipo).toBe("Nota");
-    expect(hit.estado).toBeNull();
+    // Nem `null` nem string: a chave não existe no lado da nota. É isto que
+    // impede a tela de interpolar "undefined" onde não há estado.
+    expect("estado" in hit).toBe(false);
     expect(hit.noteId).toBe("n1");
     expect(hit.path).toBe("Álgebra · Espaços · Projeções");
   });
 
   it("leva o card com tipo, estado e a nota de origem", () => {
-    const hit = primeiro(mesclarHits([], [card()], 30));
+    const hit = soCard(mesclarHits([], [card()], 30));
 
-    expect(hit.origem).toBe("card");
     expect(hit.tipo).toBe("Card");
     expect(hit.estado).toBe("aprendendo");
     expect(hit.noteId).toBe("n9");
@@ -89,7 +103,7 @@ describe("mesclarHits", () => {
   });
 
   it("diz suspenso no estado, não o estado do agendador", () => {
-    const hit = primeiro(mesclarHits([], [card({ suspended: true, state: "review" })], 30));
+    const hit = soCard(mesclarHits([], [card({ suspended: true, state: "review" })], 30));
 
     expect(hit.estado).toBe("suspenso");
   });

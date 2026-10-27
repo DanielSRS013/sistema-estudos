@@ -121,6 +121,11 @@ export const notes = pgTable(
     // migration 0005: `unaccent(text)` é STABLE e o Postgres recusa coluna
     // gerada sobre expressão não imutável. Sem ele o stemmer português casa
     // "projeção" mas não "projecao" — SPEC §5.
+    //
+    // A função não cabe no snapshot do drizzle. A cópia canônica do que a cria
+    // está em `src/db/unaccent.sql`, e é para colar no topo da primeira
+    // migration se a linha de migrations for refeita — `unaccent.test.ts`
+    // confere que ela continua em alguma.
     searchVector: tsvector("search_vector").generatedAlwaysAs(
       sql`to_tsvector('portuguese', immutable_unaccent(coalesce(title, '') || ' ' || coalesce(content, '')))`,
     ),

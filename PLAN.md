@@ -1021,8 +1021,14 @@ um que só morde no futuro.
   de estar *dentro* do slug, então "limites" nunca acha a tag `limite` e a frase
   de sem-resultado não sugere nada. Casar nas duas direções.
 - **Empate na ordem das notas da aula:** `listNotesForLesson` ordena por
-  `createdAt` sem desempate, então duas notas criadas no mesmo instante trocam de
-  lugar entre carregamentos. Um `asc(notes.id)` fecha. Pré-existente.
+  `createdAt` sem desempate, então duas notas criadas no mesmo instante ficam na
+  ordem que o plano do Postgres entregar. Um `asc(notes.id)` fecha.
+  Pré-existente. A conferência da Fatia 26 não reproduziu a troca de lugar: o
+  `group by notes.id` da consulta já faz o Postgres devolver as linhas em ordem
+  de id neste tamanho de tabela, e o teste de banco do empate passa com e sem o
+  desempate — inclusive forçando a ordem física ao contrário por `UPDATE`. Isso
+  é propriedade do plano, não da consulta, então o `asc(notes.id)` entrou de
+  todo modo, e a trava dele é no texto da consulta, na suíte pura.
 - **Classe do seletor duplicada à mão:** a classe do seletor de tipo da nota
   repete a constante `campo` de `note-forms.tsx` em vez de usá-la.
 - **"Salvo 18:42" paralisado:** não se mexe quando `setNoteKind` bumpa
@@ -1030,12 +1036,27 @@ um que só morde no futuro.
 - **Extensão e função fora do snapshot do drizzle:** `create extension unaccent`
   e `immutable_unaccent(text)` vivem só no SQL da migration, não no snapshot. Um
   rebaseline futuro recria as colunas geradas sem a função e falha no meio — e
-  falha num comando que não dá para repetir à mão sem entender por quê.
+  falha num comando que não dá para repetir à mão sem entender por quê. O
+  snapshot do drizzle não tem onde guardar extensão nem função, então o conserto
+  não é fazer caber: a cópia canônica dos dois comandos passou a viver em
+  `src/db/unaccent.sql`, com a instrução de colá-la no topo da primeira
+  migration num rebaseline, e `src/db/unaccent.test.ts` falha no `pnpm check` se
+  ela sumir das migrations ou aparecer depois da primeira coluna gerada que a
+  usa. O arquivo fica fora de `drizzle/` de propósito: o `conferirSchema` de
+  `scripts/db-test.mjs` compara o hash de todo `.sql` daquela pasta com o que
+  foi aplicado, e um `.sql` que não é migration seria lido como migration
+  pendente.
 
 **Pronto quando:** `pnpm check` limpo; a união discriminada não deixa a tela
 interpolar estado de nota; o card suspenso do conceito recua como o da margem;
 buscar "limites" sem resultado oferece a tag `limite`; e a ordem das notas de uma
 aula não muda entre dois carregamentos da mesma tela.
+
+Fica sem conferência no navegador: o banco de desenvolvimento não tem nenhum
+card em nota com conceito (zero linhas em `cards ⋈ note_tags`), então a tela do
+conceito não tem o que mostrar, e o app pede sessão. O recuo do card suspenso
+está preso por dois testes — a regra no CSS e a classe no componente — e divide
+a regra com a face da margem, essa sim já conferida no navegador.
 
 ---
 
@@ -1045,15 +1066,18 @@ Não é fatia de produto, então não leva número. Registra o que a suíte gara
 hoje e, com a mesma ênfase, o que ela não garante.
 
 - **Dois comandos, dois projetos do vitest.** `pnpm check` é o portão offline:
-  `tsc`, `eslint`, o projeto `puro` (`*.test.ts`, sem I/O — 45 arquivos, 613
+  `tsc`, `eslint`, o projeto `puro` (`*.test.ts`, sem I/O — 46 arquivos, 621
   testes) e `next build`. `pnpm test:db` roda o projeto `db` (`*.db-test.ts` —
-  13 arquivos, 110 testes) contra um branch efêmero do Neon, Postgres de
+  13 arquivos, 112 testes) contra um branch efêmero do Neon, Postgres de
   verdade, nunca mock de driver (`scripts/db-test.mjs`).
 - **O que cobre:** queries e actions de cursos, notas, cards, tags, revisão e
   busca contra o banco real; a ponte parser→banco dos cards; o corte do dia da
   fila de revisão; a busca acento-insensível sobre o `tsvector`; e três lacunas
   puras (o tipo `ActionState`, o plugin hast das marcas de card, a classe do item
-  do rail).
+  do rail). E uma trava que não olha para o código da aplicação:
+  `src/db/unaccent.test.ts` confere que o prelúdio da busca acento-insensível
+  (extensão e `immutable_unaccent`) continua em alguma migration, e antes da
+  primeira coluna gerada que o chama — o que o snapshot do drizzle não guarda.
 - **O que deliberadamente não cobre:** render de componente. Nada na suíte monta
   um componente React; o `next build` dá só o que dá: a tela compila e o
   prerender não aborta; não diz que ela renderiza o certo.
@@ -1072,8 +1096,8 @@ hoje e, com a mesma ênfase, o que ela não garante.
   cada uma lia o relógio por conta própria e podiam cair em dias lógicos
   diferentes.
 
-**Pronto quando:** `pnpm check` passa limpo com 45 arquivos / 613 testes no
-projeto `puro`; `pnpm test:db` passa limpo com 13 arquivos / 110 testes contra o
+**Pronto quando:** `pnpm check` passa limpo com 46 arquivos / 621 testes no
+projeto `puro`; `pnpm test:db` passa limpo com 13 arquivos / 112 testes contra o
 branch efêmero; e a fronteira da cobertura é a descrita acima — render de
 componente fica de fora.
 

@@ -131,4 +131,17 @@ describe("leitura por conceito", () => {
     await db.insert(tags).values({ slug: `solta-${s}`, name: `solta-${s}` });
     expect(await sugerirConceito(`solta-${s}`)).toBeNull();
   });
+
+  it("sugerirConceito casa também quando o slug está dentro do termo", async () => {
+    const s = sufixo();
+    const { lessonId } = await semearAula();
+    const { noteId } = await semearNota(lessonId);
+    await gravar(noteId, `Veja #${s}-limite.`);
+
+    // O caso que não funcionava: quem busca "limites" digita mais do que o
+    // slug tem, e o `like` numa direção só nunca achava a tag `limite`. A
+    // frase de sem-resultado terminava sem oferecer saída nenhuma — justo
+    // quando a saída é tudo o que sobrou.
+    expect(await sugerirConceito(`${s}-limites`)).toBe(`${s}-limite`);
+  });
 });

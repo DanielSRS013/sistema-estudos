@@ -401,9 +401,11 @@ describe("o card da margem de NoteCard.dc.html", () => {
   });
 
   it("recua a face do card suspenso em vez de pintá-la", () => {
-    const suspensa = css.slice(css.indexOf(".note-card-face.suspensa {"));
-    expect(suspensa.slice(0, suspensa.indexOf("}"))).toContain(
-      "color: var(--ink-soft);",
+    // A margem divide a regra com a lista do conceito (Fatia 26), então o
+    // seletor vem em lista. A busca aceita a lista: o que este teste prende é
+    // o recuo da face, não a quantidade de lugares que a usam.
+    expect(css).toMatch(
+      /\.note-card-face\.suspensa[^{]*\{[^}]*color: var\(--ink-soft\);/,
     );
   });
 });
@@ -1253,5 +1255,84 @@ describe("o que a tela tinha perdido (Fatia 25)", () => {
     const corpo = css.slice(regra, css.indexOf("}", regra));
     expect(corpo).toContain("grid-column: 1;");
     expect(corpo).toContain("min-width: 0;");
+  });
+});
+
+describe("o resto da dívida (Fatia 26)", () => {
+  const cardDoConceito = readFileSync(
+    join(raiz, "features", "tags", "components", "tag-card.tsx"),
+    "utf8",
+  );
+  const seletorDeTipo = readFileSync(
+    join(raiz, "features", "notes", "components", "editor.tsx"),
+    "utf8",
+  );
+  const camposDaNota = readFileSync(
+    join(raiz, "features", "notes", "components", "note-forms.tsx"),
+    "utf8",
+  );
+  const caixaDeCampo = readFileSync(
+    join(raiz, "features", "notes", "components", "campo.ts"),
+    "utf8",
+  );
+
+  it("recua a face do card suspenso no conceito, como na margem", () => {
+    // O comentário de `.tag-card-face` diz "como na margem", e na margem o
+    // card suspenso recua a face para `--ink-soft`. Sem esta regra o conceito
+    // tinha um sinal só — o filete tracejado do badge.
+    const suspensa = css.slice(css.indexOf(".tag-card-face.suspensa {"));
+    expect(suspensa.slice(0, suspensa.indexOf("}"))).toContain(
+      "color: var(--ink-soft);",
+    );
+    // A regra só vale se o componente puser a classe.
+    expect(cardDoConceito).toMatch(/card\.suspended && "suspensa"/);
+  });
+
+  it("monta os campos da nota sobre uma casca só", () => {
+    // A classe do seletor de tipo repetia à mão a borda, o raio e o fundo da
+    // constante `campo`. Agora as duas saem da mesma casca, e mudar o filete
+    // de um muda o do outro.
+    expect(caixaDeCampo).toContain("export const cascaDeCampo =");
+    expect(camposDaNota).toContain("cascaDeCampo");
+    expect(seletorDeTipo).toContain("cascaDeCampo");
+    // Ninguém reescreve a casca por fora. A agulha é a sequência inteira: o
+    // `border border-rule` solto do retângulo do editor é outra coisa — ele é
+    // a moldura do painel, não a de um campo.
+    for (const fonte of [seletorDeTipo, camposDaNota]) {
+      expect(semComentarios(fonte)).not.toContain(
+        "rounded-md border border-rule bg-paper",
+      );
+    }
+  });
+
+  it("desempata por id a ordem das notas da aula", () => {
+    // Sem o segundo critério a ordem é a que o plano do Postgres entregar: hoje
+    // o `group by notes.id` calha de dar ordem de id (a conferência viu o teste
+    // de banco passar com o desempate removido), mas isso é propriedade do
+    // plano, não da consulta — muda com o tamanho da tabela. A trava é aqui
+    // porque é no texto da consulta que o critério existe.
+    const consultas = readFileSync(
+      join(raiz, "features", "notes", "queries.ts"),
+      "utf8",
+    );
+    expect(consultas).toContain(
+      ".orderBy(asc(notes.createdAt), asc(notes.id))",
+    );
+  });
+
+  it("move o 'Salvo 18:42' quando a troca de tipo grava", () => {
+    // `setNoteKind` bumpa `updatedAt`, então o indicador que dizia 18:42 ficava
+    // mentindo sobre quando a nota mudou. A action devolve a hora que gravou e
+    // o editor a adota, igual ao autosave do texto.
+    //
+    // A busca é dentro de `trocarTipo`: a mesma agulha existe no autosave do
+    // texto, e no arquivo inteiro este teste passaria sem o editor ter mudado.
+    const inicio = seletorDeTipo.indexOf("const trocarTipo = useCallback(");
+    expect(inicio).toBeGreaterThan(0);
+    const corpo = seletorDeTipo.slice(
+      inicio,
+      seletorDeTipo.indexOf("[noteId],", inicio),
+    );
+    expect(corpo).toMatch(/at: new Date\(result\.savedAt\)/);
   });
 });
