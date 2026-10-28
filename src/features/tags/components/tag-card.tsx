@@ -23,7 +23,10 @@ export function TagCardRow({ card }: { card: TagCard }) {
     <li className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5 border-b border-rule py-3.5">
       <MathMarkdown
         content={marcarLacuna(card.prompt)}
-        className="card-face tag-card-face min-w-0 grow basis-80"
+        className={cn(
+          "card-face tag-card-face min-w-0 grow basis-80",
+          card.suspended && "suspensa",
+        )}
         lacuna="oculta"
       />
 

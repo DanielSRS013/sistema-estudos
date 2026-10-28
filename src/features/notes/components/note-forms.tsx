@@ -8,13 +8,17 @@ import { buttonVariants } from "@/shared/ui/button";
 
 import type { LessonOption } from "../queries";
 
+import { cascaDeCampo } from "./campo";
+
 type Action = (
   state: ActionState,
   formData: FormData,
 ) => Promise<ActionState>;
 
-const campo =
-  "min-w-0 flex-1 rounded-md border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft";
+const campo = cn(
+  cascaDeCampo,
+  "min-w-0 flex-1 px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-soft",
+);
 
 function Erro({ state }: { state: ActionState }) {
   if (state.ok) return null;

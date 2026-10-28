@@ -85,6 +85,46 @@ describe("queries de notas", () => {
     expect(lista.map((n) => n.id)).toEqual([b.noteId, a.noteId, c.noteId]);
   });
 
+  it("listNotesForLesson desempata criação igual pelo id", async () => {
+    const { lessonId } = await semearAula();
+    const notas = [
+      await semearNota(lessonId, { title: "A" }),
+      await semearNota(lessonId, { title: "B" }),
+      await semearNota(lessonId, { title: "C" }),
+    ];
+
+    // Duas notas criadas no mesmo instante acontece: `createdAt` é
+    // `defaultNow()`, e o agora é o da transação. Sem desempate a ordem é a
+    // que o Postgres achar mais barata naquele momento, e a lista da aula
+    // troca de ordem entre dois carregamentos da mesma tela.
+    //
+    // O id é uuid v4: a ordem dele não quer dizer nada — só é a mesma sempre.
+    const esperado = notas.map((n) => n.noteId).sort();
+
+    // Os UPDATE saem em ordem DECRESCENTE de id de propósito: no Postgres o
+    // update reescreve a linha no fim do heap, e a varredura passa a devolver
+    // as três ao contrário do que se espera.
+    //
+    // Mesmo assim: este teste passa com e sem o `asc(notes.id)` da consulta, e
+    // a conferência o viu passar com o desempate removido. O `group by
+    // notes.id` já faz o Postgres entregar as linhas em ordem de id neste
+    // tamanho de tabela, então o empate não aparece aqui. O que ele prende é a
+    // invariante — a mesma ordem em duas cargas seguidas —, não o desempate; a
+    // trava do desempate é a da suíte pura, sobre a consulta.
+    const mesmoInstante = new Date("2024-02-02T00:00:00Z");
+    for (const noteId of [...esperado].reverse()) {
+      await fixarDatas(noteId, { createdAt: mesmoInstante });
+    }
+
+    expect((await listNotesForLesson(lessonId)).map((n) => n.id)).toEqual(
+      esperado,
+    );
+    // E de novo: o que o teste prende é a estabilidade entre cargas.
+    expect((await listNotesForLesson(lessonId)).map((n) => n.id)).toEqual(
+      esperado,
+    );
+  });
+
   it("listNotesForLesson conta só os cards ativos e mantém a nota sem card", async () => {
     const { lessonId } = await semearAula();
     const comCards = await semearNota(lessonId, { title: "Com cards" });

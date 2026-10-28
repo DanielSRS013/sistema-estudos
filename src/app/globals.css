@@ -547,8 +547,11 @@
 }
 
 /* Card suspenso: a face inteira recua para `--ink-soft`, e o badge de estado
-   troca o filete sólido pelo tracejado. Dois sinais sem cor nenhuma. */
-.note-card-face.suspensa {
+   troca o filete sólido pelo tracejado. Dois sinais sem cor nenhuma. Vale nos
+   dois lugares em que a face aparece — a margem da nota e a lista do conceito
+   —, porque o badge tracejado sozinho é um sinal só, e fino. */
+.note-card-face.suspensa,
+.tag-card-face.suspensa {
   color: var(--ink-soft);
 }
 

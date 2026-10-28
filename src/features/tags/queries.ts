@@ -1,4 +1,4 @@
-import { asc, eq, like } from "drizzle-orm";
+import { asc, eq, like, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { noteTags, notes, tags } from "@/db/schema";
@@ -139,15 +139,21 @@ export async function getTagBySlug(slug: string): Promise<TagDetail | null> {
  * O handoff escreve "ou abra o conceito #projecao-vetorial", com uma tag de
  * verdade. Montar o link com o termo digitado daria 404 na maior parte das
  * vezes — é justamente o termo que não encontrou nada —, então a oferta é uma
- * tag existente cujo slug contenha o que foi digitado: "projecao" oferece
- * `#projecao-vetorial`. Sem casamento não há oferta, e a frase termina antes.
+ * tag existente que *case* com o que foi digitado, nas duas direções: o slug
+ * contém o termo ("projecao" oferece `#projecao-vetorial`) ou o termo contém o
+ * slug ("limites" oferece `#limite`). Só a primeira direção deixava de fora
+ * justamente o erro mais comum de quem não achou nada — digitar a palavra no
+ * plural, ou com uma palavra a mais, do que a tag tem. Sem casamento não há
+ * oferta, e a frase termina antes.
  *
  * A tag precisa ter nota: tag sem nenhuma nota vinculada existe (o `#` saiu da
  * nota, ou a nota foi apagada) e abrir uma delas leva a uma página de duas
  * seções vazias. Quem não achou nada merece uma saída, não um segundo beco.
  *
  * `slugify` é o que torna o `like` seguro: ele só deixa passar `[a-z0-9-]`, e
- * `%` ou `_` digitados não chegam a virar curinga.
+ * `%` ou `_` digitados não chegam a virar curinga. Na segunda direção quem faz
+ * papel de padrão é o slug gravado, que vem do mesmo `slugify` na escrita — e
+ * de todo modo vai como parâmetro, não como texto montado na consulta.
  */
 export async function sugerirConceito(termo: string): Promise<string | null> {
   const alvo = slugify(termo);
@@ -158,7 +164,12 @@ export async function sugerirConceito(termo: string): Promise<string | null> {
     .select({ slug: tags.slug })
     .from(tags)
     .innerJoin(noteTags, eq(noteTags.tagId, tags.id))
-    .where(like(tags.slug, `%${alvo}%`))
+    .where(
+      or(
+        like(tags.slug, `%${alvo}%`),
+        sql`${alvo} like '%' || ${tags.slug} || '%'`,
+      ),
+    )
     .orderBy(asc(tags.slug))
     .limit(1);
 

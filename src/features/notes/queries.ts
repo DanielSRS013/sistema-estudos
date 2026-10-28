@@ -49,7 +49,10 @@ export async function listNotesForLesson(
     .leftJoin(cards, eq(cards.noteId, notes.id))
     .where(eq(notes.lessonId, lessonId))
     .groupBy(notes.id)
-    .orderBy(asc(notes.createdAt));
+    // O id desempata criação igual: `createdAt` é `defaultNow()`, duas notas
+    // criadas na mesma transação têm o mesmo instante, e sem desempate elas
+    // trocam de lugar entre dois carregamentos da mesma tela.
+    .orderBy(asc(notes.createdAt), asc(notes.id));
 
   return rows.map((row) => ({
     id: row.id,

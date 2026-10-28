@@ -69,12 +69,12 @@ export type CardRow = {
   lessonTitle: string;
 };
 
-export type SearchHit = {
+/** O que nota e card trazem igual. A diferença entre os dois está em `SearchHit`. */
+type HitComum = {
   /** Chave de lista. `card:` na frente porque nota e card podem ter o mesmo id. */
   key: string;
   /** Para onde o resultado leva: a nota, ou a nota de origem do card. */
   noteId: string;
-  origem: "note" | "card";
   /**
    * "Nota" ou "Card": o primeiro token do meta, como o handoff escreve ("Nota ·
    * curso · aula", "Card · estado · de <nota>"). Numa lista misturada é o que
@@ -82,8 +82,6 @@ export type SearchHit = {
    * diz isso a quem está varrendo a lista.
    */
   tipo: string;
-  /** Estado do card em português; `null` numa nota, que não tem estado. */
-  estado: string | null;
   /** Nota: o título. Card: a face. */
   title: Segmento[];
   /** Nota: o trecho do corpo. Card: a resposta. */
@@ -95,6 +93,25 @@ export type SearchHit = {
   updatedAt: Date;
   rank: number;
 };
+
+/**
+ * Um resultado da busca, nota ou card.
+ *
+ * União discriminada por `origem`, e não um registro só com campo opcional: a
+ * invariante é que nota não tem estado e card sempre tem. Com `estado:
+ * string | null` o tipo não dizia isso, e a tela interpolava o campo confiando
+ * na invariante por fora — um dia alguém monta o meta da nota com `estado`
+ * dentro e imprime "Nota · null · …" sem o compilador reclamar. Aqui a chave
+ * só existe no lado do card, então ler `hit.estado` obriga a estreitar por
+ * `origem` antes.
+ */
+export type SearchHit =
+  | (HitComum & { origem: "note" })
+  | (HitComum & {
+      origem: "card";
+      /** Estado do card em português — "aprendendo", "suspenso". */
+      estado: string;
+    });
 
 function caminho(row: {
   courseTitle: string;
@@ -110,7 +127,6 @@ function daNota(row: NoteRow): SearchHit {
     noteId: row.id,
     origem: "note",
     tipo: "Nota",
-    estado: null,
     title: splitHighlight(escolherDestaque(row.title, row.titleSemAcento)),
     snippet: splitHighlight(escolherDestaque(row.snippet, row.snippetSemAcento)),
     path: caminho(row),
